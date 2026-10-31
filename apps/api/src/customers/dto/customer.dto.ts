@@ -1,4 +1,11 @@
-import { IsBoolean, IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsOptional,
+  IsString,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateCustomerDto {
   @IsString()
@@ -7,11 +14,21 @@ export class CreateCustomerDto {
 
   @IsOptional()
   @IsString()
-  phone?: string;
+  primaryPhone?: string;
 
   @IsOptional()
+  @IsString()
+  secondaryPhone?: string;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== undefined && v !== null && v !== '')
   @IsEmail()
-  email?: string;
+  primaryEmail?: string;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== undefined && v !== null && v !== '')
+  @IsEmail()
+  secondaryEmail?: string;
 
   @IsOptional()
   @IsString()
@@ -32,6 +49,14 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   gstin?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class UpdateCustomerDto {
@@ -42,31 +67,45 @@ export class UpdateCustomerDto {
 
   @IsOptional()
   @IsString()
-  phone?: string;
+  primaryPhone?: string | null;
 
   @IsOptional()
+  @IsString()
+  secondaryPhone?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== undefined && v !== null && v !== '')
   @IsEmail()
-  email?: string;
+  primaryEmail?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== undefined && v !== null && v !== '')
+  @IsEmail()
+  secondaryEmail?: string | null;
 
   @IsOptional()
   @IsString()
-  address?: string;
+  address?: string | null;
 
   @IsOptional()
   @IsString()
-  city?: string;
+  city?: string | null;
 
   @IsOptional()
   @IsString()
-  state?: string;
+  state?: string | null;
 
   @IsOptional()
   @IsString()
-  pincode?: string;
+  pincode?: string | null;
 
   @IsOptional()
   @IsString()
-  gstin?: string;
+  gstin?: string | null;
+
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
 
   @IsOptional()
   @IsBoolean()

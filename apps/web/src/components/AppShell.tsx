@@ -12,7 +12,7 @@ const NAV = [
   { href: '/bookings', label: 'Bookings', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/tracking', label: 'Tracking', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/delivery', label: 'Delivery', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
-  { href: '/masters/customers', label: 'Customers', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
+  { href: '/customers', label: 'Customers', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/masters/states', label: 'States', roles: [Role.ADMIN] },
   { href: '/masters/cities', label: 'Cities', roles: [Role.ADMIN] },
   { href: '/billing', label: 'Billing', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },

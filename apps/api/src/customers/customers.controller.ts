@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -10,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { Role } from '@courier/shared';
 import { IsOptional, IsString } from 'class-validator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -30,22 +33,31 @@ export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
   @Post()
-  create(@Body() dto: CreateCustomerDto) {
-    return this.customersService.create(dto);
+  create(@Body() dto: CreateCustomerDto, @CurrentUser() user: AuthUser) {
+    return this.customersService.create(dto, user);
   }
 
   @Get()
-  findAll(@Query() query: CustomerQueryDto) {
-    return this.customersService.findAll(query);
+  findAll(@Query() query: CustomerQueryDto, @CurrentUser() user: AuthUser) {
+    return this.customersService.findAll(query, user);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.customersService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.customersService.findOne(id, user);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateCustomerDto) {
-    return this.customersService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateCustomerDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.customersService.update(id, dto, user);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.customersService.remove(id, user);
   }
 }
