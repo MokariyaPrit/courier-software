@@ -20,8 +20,8 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 
 interface ProfileFormState {
   fullName: string;
+  email: string;
   phone: string;
-  infoEmail: string;
   companyName: string;
   gstin: string;
   address: string;
@@ -39,8 +39,8 @@ export default function ProfilePage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [form, setForm] = useState<ProfileFormState>({
     fullName: '',
+    email: '',
     phone: '',
-    infoEmail: '',
     companyName: '',
     gstin: '',
     address: '',
@@ -54,8 +54,8 @@ export default function ProfilePage() {
     if (!user) return;
     setForm({
       fullName: user.fullName || '',
+      email: user.email || '',
       phone: info?.phone || '',
-      infoEmail: info?.email || '',
       companyName: info?.companyName || '',
       gstin: info?.gstin || '',
       address: info?.address || '',
@@ -82,8 +82,8 @@ export default function ProfilePage() {
       const cleaned = trimFormData(form);
       await api.patch('/auth/profile', {
         fullName: cleaned.fullName,
+        email: cleaned.email.toLowerCase(),
         phone: cleaned.phone || null,
-        infoEmail: cleaned.infoEmail || null,
         companyName: cleaned.companyName || null,
         gstin: cleaned.gstin || null,
         address: cleaned.address || null,
@@ -115,7 +115,7 @@ export default function ProfilePage() {
         <section className="panel profile-card">
           <h2>Account</h2>
           <InfoRow label="Full name" value={user.fullName} />
-          <InfoRow label="Login email" value={user.email} />
+          <InfoRow label="Email" value={user.email} />
           <InfoRow label="User role" value={user.role.replace(/_/g, ' ')} />
           <div className="profile-row">
             <span className="profile-label">Account status</span>
@@ -140,7 +140,6 @@ export default function ProfilePage() {
             />
           </div>
           <InfoRow label="Phone" value={info?.phone} />
-          <InfoRow label="Contact email" value={info?.email} />
           <InfoRow label="Company name" value={info?.companyName} />
           <InfoRow label="GSTIN" value={info?.gstin} />
           <InfoRow label="Address" value={info?.address} />
@@ -161,8 +160,8 @@ export default function ProfilePage() {
           {(
             [
               ['fullName', 'Full name'],
+              ['email', 'Email'],
               ['phone', 'Phone'],
-              ['infoEmail', 'Contact email'],
               ['companyName', 'Company name'],
               ['gstin', 'GSTIN'],
               ['address', 'Address'],

@@ -47,7 +47,7 @@ export class UsersService {
         userId: user.id,
         fullName: dto.fullName,
         phone: dto.phone ?? null,
-        email: dto.infoEmail ?? email,
+        email, // same as login email
         address: dto.address ?? null,
         city: dto.city ?? null,
         state: dto.state ?? null,
@@ -95,11 +95,25 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    if (dto.email !== undefined) {
+      const email = dto.email.toLowerCase().trim();
+      if (email !== user.email) {
+        const exists = await this.usersRepo.findOne({ where: { email } });
+        if (exists && exists.id !== user.id) {
+          throw new ConflictException('Email already in use');
+        }
+        user.email = email;
+      }
+    }
+
     if (dto.role !== undefined) user.role = dto.role;
     if (dto.isActive !== undefined) user.isActive = dto.isActive;
-    if (dto.password) {
-      user.passwordHash = await bcrypt.hash(dto.password, 10);
+
+    // Blank password = keep existing hash
+    if (dto.password !== undefined && dto.password.trim() !== '') {
+      user.passwordHash = await bcrypt.hash(dto.password.trim(), 10);
     }
+
     await this.usersRepo.save(user);
 
     let info = user.userInfo;
@@ -107,12 +121,14 @@ export class UsersService {
       info = this.userInfoRepo.create({
         userId: user.id,
         fullName: dto.fullName || user.email,
+        email: user.email,
       });
     }
 
     if (dto.fullName !== undefined) info.fullName = dto.fullName;
     if (dto.phone !== undefined) info.phone = dto.phone;
-    if (dto.infoEmail !== undefined) info.email = dto.infoEmail;
+    // Keep user_info.email in sync with login email (single email)
+    info.email = user.email;
     if (dto.address !== undefined) info.address = dto.address;
     if (dto.city !== undefined) info.city = dto.city;
     if (dto.state !== undefined) info.state = dto.state;

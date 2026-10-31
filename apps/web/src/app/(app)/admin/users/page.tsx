@@ -38,8 +38,7 @@ interface UserRow {
 
 interface UserFormState {
   fullName: string;
-  emailAddress: string;
-  contactEmail: string;
+  email: string;
   password: string;
   userRole: Role;
   phone: string;
@@ -55,8 +54,7 @@ interface UserFormState {
 
 const EMPTY_USER_FORM: UserFormState = {
   fullName: '',
-  emailAddress: '',
-  contactEmail: '',
+  email: '',
   password: '',
   userRole: Role.BRANCH_MANAGER,
   phone: '',
@@ -78,8 +76,7 @@ const ROLE_OPTIONS = [
 function toFormFromUser(user: UserRow): UserFormState {
   return {
     fullName: user.userInfo?.fullName || '',
-    emailAddress: user.email || '',
-    contactEmail: user.userInfo?.email || '',
+    email: user.email || '',
     password: '',
     userRole: user.role,
     phone: user.userInfo?.phone || '',
@@ -117,7 +114,7 @@ export default function UsersPage() {
     mutationFn: async () => {
       const cleaned = trimFormData(form);
       await api.post('/users', {
-        email: cleaned.emailAddress.toLowerCase(),
+        email: cleaned.email.toLowerCase(),
         password: cleaned.password,
         role: cleaned.userRole,
         isActive: cleaned.isActive,
@@ -150,12 +147,12 @@ export default function UsersPage() {
     mutationFn: async () => {
       if (!editingUserId) return;
       const cleaned = trimFormData(editForm);
-      await api.patch(`/users/${editingUserId}`, {
+      const payload: Record<string, unknown> = {
+        email: cleaned.email.toLowerCase(),
         role: cleaned.userRole,
         isActive: cleaned.isActive,
         fullName: cleaned.fullName,
         phone: cleaned.phone || null,
-        infoEmail: cleaned.contactEmail || null,
         companyName: cleaned.companyName || null,
         gstin: cleaned.gstin || null,
         address: cleaned.address || null,
@@ -163,8 +160,12 @@ export default function UsersPage() {
         state: cleaned.state || null,
         pincode: cleaned.pincode || null,
         notes: cleaned.notes || null,
-        ...(cleaned.password ? { password: cleaned.password } : {}),
-      });
+      };
+      // Blank password = keep existing password on server
+      if (cleaned.password) {
+        payload.password = cleaned.password;
+      }
+      await api.patch(`/users/${editingUserId}`, payload);
     },
     onSuccess: async () => {
       setEditOpen(false);
@@ -222,31 +223,18 @@ export default function UsersPage() {
         />
       </div>
       <div className="field">
-        <label>{options?.passwordOptional ? 'Login email' : 'Email address'}</label>
+        <label>Email</label>
         <InputText
-          value={state.emailAddress}
-          onChange={(e) => setState({ ...state, emailAddress: e.target.value })}
-          disabled={options?.passwordOptional}
+          value={state.email}
+          onChange={(e) => setState({ ...state, email: e.target.value })}
           style={{ width: '100%' }}
         />
       </div>
-      {options?.passwordOptional ? (
-        <div className="field">
-          <label>Contact email</label>
-          <InputText
-            value={state.contactEmail}
-            onChange={(e) =>
-              setState({ ...state, contactEmail: e.target.value })
-            }
-            style={{ width: '100%' }}
-          />
-        </div>
-      ) : null}
       {options?.includePassword !== false ? (
         <div className="field">
           <label>
             Password
-            {options?.passwordOptional ? ' (leave blank to keep)' : ''}
+            {options?.passwordOptional ? ' (leave blank to keep current)' : ''}
           </label>
           <Password
             feedback={false}

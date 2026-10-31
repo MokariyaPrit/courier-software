@@ -1,6 +1,6 @@
 import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
-/** Logged-in user can update their own user_info fields */
+/** Logged-in user updates own profile — single email used for login */
 export class UpdateProfileDto {
   @IsOptional()
   @IsString()
@@ -8,12 +8,12 @@ export class UpdateProfileDto {
   fullName?: string;
 
   @IsOptional()
-  @IsString()
-  phone?: string | null;
+  @IsEmail()
+  email?: string;
 
   @IsOptional()
-  @IsEmail()
-  infoEmail?: string | null;
+  @IsString()
+  phone?: string | null;
 
   @IsOptional()
   @IsString()

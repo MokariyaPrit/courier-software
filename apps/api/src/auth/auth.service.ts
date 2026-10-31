@@ -134,8 +134,8 @@ export class AuthService {
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     await this.usersService.update(userId, {
       fullName: dto.fullName,
+      email: dto.email,
       phone: dto.phone,
-      infoEmail: dto.infoEmail,
       address: dto.address,
       city: dto.city,
       state: dto.state,

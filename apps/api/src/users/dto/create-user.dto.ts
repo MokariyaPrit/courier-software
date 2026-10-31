@@ -32,10 +32,6 @@ export class CreateUserDto {
   phone?: string;
 
   @IsOptional()
-  @IsEmail()
-  infoEmail?: string;
-
-  @IsOptional()
   @IsString()
   address?: string;
 
