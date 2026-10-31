@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { InvoiceStatus, Role } from '@courier/shared';
+import { InvoiceStatus } from '@courier/shared';
 import { In, Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { paginateMeta, PaginationDto } from '../common/dto/pagination.dto';
@@ -44,15 +44,6 @@ export class BillingService {
       throw new BadRequestException('One or more consignments not found');
     }
 
-    if (user.role === Role.BRANCH_MANAGER) {
-      const invalid = consignments.some(
-        (c) => c.originBranchId !== user.branchId,
-      );
-      if (invalid) {
-        throw new BadRequestException('Consignments outside your branch');
-      }
-    }
-
     const total = consignments.reduce((sum, c) => {
       const charges = (c.charges ?? []).reduce(
         (s, ch) => s + Number(ch.amount),
@@ -74,12 +65,8 @@ export class BillingService {
     return this.invoicesRepo.save(invoice);
   }
 
-  async findAll(query: PaginationDto, user: AuthUser) {
-    const where =
-      user.role === Role.BRANCH_MANAGER ? { createdById: user.id } : {};
-
+  async findAll(query: PaginationDto) {
     const [items, total] = await this.invoicesRepo.findAndCount({
-      where,
       relations: ['customer'],
       order: { createdAt: 'DESC' },
       skip: (query.page - 1) * query.pageSize,

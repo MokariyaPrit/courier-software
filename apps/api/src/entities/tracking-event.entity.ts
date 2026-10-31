@@ -7,7 +7,6 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Branch } from './branch.entity';
 import { Consignment } from './consignment.entity';
 import { User } from './user.entity';
 
@@ -26,12 +25,8 @@ export class TrackingEvent {
   @Column({ type: 'enum', enum: ConsignmentStatus })
   status: ConsignmentStatus;
 
-  @Column({ type: 'uuid', nullable: true })
-  branchId: string | null;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branchId' })
-  branch: Branch | null;
+  @Column({ type: 'varchar', nullable: true })
+  locationLabel: string | null;
 
   @Column({ type: 'uuid' })
   createdById: string;

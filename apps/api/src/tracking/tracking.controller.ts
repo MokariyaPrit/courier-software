@@ -31,12 +31,12 @@ export class TrackingController {
   }
 
   @Get('consignments/:id/timeline')
-  timeline(@Param('id') id: string, @CurrentUser() user: AuthUser) {
-    return this.trackingService.timeline(id, user);
+  timeline(@Param('id') id: string) {
+    return this.trackingService.timeline(id);
   }
 
   @Get('delivery/ofd')
-  ofdList(@CurrentUser() user: AuthUser) {
-    return this.trackingService.ofdList(user);
+  ofdList() {
+    return this.trackingService.ofdList();
   }
 }

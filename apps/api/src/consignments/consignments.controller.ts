@@ -26,8 +26,8 @@ export class ConsignmentsController {
   constructor(private readonly consignmentsService: ConsignmentsService) {}
 
   @Get('dashboard/counts')
-  dashboard(@CurrentUser() user: AuthUser) {
-    return this.consignmentsService.dashboardCounts(user);
+  dashboard() {
+    return this.consignmentsService.dashboardCounts();
   }
 
   @Post()
@@ -36,17 +36,17 @@ export class ConsignmentsController {
   }
 
   @Get()
-  findAll(@Query() query: ConsignmentQueryDto, @CurrentUser() user: AuthUser) {
-    return this.consignmentsService.findAll(query, user);
+  findAll(@Query() query: ConsignmentQueryDto) {
+    return this.consignmentsService.findAll(query);
   }
 
   @Get('awb/:awb')
-  findByAwb(@Param('awb') awb: string, @CurrentUser() user: AuthUser) {
-    return this.consignmentsService.findByAwb(awb, user);
+  findByAwb(@Param('awb') awb: string) {
+    return this.consignmentsService.findByAwb(awb);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
-    return this.consignmentsService.findOne(id, user);
+  findOne(@Param('id') id: string) {
+    return this.consignmentsService.findOne(id);
   }
 }

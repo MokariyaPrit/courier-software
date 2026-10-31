@@ -78,6 +78,36 @@ a {
   font-size: 0.9rem;
 }
 
+.signup-card {
+  width: min(480px, 100%);
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+}
+
+.account-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.auth-footer-link {
+  margin: 1rem 0 0;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.auth-footer-link a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.success-text {
+  color: #047857;
+  margin: 0.5rem 0;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 240px 1fr;

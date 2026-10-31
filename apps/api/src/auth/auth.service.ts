@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,7 +6,9 @@ import * as bcrypt from 'bcrypt';
 import type { Response } from 'express';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
+import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto/signup.dto';
 import { JwtPayload } from './jwt.strategy';
 
 @Injectable()
@@ -18,7 +17,27 @@ export class AuthService {
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly usersService: UsersService,
   ) {}
+
+  async signup(dto: SignupDto) {
+    return this.usersService.create({
+      email: dto.email,
+      password: dto.password,
+      role: dto.role,
+      isActive: dto.isActive ?? true,
+      fullName: dto.fullName,
+      phone: dto.phone,
+      infoEmail: dto.email,
+      address: dto.address,
+      city: dto.city,
+      state: dto.state,
+      pincode: dto.pincode,
+      companyName: dto.companyName,
+      gstin: dto.gstin,
+      notes: dto.notes,
+    });
+  }
 
   private cookieOptions() {
     const secure = this.config.get<string>('COOKIE_SECURE') === 'true';
@@ -35,7 +54,6 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
-      branchId: user.branchId,
     };
     return this.jwt.sign(payload, {
       secret: this.config.getOrThrow('JWT_ACCESS_SECRET'),
@@ -48,7 +66,6 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
-      branchId: user.branchId,
     };
     return this.jwt.sign(payload, {
       secret: this.config.getOrThrow('JWT_REFRESH_SECRET'),
@@ -77,16 +94,17 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
-      fullName: user.fullName,
       role: user.role,
-      branchId: user.branchId,
       isActive: user.isActive,
+      fullName: user.userInfo?.fullName ?? user.email,
+      userInfo: user.userInfo ?? null,
     };
   }
 
   async login(dto: LoginDto, res: Response) {
     const user = await this.usersRepo.findOne({
       where: { email: dto.email.toLowerCase() },
+      relations: ['userInfo'],
     });
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid email or password');
@@ -107,7 +125,10 @@ export class AuthService {
       const payload = this.jwt.verify<JwtPayload>(refreshToken, {
         secret: this.config.getOrThrow('JWT_REFRESH_SECRET'),
       });
-      const user = await this.usersRepo.findOne({ where: { id: payload.sub } });
+      const user = await this.usersRepo.findOne({
+        where: { id: payload.sub },
+        relations: ['userInfo'],
+      });
       if (!user || !user.isActive) {
         throw new UnauthorizedException('Invalid session');
       }
@@ -121,16 +142,11 @@ export class AuthService {
   async me(userId: string) {
     const user = await this.usersRepo.findOne({
       where: { id: userId },
-      relations: ['branch'],
+      relations: ['userInfo'],
     });
     if (!user) {
       throw new UnauthorizedException();
     }
-    return {
-      ...this.sanitize(user),
-      branch: user.branch
-        ? { id: user.branch.id, code: user.branch.code, name: user.branch.name }
-        : null,
-    };
+    return this.sanitize(user);
   }
 }

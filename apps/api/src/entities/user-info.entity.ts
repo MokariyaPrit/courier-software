@@ -2,30 +2,36 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
+  JoinColumn,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from './user.entity';
 
-export enum BranchType {
-  BRANCH = 'BRANCH',
-  HUB = 'HUB',
-}
-
-@Entity('branches')
-export class Branch {
+@Entity('user_info')
+export class UserInfo {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', unique: true })
-  code: string;
+  @Column({ type: 'uuid', unique: true })
+  userId: string;
+
+  @OneToOne(() => User, (user) => user.userInfo, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
   @Column({ type: 'varchar' })
-  name: string;
+  fullName: string;
 
-  @Column({ type: 'enum', enum: BranchType, default: BranchType.BRANCH })
-  type: BranchType;
+  @Column({ type: 'varchar', nullable: true })
+  phone: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  email: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  address: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   city: string | null;
@@ -37,16 +43,16 @@ export class Branch {
   pincode: string | null;
 
   @Column({ type: 'varchar', nullable: true })
-  address: string | null;
+  companyName: string | null;
 
   @Column({ type: 'varchar', nullable: true })
-  phone: string | null;
+  gstin: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  notes: string | null;
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
-
-  @OneToMany(() => User, (user) => user.branch)
-  users: User[];
 
   @CreateDateColumn()
   createdAt: Date;

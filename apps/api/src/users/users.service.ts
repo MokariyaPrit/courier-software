@@ -1,15 +1,13 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Role } from '@courier/shared';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { paginateMeta, PaginationDto } from '../common/dto/pagination.dto';
-import { Branch } from '../entities/branch.entity';
+import { UserInfo } from '../entities/user-info.entity';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -18,7 +16,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
-    @InjectRepository(Branch) private readonly branchesRepo: Repository<Branch>,
+    @InjectRepository(UserInfo)
+    private readonly userInfoRepo: Repository<UserInfo>,
   ) {}
 
   private sanitize(user: User) {
@@ -33,37 +32,39 @@ export class UsersService {
       throw new ConflictException('Email already in use');
     }
 
-    let branchId: string | null = null;
-    if (dto.role === Role.BRANCH_MANAGER) {
-      if (!dto.branchId) {
-        throw new BadRequestException('Branch Manager requires branchId');
-      }
-      const branch = await this.branchesRepo.findOne({
-        where: { id: dto.branchId },
-      });
-      if (!branch) {
-        throw new BadRequestException('Branch not found');
-      }
-      branchId = dto.branchId;
-    } else if (dto.optionalBranchId) {
-      branchId = dto.optionalBranchId;
-    }
-
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const user = this.usersRepo.create({
-      email,
-      passwordHash,
-      fullName: dto.fullName,
-      role: dto.role,
-      branchId,
-    });
-    const saved = await this.usersRepo.save(user);
-    return this.sanitize(saved);
+    const user = await this.usersRepo.save(
+      this.usersRepo.create({
+        email,
+        passwordHash,
+        role: dto.role,
+        isActive: dto.isActive ?? true,
+      }),
+    );
+
+    const userInfo = await this.userInfoRepo.save(
+      this.userInfoRepo.create({
+        userId: user.id,
+        fullName: dto.fullName,
+        phone: dto.phone ?? null,
+        email: dto.infoEmail ?? email,
+        address: dto.address ?? null,
+        city: dto.city ?? null,
+        state: dto.state ?? null,
+        pincode: dto.pincode ?? null,
+        companyName: dto.companyName ?? null,
+        gstin: dto.gstin ?? null,
+        notes: dto.notes ?? null,
+        isActive: dto.isActive ?? true,
+      }),
+    );
+
+    return this.sanitize({ ...user, userInfo });
   }
 
   async findAll(query: PaginationDto) {
     const [items, total] = await this.usersRepo.findAndCount({
-      relations: ['branch'],
+      relations: ['userInfo'],
       order: { createdAt: 'DESC' },
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
@@ -77,7 +78,7 @@ export class UsersService {
   async findOne(id: string) {
     const user = await this.usersRepo.findOne({
       where: { id },
-      relations: ['branch'],
+      relations: ['userInfo'],
     });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -86,24 +87,42 @@ export class UsersService {
   }
 
   async update(id: string, dto: UpdateUserDto) {
-    const user = await this.usersRepo.findOne({ where: { id } });
+    const user = await this.usersRepo.findOne({
+      where: { id },
+      relations: ['userInfo'],
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    if (dto.fullName !== undefined) user.fullName = dto.fullName;
-    if (dto.isActive !== undefined) user.isActive = dto.isActive;
     if (dto.role !== undefined) user.role = dto.role;
-    if (dto.branchId !== undefined) user.branchId = dto.branchId;
+    if (dto.isActive !== undefined) user.isActive = dto.isActive;
     if (dto.password) {
       user.passwordHash = await bcrypt.hash(dto.password, 10);
     }
+    await this.usersRepo.save(user);
 
-    if (user.role === Role.BRANCH_MANAGER && !user.branchId) {
-      throw new BadRequestException('Branch Manager requires branchId');
+    let info = user.userInfo;
+    if (!info) {
+      info = this.userInfoRepo.create({
+        userId: user.id,
+        fullName: dto.fullName || user.email,
+      });
     }
 
-    const saved = await this.usersRepo.save(user);
-    return this.sanitize(saved);
+    if (dto.fullName !== undefined) info.fullName = dto.fullName;
+    if (dto.phone !== undefined) info.phone = dto.phone;
+    if (dto.infoEmail !== undefined) info.email = dto.infoEmail;
+    if (dto.address !== undefined) info.address = dto.address;
+    if (dto.city !== undefined) info.city = dto.city;
+    if (dto.state !== undefined) info.state = dto.state;
+    if (dto.pincode !== undefined) info.pincode = dto.pincode;
+    if (dto.companyName !== undefined) info.companyName = dto.companyName;
+    if (dto.gstin !== undefined) info.gstin = dto.gstin;
+    if (dto.notes !== undefined) info.notes = dto.notes;
+    if (dto.infoIsActive !== undefined) info.isActive = dto.infoIsActive;
+
+    await this.userInfoRepo.save(info);
+    return this.findOne(id);
   }
 }

@@ -82,10 +82,6 @@ export class CreateConsignmentDto {
   serviceType?: ServiceType;
 
   @IsOptional()
-  @IsUUID()
-  originBranchId?: string;
-
-  @IsOptional()
   @IsString()
   remarks?: string;
 

@@ -12,7 +12,6 @@ const NAV = [
   { href: '/bookings', label: 'Bookings', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/tracking', label: 'Tracking', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/delivery', label: 'Delivery', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
-  { href: '/masters/branches', label: 'Branches', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/masters/customers', label: 'Customers', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/masters/pincodes', label: 'Pincodes', roles: [Role.ADMIN] },
   { href: '/billing', label: 'Billing', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
@@ -55,7 +54,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="user-meta">
             <strong>{user.fullName}</strong>
             <span>{user.role.replace('_', ' ')}</span>
-            {user.branch ? <span>{user.branch.name}</span> : null}
+            {user.userInfo?.companyName ? (
+              <span>{user.userInfo.companyName}</span>
+            ) : null}
           </div>
           <Button
             label="Logout"

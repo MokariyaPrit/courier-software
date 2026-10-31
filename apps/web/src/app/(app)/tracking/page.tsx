@@ -13,9 +13,9 @@ interface TrackingEvent {
   id: string;
   status: string;
   remarks: string | null;
+  locationLabel: string | null;
   createdAt: string;
-  branch?: { name: string } | null;
-  createdBy?: { fullName: string };
+  createdBy?: { userInfo?: { fullName?: string } | null };
 }
 
 interface ConsignmentDetail {
@@ -140,8 +140,10 @@ function TrackingInner() {
                   <strong>{ev.status}</strong>
                   <div className="muted">
                     {new Date(ev.createdAt).toLocaleString()}
-                    {ev.branch ? ` · ${ev.branch.name}` : ''}
-                    {ev.createdBy ? ` · ${ev.createdBy.fullName}` : ''}
+                    {ev.locationLabel ? ` · ${ev.locationLabel}` : ''}
+                    {ev.createdBy?.userInfo?.fullName
+                      ? ` · ${ev.createdBy.userInfo.fullName}`
+                      : ''}
                   </div>
                   {ev.remarks ? <div>{ev.remarks}</div> : null}
                 </li>

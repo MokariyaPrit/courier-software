@@ -5,13 +5,11 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
-import { BranchesModule } from './branches/branches.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { ConsignmentsModule } from './consignments/consignments.module';
 import { CustomersModule } from './customers/customers.module';
 import {
-  Branch,
   Consignment,
   ConsignmentCharge,
   Customer,
@@ -19,6 +17,7 @@ import {
   Pincode,
   TrackingEvent,
   User,
+  UserInfo,
 } from './entities';
 import { HealthController } from './health/health.controller';
 import { PincodesModule } from './pincodes/pincodes.module';
@@ -39,8 +38,8 @@ import { UsersModule } from './users/users.module';
         password: config.get<string>('DATABASE_PASSWORD', 'courier'),
         database: config.get<string>('DATABASE_NAME', 'courier_erp'),
         entities: [
-          Branch,
           User,
+          UserInfo,
           Customer,
           Pincode,
           Consignment,
@@ -53,7 +52,6 @@ import { UsersModule } from './users/users.module';
     }),
     AuthModule,
     UsersModule,
-    BranchesModule,
     CustomersModule,
     PincodesModule,
     ConsignmentsModule,

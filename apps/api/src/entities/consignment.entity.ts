@@ -9,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './branch.entity';
 import { Customer } from './customer.entity';
 import { User } from './user.entity';
 import { ConsignmentCharge } from './consignment-charge.entity';
@@ -76,20 +75,6 @@ export class Consignment {
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   codAmount: string;
-
-  @Column({ type: 'uuid' })
-  originBranchId: string;
-
-  @ManyToOne(() => Branch)
-  @JoinColumn({ name: 'originBranchId' })
-  originBranch: Branch;
-
-  @Column({ type: 'uuid', nullable: true })
-  currentBranchId: string | null;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'currentBranchId' })
-  currentBranch: Branch | null;
 
   @Column({ type: 'uuid' })
   createdById: string;

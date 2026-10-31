@@ -7,6 +7,7 @@ import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
+import { InputSwitch } from 'primereact/inputswitch';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Tag } from 'primereact/tag';
@@ -16,22 +17,49 @@ import { api } from '@/lib/api';
 interface UserRow {
   id: string;
   email: string;
-  fullName: string;
   role: Role;
   isActive: boolean;
-  branch?: { name: string } | null;
+  userInfo?: {
+    fullName: string;
+    phone: string | null;
+    companyName: string | null;
+  } | null;
 }
+
+interface CreateUserFormState {
+  fullName: string;
+  emailAddress: string;
+  password: string;
+  userRole: Role;
+  phone: string;
+  companyName: string;
+  gstin: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  isActive: boolean;
+}
+
+const EMPTY_USER_FORM: CreateUserFormState = {
+  fullName: '',
+  emailAddress: '',
+  password: '',
+  userRole: Role.BRANCH_MANAGER,
+  phone: '',
+  companyName: '',
+  gstin: '',
+  address: '',
+  city: '',
+  state: '',
+  pincode: '',
+  isActive: true,
+};
 
 export default function UsersPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    email: '',
-    fullName: '',
-    password: '',
-    role: Role.BRANCH_MANAGER,
-    branchId: '',
-  });
+  const [form, setForm] = useState<CreateUserFormState>(EMPTY_USER_FORM);
   const [error, setError] = useState('');
 
   const usersQuery = useQuery({
@@ -42,35 +70,27 @@ export default function UsersPage() {
     },
   });
 
-  const branchesQuery = useQuery({
-    queryKey: ['branches'],
-    queryFn: async () => {
-      const res = await api.get('/branches', { params: { pageSize: 100 } });
-      return (res.data as { data: { id: string; name: string }[] }).data;
-    },
-  });
-
   const createMutation = useMutation({
     mutationFn: async () => {
       await api.post('/users', {
-        email: form.email,
-        fullName: form.fullName,
+        email: form.emailAddress,
         password: form.password,
-        role: form.role,
-        branchId:
-          form.role === Role.BRANCH_MANAGER ? form.branchId : undefined,
+        role: form.userRole,
+        isActive: form.isActive,
+        fullName: form.fullName,
+        phone: form.phone || undefined,
+        companyName: form.companyName || undefined,
+        gstin: form.gstin || undefined,
+        address: form.address || undefined,
+        city: form.city || undefined,
+        state: form.state || undefined,
+        pincode: form.pincode || undefined,
       });
     },
     onSuccess: async () => {
       setOpen(false);
       setError('');
-      setForm({
-        email: '',
-        fullName: '',
-        password: '',
-        role: Role.BRANCH_MANAGER,
-        branchId: '',
-      });
+      setForm(EMPTY_USER_FORM);
       await qc.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (err: unknown) => {
@@ -98,18 +118,21 @@ export default function UsersPage() {
       </div>
       <div className="panel">
         <DataTable value={usersQuery.data ?? []} loading={usersQuery.isLoading}>
-          <Column field="fullName" header="Name" />
+          <Column
+            header="Full name"
+            body={(row: UserRow) => row.userInfo?.fullName ?? '—'}
+          />
           <Column field="email" header="Email" />
           <Column field="role" header="Role" />
           <Column
-            header="Branch"
-            body={(row: UserRow) => row.branch?.name ?? '—'}
+            header="Company"
+            body={(row: UserRow) => row.userInfo?.companyName ?? '—'}
           />
           <Column
             header="Status"
             body={(row: UserRow) => (
               <Tag
-                value={row.isActive ? 'Active' : 'Disabled'}
+                value={row.isActive ? 'Active' : 'Inactive'}
                 severity={row.isActive ? 'success' : 'danger'}
               />
             )}
@@ -120,7 +143,7 @@ export default function UsersPage() {
               <Button
                 size="small"
                 text
-                label={row.isActive ? 'Disable' : 'Enable'}
+                label={row.isActive ? 'Deactivate' : 'Activate'}
                 onClick={() => toggleMutation.mutate(row)}
               />
             )}
@@ -128,62 +151,72 @@ export default function UsersPage() {
         </DataTable>
       </div>
 
-      <Dialog header="New user" visible={open} onHide={() => setOpen(false)} style={{ width: 520 }}>
+      <Dialog header="New user" visible={open} onHide={() => setOpen(false)} style={{ width: 560 }}>
         <div className="form-grid">
           <div className="field">
             <label>Full name</label>
-            <InputText
-              value={form.fullName}
-              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              style={{ width: '100%' }}
-            />
+            <InputText value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} style={{ width: '100%' }} />
           </div>
           <div className="field">
-            <label>Email</label>
-            <InputText
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              style={{ width: '100%' }}
-            />
+            <label>Email address</label>
+            <InputText value={form.emailAddress} onChange={(e) => setForm({ ...form, emailAddress: e.target.value })} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>Password</label>
-            <Password
-              feedback={false}
-              toggleMask
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              inputStyle={{ width: '100%' }}
+            <Password feedback={false} toggleMask value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} inputStyle={{ width: '100%' }} style={{ width: '100%' }} />
+          </div>
+          <div className="field">
+            <label>User role</label>
+            <Dropdown
+              value={form.userRole}
+              options={[
+                { label: 'Admin', value: Role.ADMIN },
+                { label: 'Branch Manager', value: Role.BRANCH_MANAGER },
+              ]}
+              onChange={(e) => setForm({ ...form, userRole: e.value })}
               style={{ width: '100%' }}
             />
           </div>
           <div className="field">
-            <label>Role</label>
-            <Dropdown
-              value={form.role}
-              options={[
-                { label: 'ADMIN', value: Role.ADMIN },
-                { label: 'BRANCH_MANAGER', value: Role.BRANCH_MANAGER },
-              ]}
-              onChange={(e) => setForm({ ...form, role: e.value })}
-              style={{ width: '100%' }}
+            <label>Phone</label>
+            <InputText value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={{ width: '100%' }} />
+          </div>
+          <div className="field">
+            <label>Company name</label>
+            <InputText value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} style={{ width: '100%' }} />
+          </div>
+          <div className="field">
+            <label>GSTIN</label>
+            <InputText value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value })} style={{ width: '100%' }} />
+          </div>
+          <div className="field">
+            <label>City</label>
+            <InputText value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} style={{ width: '100%' }} />
+          </div>
+          <div className="field full">
+            <label>Address</label>
+            <InputText value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={{ width: '100%' }} />
+          </div>
+          <div className="field">
+            <label>State</label>
+            <InputText value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} style={{ width: '100%' }} />
+          </div>
+          <div className="field">
+            <label>Pincode</label>
+            <InputText value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} style={{ width: '100%' }} />
+          </div>
+          <div className="field full account-status-row">
+            <div>
+              <label>Account status</label>
+              <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+                {form.isActive ? 'Active' : 'Inactive'}
+              </p>
+            </div>
+            <InputSwitch
+              checked={form.isActive}
+              onChange={(e) => setForm({ ...form, isActive: Boolean(e.value) })}
             />
           </div>
-          {form.role === Role.BRANCH_MANAGER ? (
-            <div className="field full">
-              <label>Branch</label>
-              <Dropdown
-                value={form.branchId}
-                options={(branchesQuery.data ?? []).map((b) => ({
-                  label: b.name,
-                  value: b.id,
-                }))}
-                onChange={(e) => setForm({ ...form, branchId: e.value })}
-                placeholder="Select branch"
-                style={{ width: '100%' }}
-              />
-            </div>
-          ) : null}
         </div>
         {error ? <p className="error-text">{error}</p> : null}
         <div style={{ marginTop: '1rem', textAlign: 'right' }}>

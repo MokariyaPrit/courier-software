@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,7 +7,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   CONSIGNMENT_STATUS_FLOW,
   ConsignmentStatus,
-  Role,
 } from '@courier/shared';
 import { Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
@@ -31,15 +29,6 @@ export class TrackingService {
       throw new NotFoundException('Consignment not found');
     }
 
-    if (user.role === Role.BRANCH_MANAGER) {
-      if (
-        consignment.originBranchId !== user.branchId &&
-        consignment.currentBranchId !== user.branchId
-      ) {
-        throw new ForbiddenException('Outside your branch scope');
-      }
-    }
-
     const allowed = CONSIGNMENT_STATUS_FLOW[consignment.status] ?? [];
     if (!allowed.includes(dto.status)) {
       throw new BadRequestException(
@@ -47,20 +36,7 @@ export class TrackingService {
       );
     }
 
-    const branchId =
-      dto.branchId ??
-      user.branchId ??
-      consignment.currentBranchId ??
-      consignment.originBranchId;
-
     consignment.status = dto.status;
-    if (
-      dto.status === ConsignmentStatus.IN_TRANSIT ||
-      dto.status === ConsignmentStatus.AT_HUB ||
-      dto.status === ConsignmentStatus.OUT_FOR_DELIVERY
-    ) {
-      consignment.currentBranchId = branchId;
-    }
     if (dto.remarks) {
       consignment.remarks = dto.remarks;
     }
@@ -70,7 +46,7 @@ export class TrackingService {
       this.eventsRepo.create({
         consignmentId: consignment.id,
         status: dto.status,
-        branchId,
+        locationLabel: dto.locationLabel ?? null,
         createdById: user.id,
         remarks: dto.remarks ?? null,
       }),
@@ -79,42 +55,28 @@ export class TrackingService {
     return { consignment, event };
   }
 
-  async timeline(id: string, user: AuthUser) {
+  async timeline(id: string) {
     const consignment = await this.consignmentsRepo.findOne({ where: { id } });
     if (!consignment) {
       throw new NotFoundException('Consignment not found');
     }
-    if (user.role === Role.BRANCH_MANAGER) {
-      if (
-        consignment.originBranchId !== user.branchId &&
-        consignment.currentBranchId !== user.branchId
-      ) {
-        throw new ForbiddenException('Outside your branch scope');
-      }
-    }
-    return this.eventsRepo.find({
+    const events = await this.eventsRepo.find({
       where: { consignmentId: id },
-      relations: ['branch', 'createdBy'],
+      relations: ['createdBy', 'createdBy.userInfo'],
       order: { createdAt: 'ASC' },
+    });
+    return events.map((event) => {
+      if (event.createdBy) {
+        delete (event.createdBy as { passwordHash?: string }).passwordHash;
+      }
+      return event;
     });
   }
 
-  async ofdList(user: AuthUser) {
-    const qb = this.consignmentsRepo
-      .createQueryBuilder('c')
-      .leftJoinAndSelect('c.originBranch', 'originBranch')
-      .where('c.status = :status', {
-        status: ConsignmentStatus.OUT_FOR_DELIVERY,
-      })
-      .orderBy('c.updatedAt', 'DESC');
-
-    if (user.role === Role.BRANCH_MANAGER) {
-      qb.andWhere(
-        '(c.originBranchId = :branchId OR c.currentBranchId = :branchId)',
-        { branchId: user.branchId },
-      );
-    }
-
-    return qb.getMany();
+  async ofdList() {
+    return this.consignmentsRepo.find({
+      where: { status: ConsignmentStatus.OUT_FOR_DELIVERY },
+      order: { updatedAt: 'DESC' },
+    });
   }
 }

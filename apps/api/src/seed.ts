@@ -3,8 +3,8 @@ import { Role } from '@courier/shared';
 import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
-import { Branch, BranchType } from './entities/branch.entity';
 import { User } from './entities/user.entity';
+import { UserInfo } from './entities/user-info.entity';
 import { Customer } from './entities/customer.entity';
 import { Pincode } from './entities/pincode.entity';
 import { Consignment } from './entities/consignment.entity';
@@ -21,8 +21,8 @@ async function run() {
     password: process.env.DATABASE_PASSWORD || 'courier',
     database: process.env.DATABASE_NAME || 'courier_erp',
     entities: [
-      Branch,
       User,
+      UserInfo,
       Customer,
       Pincode,
       Consignment,
@@ -35,79 +35,85 @@ async function run() {
 
   await ds.initialize();
 
-  const branches = ds.getRepository(Branch);
   const users = ds.getRepository(User);
+  const userInfo = ds.getRepository(UserInfo);
 
-  let hq = await branches.findOne({ where: { code: 'HQ01' } });
-  if (!hq) {
-    hq = await branches.save(
-      branches.create({
-        code: 'HQ01',
-        name: 'Head Office Hub',
-        type: BranchType.HUB,
-        city: 'Mumbai',
-        state: 'MH',
-        pincode: '400001',
-        address: 'HQ Campus',
-        phone: '9999999999',
-      }),
-    );
-  }
+  const adminEmail = (
+    process.env.SEED_ADMIN_EMAIL || 'admin@courier.local'
+  ).toLowerCase();
+  const bmEmail = (
+    process.env.SEED_BM_EMAIL || 'manager@courier.local'
+  ).toLowerCase();
 
-  let branch = await branches.findOne({ where: { code: 'BR01' } });
-  if (!branch) {
-    branch = await branches.save(
-      branches.create({
-        code: 'BR01',
-        name: 'Andheri Branch',
-        type: BranchType.BRANCH,
-        city: 'Mumbai',
-        state: 'MH',
-        pincode: '400053',
-        address: 'Andheri East',
-        phone: '9888888888',
-      }),
-    );
-  }
-
-  const adminEmail = (process.env.SEED_ADMIN_EMAIL || 'admin@courier.local').toLowerCase();
-  const bmEmail = (process.env.SEED_BM_EMAIL || 'manager@courier.local').toLowerCase();
-
-  let admin = await users.findOne({ where: { email: adminEmail } });
+  let admin = await users.findOne({
+    where: { email: adminEmail },
+    relations: ['userInfo'],
+  });
   if (!admin) {
     admin = await users.save(
       users.create({
         email: adminEmail,
-        fullName: 'System Admin',
         role: Role.ADMIN,
-        branchId: null,
+        isActive: true,
         passwordHash: await bcrypt.hash(
           process.env.SEED_ADMIN_PASSWORD || 'Admin@12345',
           10,
         ),
       }),
     );
+    await userInfo.save(
+      userInfo.create({
+        userId: admin.id,
+        fullName: 'System Admin',
+        email: adminEmail,
+        phone: '9999999999',
+        companyName: 'Courier ERP HQ',
+        city: 'Mumbai',
+        state: 'MH',
+        pincode: '400001',
+        address: 'Head office',
+        gstin: null,
+        isActive: true,
+      }),
+    );
   }
 
-  let bm = await users.findOne({ where: { email: bmEmail } });
+  let bm = await users.findOne({
+    where: { email: bmEmail },
+    relations: ['userInfo'],
+  });
   if (!bm) {
     bm = await users.save(
       users.create({
         email: bmEmail,
-        fullName: 'Andheri Manager',
         role: Role.BRANCH_MANAGER,
-        branchId: branch.id,
+        isActive: true,
         passwordHash: await bcrypt.hash(
           process.env.SEED_BM_PASSWORD || 'Manager@12345',
           10,
         ),
       }),
     );
+    await userInfo.save(
+      userInfo.create({
+        userId: bm.id,
+        fullName: 'Operations Manager',
+        email: bmEmail,
+        phone: '9888888888',
+        companyName: 'Courier ERP Ops',
+        city: 'Mumbai',
+        state: 'MH',
+        pincode: '400053',
+        address: 'Ops desk',
+        gstin: null,
+        isActive: true,
+      }),
+    );
   }
 
-  console.log('Seed complete');
+  console.log('Seed complete (no branches table)');
   console.log(`Admin: ${admin.email}`);
-  console.log(`Branch Manager: ${bm.email} @ ${branch.code}`);
+  console.log(`Branch Manager: ${bm.email}`);
   await ds.destroy();
 }
 

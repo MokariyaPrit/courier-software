@@ -13,8 +13,6 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { useMemo, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
-import { Role } from '@courier/shared';
 
 interface ConsignmentRow {
   id: string;
@@ -22,8 +20,8 @@ interface ConsignmentRow {
   status: string;
   receiverName: string;
   receiverPincode: string | null;
-  originBranch?: { name: string };
   createdAt: string;
+  createdBy?: { userInfo?: { fullName?: string } | null };
 }
 
 const emptyForm = {
@@ -40,12 +38,10 @@ const emptyForm = {
   codAmount: 0,
   freight: 100,
   serviceType: ServiceType.STANDARD,
-  originBranchId: '',
   remarks: '',
 };
 
 export default function BookingsPage() {
-  const { user } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -63,18 +59,9 @@ export default function BookingsPage() {
     },
   });
 
-  const branchesQuery = useQuery({
-    queryKey: ['branches-all'],
-    enabled: user?.role === Role.ADMIN,
-    queryFn: async () => {
-      const res = await api.get('/branches', { params: { pageSize: 100 } });
-      return (res.data as { data: { id: string; name: string }[] }).data;
-    },
-  });
-
   const createMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      await api.post('/consignments', {
         senderName: form.senderName,
         senderPhone: form.senderPhone || undefined,
         senderAddress: form.senderAddress || undefined,
@@ -87,7 +74,6 @@ export default function BookingsPage() {
         pieces: form.pieces,
         codAmount: form.codAmount,
         serviceType: form.serviceType,
-        originBranchId: form.originBranchId || undefined,
         remarks: form.remarks || undefined,
         charges: [
           {
@@ -96,8 +82,7 @@ export default function BookingsPage() {
             description: 'Freight',
           },
         ],
-      };
-      await api.post('/consignments', payload);
+      });
     },
     onSuccess: async () => {
       setOpen(false);
@@ -114,11 +99,7 @@ export default function BookingsPage() {
   });
 
   const serviceOptions = useMemo(
-    () =>
-      Object.values(ServiceType).map((v) => ({
-        label: v,
-        value: v,
-      })),
+    () => Object.values(ServiceType).map((v) => ({ label: v, value: v })),
     [],
   );
 
@@ -147,8 +128,10 @@ export default function BookingsPage() {
           <Column field="receiverName" header="Receiver" />
           <Column field="status" header="Status" />
           <Column
-            header="Branch"
-            body={(row: ConsignmentRow) => row.originBranch?.name ?? '—'}
+            header="Created by"
+            body={(row: ConsignmentRow) =>
+              row.createdBy?.userInfo?.fullName ?? '—'
+            }
           />
           <Column
             header="Created"
@@ -168,149 +151,59 @@ export default function BookingsPage() {
         <div className="form-grid">
           <div className="field">
             <label>Sender name</label>
-            <InputText
-              value={form.senderName}
-              onChange={(e) => setForm({ ...form, senderName: e.target.value })}
-              style={{ width: '100%' }}
-            />
+            <InputText value={form.senderName} onChange={(e) => setForm({ ...form, senderName: e.target.value })} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>Sender phone</label>
-            <InputText
-              value={form.senderPhone}
-              onChange={(e) => setForm({ ...form, senderPhone: e.target.value })}
-              style={{ width: '100%' }}
-            />
+            <InputText value={form.senderPhone} onChange={(e) => setForm({ ...form, senderPhone: e.target.value })} style={{ width: '100%' }} />
           </div>
           <div className="field full">
             <label>Sender address</label>
-            <InputTextarea
-              value={form.senderAddress}
-              onChange={(e) => setForm({ ...form, senderAddress: e.target.value })}
-              rows={2}
-              style={{ width: '100%' }}
-            />
+            <InputTextarea value={form.senderAddress} onChange={(e) => setForm({ ...form, senderAddress: e.target.value })} rows={2} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>Receiver name</label>
-            <InputText
-              value={form.receiverName}
-              onChange={(e) => setForm({ ...form, receiverName: e.target.value })}
-              style={{ width: '100%' }}
-            />
+            <InputText value={form.receiverName} onChange={(e) => setForm({ ...form, receiverName: e.target.value })} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>Receiver phone</label>
-            <InputText
-              value={form.receiverPhone}
-              onChange={(e) =>
-                setForm({ ...form, receiverPhone: e.target.value })
-              }
-              style={{ width: '100%' }}
-            />
+            <InputText value={form.receiverPhone} onChange={(e) => setForm({ ...form, receiverPhone: e.target.value })} style={{ width: '100%' }} />
           </div>
           <div className="field full">
             <label>Receiver address</label>
-            <InputTextarea
-              value={form.receiverAddress}
-              onChange={(e) =>
-                setForm({ ...form, receiverAddress: e.target.value })
-              }
-              rows={2}
-              style={{ width: '100%' }}
-            />
+            <InputTextarea value={form.receiverAddress} onChange={(e) => setForm({ ...form, receiverAddress: e.target.value })} rows={2} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>City</label>
-            <InputText
-              value={form.receiverCity}
-              onChange={(e) => setForm({ ...form, receiverCity: e.target.value })}
-              style={{ width: '100%' }}
-            />
+            <InputText value={form.receiverCity} onChange={(e) => setForm({ ...form, receiverCity: e.target.value })} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>Pincode</label>
-            <InputText
-              value={form.receiverPincode}
-              onChange={(e) =>
-                setForm({ ...form, receiverPincode: e.target.value })
-              }
-              style={{ width: '100%' }}
-            />
+            <InputText value={form.receiverPincode} onChange={(e) => setForm({ ...form, receiverPincode: e.target.value })} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>Weight (kg)</label>
-            <InputNumber
-              value={form.weightKg}
-              onValueChange={(e) =>
-                setForm({ ...form, weightKg: e.value ?? 0 })
-              }
-              style={{ width: '100%' }}
-            />
+            <InputNumber value={form.weightKg} onValueChange={(e) => setForm({ ...form, weightKg: e.value ?? 0 })} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>Pieces</label>
-            <InputNumber
-              value={form.pieces}
-              onValueChange={(e) => setForm({ ...form, pieces: e.value ?? 1 })}
-              style={{ width: '100%' }}
-            />
+            <InputNumber value={form.pieces} onValueChange={(e) => setForm({ ...form, pieces: e.value ?? 1 })} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>Freight</label>
-            <InputNumber
-              value={form.freight}
-              onValueChange={(e) => setForm({ ...form, freight: e.value ?? 0 })}
-              mode="currency"
-              currency="INR"
-              locale="en-IN"
-              style={{ width: '100%' }}
-            />
+            <InputNumber value={form.freight} onValueChange={(e) => setForm({ ...form, freight: e.value ?? 0 })} mode="currency" currency="INR" locale="en-IN" style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>COD amount</label>
-            <InputNumber
-              value={form.codAmount}
-              onValueChange={(e) =>
-                setForm({ ...form, codAmount: e.value ?? 0 })
-              }
-              mode="currency"
-              currency="INR"
-              locale="en-IN"
-              style={{ width: '100%' }}
-            />
+            <InputNumber value={form.codAmount} onValueChange={(e) => setForm({ ...form, codAmount: e.value ?? 0 })} mode="currency" currency="INR" locale="en-IN" style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>Service</label>
-            <Dropdown
-              value={form.serviceType}
-              options={serviceOptions}
-              onChange={(e) => setForm({ ...form, serviceType: e.value })}
-              style={{ width: '100%' }}
-            />
+            <Dropdown value={form.serviceType} options={serviceOptions} onChange={(e) => setForm({ ...form, serviceType: e.value })} style={{ width: '100%' }} />
           </div>
-          {user?.role === Role.ADMIN ? (
-            <div className="field">
-              <label>Origin branch</label>
-              <Dropdown
-                value={form.originBranchId}
-                options={(branchesQuery.data ?? []).map((b) => ({
-                  label: b.name,
-                  value: b.id,
-                }))}
-                onChange={(e) => setForm({ ...form, originBranchId: e.value })}
-                placeholder="Select branch"
-                style={{ width: '100%' }}
-              />
-            </div>
-          ) : null}
           <div className="field full">
             <label>Remarks</label>
-            <InputText
-              value={form.remarks}
-              onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-              style={{ width: '100%' }}
-            />
+            <InputText value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} style={{ width: '100%' }} />
           </div>
         </div>
         {error ? <p className="error-text">{error}</p> : null}

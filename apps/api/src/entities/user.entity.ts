@@ -3,12 +3,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinColumn,
-  ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './branch.entity';
+import { UserInfo } from './user-info.entity';
 
 @Entity('users')
 export class User {
@@ -21,21 +20,14 @@ export class User {
   @Column({ type: 'varchar' })
   passwordHash: string;
 
-  @Column({ type: 'varchar' })
-  fullName: string;
-
   @Column({ type: 'enum', enum: Role })
   role: Role;
 
-  @Column({ type: 'uuid', nullable: true })
-  branchId: string | null;
-
-  @ManyToOne(() => Branch, (branch) => branch.users, { nullable: true })
-  @JoinColumn({ name: 'branchId' })
-  branch: Branch | null;
-
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @OneToOne(() => UserInfo, (info) => info.user)
+  userInfo: UserInfo | null;
 
   @CreateDateColumn()
   createdAt: Date;

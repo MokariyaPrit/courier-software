@@ -30,7 +30,6 @@ export class PincodesService {
       : undefined;
     const [items, total] = await this.repo.findAndCount({
       where,
-      relations: ['serviceBranch'],
       order: { code: 'ASC' },
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
@@ -42,10 +41,7 @@ export class PincodesService {
   }
 
   async findOne(id: string) {
-    const row = await this.repo.findOne({
-      where: { id },
-      relations: ['serviceBranch'],
-    });
+    const row = await this.repo.findOne({ where: { id } });
     if (!row) {
       throw new NotFoundException('Pincode not found');
     }

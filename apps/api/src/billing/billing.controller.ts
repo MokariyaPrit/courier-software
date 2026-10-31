@@ -29,8 +29,8 @@ export class BillingController {
   }
 
   @Get('invoices')
-  findAll(@Query() query: PaginationDto, @CurrentUser() user: AuthUser) {
-    return this.billingService.findAll(query, user);
+  findAll(@Query() query: PaginationDto) {
+    return this.billingService.findAll(query);
   }
 
   @Get('invoices/:id')

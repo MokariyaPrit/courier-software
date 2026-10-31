@@ -10,13 +10,28 @@ import {
 } from 'react';
 import { api, unwrap } from './api';
 
+export interface UserInfoProfile {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  pincode: string | null;
+  companyName: string | null;
+  gstin: string | null;
+  notes: string | null;
+  isActive: boolean;
+}
+
 export interface SessionUser {
   id: string;
   email: string;
   fullName: string;
   role: Role;
-  branchId: string | null;
-  branch?: { id: string; code: string; name: string } | null;
+  isActive: boolean;
+  userInfo?: UserInfoProfile | null;
 }
 
 interface AuthContextValue {

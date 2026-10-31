@@ -5,7 +5,6 @@ import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
 import { Dialog } from 'primereact/dialog';
-import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
 import { useState } from 'react';
 import { api } from '@/lib/api';
@@ -16,7 +15,6 @@ interface Pincode {
   city: string | null;
   state: string | null;
   isServiceable: boolean;
-  serviceBranch?: { name: string } | null;
 }
 
 export default function PincodesPage() {
@@ -27,7 +25,6 @@ export default function PincodesPage() {
     code: '',
     city: '',
     state: '',
-    serviceBranchId: '',
   });
 
   const listQuery = useQuery({
@@ -40,27 +37,18 @@ export default function PincodesPage() {
     },
   });
 
-  const branchesQuery = useQuery({
-    queryKey: ['branches'],
-    queryFn: async () => {
-      const res = await api.get('/branches', { params: { pageSize: 100 } });
-      return (res.data as { data: { id: string; name: string }[] }).data;
-    },
-  });
-
   const createMutation = useMutation({
     mutationFn: async () => {
       await api.post('/pincodes', {
         code: form.code,
         city: form.city || undefined,
         state: form.state || undefined,
-        serviceBranchId: form.serviceBranchId || undefined,
         isServiceable: true,
       });
     },
     onSuccess: async () => {
       setOpen(false);
-      setForm({ code: '', city: '', state: '', serviceBranchId: '' });
+      setForm({ code: '', city: '', state: '' });
       await qc.invalidateQueries({ queryKey: ['pincodes'] });
     },
   });
@@ -84,10 +72,6 @@ export default function PincodesPage() {
           <Column field="city" header="City" />
           <Column field="state" header="State" />
           <Column
-            header="Service branch"
-            body={(row: Pincode) => row.serviceBranch?.name ?? '—'}
-          />
-          <Column
             header="Serviceable"
             body={(row: Pincode) => (row.isServiceable ? 'Yes' : 'No')}
           />
@@ -107,19 +91,6 @@ export default function PincodesPage() {
           <div className="field">
             <label>State</label>
             <InputText value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} style={{ width: '100%' }} />
-          </div>
-          <div className="field">
-            <label>Service branch</label>
-            <Dropdown
-              value={form.serviceBranchId}
-              options={(branchesQuery.data ?? []).map((b) => ({
-                label: b.name,
-                value: b.id,
-              }))}
-              onChange={(e) => setForm({ ...form, serviceBranchId: e.value })}
-              placeholder="Optional"
-              style={{ width: '100%' }}
-            />
           </div>
         </div>
         <div style={{ marginTop: '1rem', textAlign: 'right' }}>

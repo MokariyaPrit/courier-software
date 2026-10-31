@@ -17,9 +17,17 @@ Single-company courier ERP (modular monolith).
 | --- | --- |
 | **App (open this in browser)** | http://localhost:3000 |
 | **Login page** | http://localhost:3000/login |
+| **Signup page** | http://localhost:3000/signup |
 | **Dashboard (after login)** | http://localhost:3000/dashboard |
 | **API health check** | http://localhost:3001/api/v1/health |
 | **API base path** | http://localhost:3001/api/v1 |
+
+### Data model (current)
+
+- **No `branches` table** (removed completely)
+- **`users`** — login (`email`, `password`, `role`, `isActive`)
+- **`user_info`** — profile: fullName, phone, email, address, city, state, pincode, companyName, gstin, notes, isActive
+- **Roles:** `ADMIN` (full) and `BRANCH_MANAGER` (ops; cannot manage Users/Pincodes)
 
 After login you are redirected to the dashboard. Use the left sidebar for Bookings, Tracking, Delivery, Masters, Billing, and Users (Admin only).
 

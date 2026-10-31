@@ -1,13 +1,13 @@
 import { ConsignmentStatus } from '@courier/shared';
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class UpdateStatusDto {
   @IsEnum(ConsignmentStatus)
   status: ConsignmentStatus;
 
   @IsOptional()
-  @IsUUID()
-  branchId?: string;
+  @IsString()
+  locationLabel?: string;
 
   @IsOptional()
   @IsString()

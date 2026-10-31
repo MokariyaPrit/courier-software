@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, Length } from 'class-validator';
 
 export class CreatePincodeDto {
   @IsString()
@@ -14,10 +14,6 @@ export class CreatePincodeDto {
   state?: string;
 
   @IsOptional()
-  @IsUUID()
-  serviceBranchId?: string;
-
-  @IsOptional()
   @IsBoolean()
   isServiceable?: boolean;
 }
@@ -30,10 +26,6 @@ export class UpdatePincodeDto {
   @IsOptional()
   @IsString()
   state?: string;
-
-  @IsOptional()
-  @IsUUID()
-  serviceBranchId?: string | null;
 
   @IsOptional()
   @IsBoolean()
