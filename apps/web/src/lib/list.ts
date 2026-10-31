@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 
 export const DEFAULT_PAGE_SIZE = 50;
+export const SEARCH_DEBOUNCE_MS = 400;
 export const PAGE_SIZE_OPTIONS = [
   { label: '25', value: 25 },
   { label: '50', value: 50 },
@@ -61,6 +62,7 @@ export function useListParams(options: {
   defaultSort?: SortOption;
   sortOptions?: SortOption[];
   pageSize?: number;
+  searchDebounceMs?: number;
 }) {
   const fallback = useMemo(() => {
     if (options.sortOptions?.length) {
@@ -70,11 +72,27 @@ export function useListParams(options: {
     throw new Error('useListParams requires defaultSort or sortOptions');
   }, [options.defaultSort, options.sortOptions]);
 
+  const debounceMs = options.searchDebounceMs ?? SEARCH_DEBOUNCE_MS;
   const defaultPageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
   const [page, setPage] = useState(1);
   const [pageSize, setPageSizeState] = useState(defaultPageSize);
   const [sortKey, setSortKeyState] = useState(sortOptionValue(fallback));
+  /** Immediate input value (updates every keystroke). */
   const [search, setSearchState] = useState('');
+  /** Debounced value used for API queries. */
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debouncedSearchRef = useRef(debouncedSearch);
+  debouncedSearchRef.current = debouncedSearch;
+
+  useEffect(() => {
+    const next = search.trim();
+    const timer = window.setTimeout(() => {
+      if (debouncedSearchRef.current === next) return;
+      setDebouncedSearch(next);
+      setPage(1);
+    }, debounceMs);
+    return () => window.clearTimeout(timer);
+  }, [search, debounceMs]);
 
   const sort = parseSort(sortKey, fallback);
   const selectedSort = findSortOption(options.sortOptions ?? [fallback], sortKey) ?? {
@@ -99,11 +117,11 @@ export function useListParams(options: {
 
   const setSearch = (next: string) => {
     setSearchState(next);
-    setPage(1);
   };
 
   const clearFilters = () => {
     setSearchState('');
+    setDebouncedSearch('');
     setSortKeyState(sortOptionValue(fallback));
     setPage(1);
   };
@@ -113,11 +131,13 @@ export function useListParams(options: {
     pageSize,
     sortBy: sort.sortBy,
     sortOrder: sort.sortOrder,
-    search: search.trim() || undefined,
+    search: debouncedSearch || undefined,
   };
 
   const hasActiveFilters =
-    Boolean(search.trim()) || sortOptionValue(fallback) !== sortKey;
+    Boolean(search.trim()) ||
+    Boolean(debouncedSearch) ||
+    sortOptionValue(fallback) !== sortKey;
 
   return {
     page,
@@ -130,6 +150,7 @@ export function useListParams(options: {
     selectedSort,
     search,
     setSearch,
+    debouncedSearch,
     sort,
     queryParams,
     clearFilters,
@@ -137,7 +158,6 @@ export function useListParams(options: {
     defaultSort: fallback,
   };
 }
-
 export async function fetchPaginated<T>(
   url: string,
   params: Record<string, unknown>,

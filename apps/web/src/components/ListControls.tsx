@@ -1,6 +1,8 @@
 'use client';
 
 import { Dropdown } from 'primereact/dropdown';
+import { IconField } from 'primereact/iconfield';
+import { InputIcon } from 'primereact/inputicon';
 import {
   Paginator,
   type PaginatorPageChangeEvent,
@@ -92,14 +94,14 @@ export function ListSearch({
 }: ListSearchProps) {
   return (
     <div className="toolbar list-toolbar">
-      <span className="p-input-icon-left list-search">
-        <i className="pi pi-search" />
+      <IconField iconPosition="left" className="list-search">
+        <InputIcon className="pi pi-search" />
         <InputText
           placeholder={searchPlaceholder}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
         />
-      </span>
+      </IconField>
       {extra}
     </div>
   );

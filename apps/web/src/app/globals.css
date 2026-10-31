@@ -351,12 +351,29 @@ a {
 }
 
 .list-toolbar .list-search {
-  flex: 1 1 220px;
-  max-width: 360px;
+  flex: 1 1 240px;
+  max-width: 380px;
+  width: 100%;
+}
+
+.list-toolbar .list-search.p-icon-field {
+  position: relative;
+  display: block;
 }
 
 .list-toolbar .list-search .p-inputtext {
   width: 100%;
+  padding-left: 2.5rem;
+}
+
+.list-toolbar .list-search .p-input-icon {
+  left: 0.85rem;
+  margin-top: 0;
+  transform: translateY(-50%);
+  color: var(--main-text-muted);
+  font-size: 0.95rem;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .list-toolbar .list-sort,
