@@ -58,6 +58,8 @@ export class CustomersService {
         pincode: this.emptyToNull(dto.pincode) ?? null,
         gstin: this.emptyToNull(dto.gstin) ?? null,
         notes: this.emptyToNull(dto.notes) ?? null,
+        fuelChargesExtraPercent: String(dto.fuelChargesExtraPercent ?? 0),
+        fovPercent: String(dto.fovPercent ?? 0),
         isActive: dto.isActive ?? true,
         createdById: user.id,
       }),
@@ -153,6 +155,12 @@ export class CustomersService {
     }
     if (dto.notes !== undefined) {
       customer.notes = this.emptyToNull(dto.notes) ?? null;
+    }
+    if (dto.fuelChargesExtraPercent !== undefined) {
+      customer.fuelChargesExtraPercent = String(dto.fuelChargesExtraPercent);
+    }
+    if (dto.fovPercent !== undefined) {
+      customer.fovPercent = String(dto.fovPercent);
     }
     if (dto.isActive !== undefined) customer.isActive = dto.isActive;
 

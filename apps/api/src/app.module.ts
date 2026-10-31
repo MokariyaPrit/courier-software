@@ -16,12 +16,16 @@ import {
   ConsignmentCharge,
   Customer,
   Invoice,
+  Quotation,
+  QuotationRateRow,
+  QuotationRateTemplate,
   State,
   TrackingEvent,
   User,
   UserInfo,
 } from './entities';
 import { HealthController } from './health/health.controller';
+import { QuotationsModule } from './quotations/quotations.module';
 import { StatesModule } from './states/states.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { UsersModule } from './users/users.module';
@@ -49,6 +53,9 @@ import { UsersModule } from './users/users.module';
           ConsignmentCharge,
           TrackingEvent,
           Invoice,
+          QuotationRateTemplate,
+          QuotationRateRow,
+          Quotation,
         ],
         synchronize: config.get<string>('NODE_ENV') !== 'production',
       }),
@@ -61,6 +68,7 @@ import { UsersModule } from './users/users.module';
     ConsignmentsModule,
     TrackingModule,
     BillingModule,
+    QuotationsModule,
   ],
   controllers: [HealthController],
   providers: [

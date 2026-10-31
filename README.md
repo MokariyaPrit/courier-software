@@ -112,7 +112,11 @@ Then open: **http://localhost:3000**
    (`BOOKED` → `IN_TRANSIT` → `AT_HUB` → `OUT_FOR_DELIVERY` → `DELIVERED` / `FAILED_ATTEMPT` / `RTO`).
 5. **Delivery** → list of Out-For-Delivery consignments → mark **Delivered** or **Failed**.
 6. **Billing** → create a light invoice from selected consignments.
-7. **Users** (Admin only) → create `ADMIN` or `BRANCH_MANAGER` users.
+7. **Quotations**
+   - Set customer **FOV %** and **Fuel charges extra %** on the customer form.
+   - **Rate templates** → create a template (auto bands for DOX / PARCEL / DOX BY AIR / PARCEL BY AIR / TATKAL) → fill zone rates.
+   - **Quotations** → New quotation → pick customer + template → edit rates if needed → **Issue** → **Preview / Print** (browser Save as PDF).
+8. **Users** (Admin only) → create `ADMIN` or `BRANCH_MANAGER` users.
 
 ---
 

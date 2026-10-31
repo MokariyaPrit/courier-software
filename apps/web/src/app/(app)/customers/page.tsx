@@ -8,6 +8,7 @@ import {
   confirmDialog,
   DataTable,
   Dialog,
+  InputNumber,
   InputText,
   Tag,
   ToggleSwitch,
@@ -39,6 +40,8 @@ interface Customer {
   pincode: string | null;
   gstin: string | null;
   notes: string | null;
+  fuelChargesExtraPercent: string | number;
+  fovPercent: string | number;
   isActive: boolean;
   createdBy?: CustomerOwner | null;
 }
@@ -55,6 +58,8 @@ interface CustomerForm {
   pincode: string;
   gstin: string;
   notes: string;
+  fuelChargesExtraPercent: number;
+  fovPercent: number;
   isActive: boolean;
 }
 
@@ -70,6 +75,8 @@ const EMPTY_FORM: CustomerForm = {
   pincode: '',
   gstin: '',
   notes: '',
+  fuelChargesExtraPercent: 0,
+  fovPercent: 0,
   isActive: true,
 };
 
@@ -95,6 +102,8 @@ function toForm(c: Customer): CustomerForm {
     pincode: c.pincode || '',
     gstin: c.gstin || '',
     notes: c.notes || '',
+    fuelChargesExtraPercent: Number(c.fuelChargesExtraPercent ?? 0),
+    fovPercent: Number(c.fovPercent ?? 0),
     isActive: c.isActive,
   };
 }
@@ -113,6 +122,8 @@ function toPayload(form: CustomerForm) {
     pincode: cleaned.pincode || null,
     gstin: cleaned.gstin || null,
     notes: cleaned.notes || null,
+    fuelChargesExtraPercent: Number(form.fuelChargesExtraPercent ?? 0),
+    fovPercent: Number(form.fovPercent ?? 0),
     isActive: cleaned.isActive,
   };
 }
@@ -208,7 +219,10 @@ export default function CustomersPage() {
     total: 0,
   };
 
-  const setField = (key: keyof CustomerForm, value: string | boolean) => {
+  const setField = (
+    key: keyof CustomerForm,
+    value: string | boolean | number,
+  ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -391,6 +405,34 @@ export default function CustomersPage() {
               value={form.notes}
               onChange={(e) => setField('notes', e.target.value)}
               style={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>Fuel charges extra %</label>
+            <InputNumber
+              value={form.fuelChargesExtraPercent}
+              onValueChange={(e) =>
+                setField('fuelChargesExtraPercent', Number(e.value ?? 0))
+              }
+              min={0}
+              minFractionDigits={0}
+              maxFractionDigits={2}
+              suffix=" %"
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>FOV (EOV) %</label>
+            <InputNumber
+              value={form.fovPercent}
+              onValueChange={(e) => setField('fovPercent', Number(e.value ?? 0))}
+              min={0}
+              minFractionDigits={0}
+              maxFractionDigits={2}
+              suffix=" %"
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
             />
           </div>
           <div className="field full account-status-row">

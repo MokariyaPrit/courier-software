@@ -623,3 +623,326 @@ a {
     font-size: 0.82rem;
   }
 }
+
+/* Quotation rate matrix */
+.rate-matrix-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.rate-matrix-section {
+  margin-bottom: 1.5rem;
+}
+
+.rate-matrix-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.rate-matrix-section h3,
+.rate-matrix-section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.rate-matrix-section-title {
+  min-width: min(280px, 100%);
+  flex: 1;
+}
+
+.rate-matrix-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.rate-matrix-scroll {
+  overflow-x: auto;
+}
+
+.rate-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.rate-matrix-table th,
+.rate-matrix-table td {
+  border: 1px solid var(--main-border, #d8dde6);
+  padding: 0.35rem 0.4rem;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.rate-matrix-table th {
+  background: var(--main-surface-alt, #f3f5f8);
+  font-weight: 600;
+}
+
+.rate-matrix-col-head {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 7.5rem;
+}
+
+.rate-matrix-col-head .p-inputtext {
+  width: 100%;
+  min-width: 5.5rem;
+}
+
+.rate-matrix-table .weight-cell {
+  text-align: left;
+  font-weight: 500;
+  min-width: 9rem;
+}
+
+.rate-matrix-actions-col {
+  width: 2.5rem;
+}
+
+/* Quotation print document */
+.quotation-print-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.quotation-print-hint {
+  margin: 0;
+  flex: 1;
+  min-width: 220px;
+}
+
+.quotation-page {
+  background: #fff;
+  color: #111;
+  border: 1px solid #ddd;
+  padding: 1.75rem 2rem;
+  margin-bottom: 1.5rem;
+  max-width: 210mm;
+}
+
+.q-letterhead {
+  text-align: center;
+  border-bottom: 2px solid #222;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.q-letterhead h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.45rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.q-letterhead p {
+  margin: 0.15rem 0;
+  font-size: 0.9rem;
+}
+
+.q-meta-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  font-size: 0.95rem;
+}
+
+.q-to-block {
+  margin-bottom: 1.25rem;
+}
+
+.q-to-block p {
+  margin: 0.35rem 0 0;
+  line-height: 1.45;
+}
+
+.q-body {
+  line-height: 1.55;
+  margin: 0.75rem 0;
+}
+
+.q-sign {
+  margin-top: 2.5rem;
+}
+
+.q-sign-name {
+  margin-top: 2rem;
+  font-weight: 700;
+}
+
+.q-page-title {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.35rem;
+}
+
+.q-terms {
+  line-height: 1.55;
+  padding-left: 1.25rem;
+}
+
+.q-terms li {
+  margin-bottom: 0.55rem;
+}
+
+.q-rates-meta {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.q-rate-section {
+  margin: 0 0 1rem;
+}
+
+.q-rate-section h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-align: center;
+  background: #eef2f6;
+  color: #1f2937;
+  border: 1px solid #c5ced8;
+  border-bottom: none;
+  padding: 0.4rem 0.55rem;
+}
+
+.q-rate-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.q-rate-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.68rem;
+}
+
+.q-rate-table th,
+.q-rate-table td {
+  border: 1px solid #333;
+  padding: 0.22rem 0.2rem;
+  text-align: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.q-rate-table th {
+  background: #efefef;
+  font-weight: 650;
+}
+
+.q-rate-table td:first-child,
+.q-rate-table th:first-child {
+  text-align: left;
+  width: 18%;
+  white-space: normal;
+}
+
+@media print {
+  /* Zero page margin so Chrome/Edge have no room for date/URL chrome.
+     Content padding below keeps the layout readable. */
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  .no-print,
+  .topbar,
+  .topbar-user,
+  .quotation-print-toolbar {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .app-shell,
+  .content,
+  .quotation-print-root {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .quotation-page {
+    border: none !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 12mm 12mm !important;
+    box-shadow: none !important;
+  }
+
+  /* Letter + terms each take one sheet; rates may continue across sheets */
+  .quotation-page--letter,
+  .quotation-page--terms {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .quotation-page--rates {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .q-rate-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin: 0 0 0.7rem;
+  }
+
+  .q-rate-section h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+    text-align: center;
+    background: #eef2f6 !important;
+    color: #1f2937 !important;
+    border: 1px solid #333;
+    border-bottom: none;
+  }
+
+  .q-rate-table-wrap {
+    overflow: visible;
+  }
+
+  .q-rate-table {
+    font-size: 0.62rem;
+  }
+
+  .q-rate-table thead {
+    display: table-header-group;
+  }
+
+  .q-rate-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .muted {
+    color: #444 !important;
+  }
+}

@@ -47,6 +47,14 @@ export class Customer {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  /** Fuel charges extra % shown on quotation terms (e.g. 0.00) */
+  @Column({ type: 'numeric', precision: 8, scale: 2, default: 0 })
+  fuelChargesExtraPercent: string;
+
+  /** F.O.V. / EOV % per thousand on quotation terms */
+  @Column({ type: 'numeric', precision: 8, scale: 2, default: 0 })
+  fovPercent: string;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

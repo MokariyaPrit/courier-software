@@ -33,6 +33,31 @@ export enum InvoiceStatus {
   CANCELLED = 'CANCELLED',
 }
 
+/** Quotation contract rate service sections */
+export enum QuotationServiceType {
+  DOX = 'DOX',
+  PARCEL = 'PARCEL',
+  DOX_BY_AIR = 'DOX_BY_AIR',
+  PARCEL_BY_AIR = 'PARCEL_BY_AIR',
+  TATKAL = 'TATKAL',
+}
+
+export const QUOTATION_SERVICE_TYPE_LABELS: Record<
+  QuotationServiceType,
+  string
+> = {
+  [QuotationServiceType.DOX]: 'DOX',
+  [QuotationServiceType.PARCEL]: 'PARCEL',
+  [QuotationServiceType.DOX_BY_AIR]: 'DOX BY AIR',
+  [QuotationServiceType.PARCEL_BY_AIR]: 'PARCEL BY AIR',
+  [QuotationServiceType.TATKAL]: 'TATKAL (FAST TRACK)',
+};
+
+export enum QuotationStatus {
+  DRAFT = 'DRAFT',
+  ISSUED = 'ISSUED',
+}
+
 export const CONSIGNMENT_STATUS_FLOW: Record<
   ConsignmentStatus,
   ConsignmentStatus[]

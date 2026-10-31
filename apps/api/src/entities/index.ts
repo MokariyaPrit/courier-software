@@ -7,3 +7,6 @@ export { Consignment } from './consignment.entity';
 export { ConsignmentCharge } from './consignment-charge.entity';
 export { TrackingEvent } from './tracking-event.entity';
 export { Invoice } from './invoice.entity';
+export { QuotationRateTemplate } from './quotation-rate-template.entity';
+export { QuotationRateRow } from './quotation-rate-row.entity';
+export { Quotation } from './quotation.entity';
