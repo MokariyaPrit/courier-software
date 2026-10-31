@@ -1,18 +1,10 @@
 'use client';
 
-import Lara from '@primeuix/themes/lara';
-import { PrimeReactProvider } from '@primereact/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { PrimeReactProvider } from 'primereact/api';
 import { useState } from 'react';
 import { ConfirmDialogHost } from '@/components/ui';
 import { AuthProvider } from '@/lib/auth';
-
-const theme = {
-  preset: Lara,
-  options: {
-    darkModeSelector: 'none' as const,
-  },
-};
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -26,7 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={client}>
-      <PrimeReactProvider theme={theme}>
+      <PrimeReactProvider>
         <ConfirmDialogHost>
           <AuthProvider>{children}</AuthProvider>
         </ConfirmDialogHost>

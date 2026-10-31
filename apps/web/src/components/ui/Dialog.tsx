@@ -1,8 +1,6 @@
 'use client';
 
-import { Times } from '@primeicons/react';
-import { Button } from '@primereact/ui/button';
-import { Dialog as PRDialog } from '@primereact/ui/dialog';
+import { Dialog as PRDialog } from 'primereact/dialog';
 import type { CSSProperties, ReactNode } from 'react';
 
 interface AppDialogProps {
@@ -14,7 +12,6 @@ interface AppDialogProps {
   footer?: ReactNode;
 }
 
-/** Controlled dialog compatible with v10 visible/onHide usage. */
 export function Dialog({
   header,
   visible,
@@ -24,32 +21,14 @@ export function Dialog({
   footer,
 }: AppDialogProps) {
   return (
-    <PRDialog.Root
-      open={visible}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onOpenChange={(e: any) => {
-        if (!e?.value) onHide();
-      }}
+    <PRDialog
+      header={header}
+      visible={visible}
+      onHide={onHide}
+      style={style}
+      footer={footer}
     >
-      <PRDialog.Portal>
-        <PRDialog.Backdrop />
-        <PRDialog.Positioner>
-          <PRDialog.Popup style={style ?? { width: 'min(32rem, 95vw)' }}>
-            {header ? (
-              <PRDialog.Header>
-                <PRDialog.Title>{header}</PRDialog.Title>
-                <PRDialog.HeaderActions>
-                  <PRDialog.Close as={Button} rounded variant="text" iconOnly aria-label="Close">
-                    <Times />
-                  </PRDialog.Close>
-                </PRDialog.HeaderActions>
-              </PRDialog.Header>
-            ) : null}
-            <PRDialog.Content>{children}</PRDialog.Content>
-            {footer ? <PRDialog.Footer>{footer}</PRDialog.Footer> : null}
-          </PRDialog.Popup>
-        </PRDialog.Positioner>
-      </PRDialog.Portal>
-    </PRDialog.Root>
+      {children}
+    </PRDialog>
   );
 }

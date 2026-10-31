@@ -1,6 +1,6 @@
 'use client';
 
-import { ToggleSwitch as PRToggle } from '@primereact/ui/toggleswitch';
+import { InputSwitch } from 'primereact/inputswitch';
 
 interface ToggleSwitchProps {
   checked: boolean;
@@ -16,17 +16,11 @@ export function ToggleSwitch({
   inputId,
 }: ToggleSwitchProps) {
   return (
-    <PRToggle.Root
+    <InputSwitch
       checked={checked}
       disabled={disabled}
       inputId={inputId}
-      onCheckedChange={(e: { checked?: boolean }) =>
-        onChange({ value: Boolean(e.checked) })
-      }
-    >
-      <PRToggle.Control>
-        <PRToggle.Handle />
-      </PRToggle.Control>
-    </PRToggle.Root>
+      onChange={(e) => onChange({ value: Boolean(e.value) })}
+    />
   );
 }

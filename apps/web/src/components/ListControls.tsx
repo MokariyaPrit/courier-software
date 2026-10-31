@@ -90,6 +90,7 @@ export function ListPaginator({
         totalRecords={meta.total}
         rowsPerPageOptions={PAGE_SIZE_OPTIONS.map((o) => o.value)}
         onPageChange={handleChange}
+        template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
       />
     </div>
   );

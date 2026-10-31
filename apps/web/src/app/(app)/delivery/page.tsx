@@ -96,7 +96,7 @@ export default function DeliveryPage() {
                   />
                   <Button
                     size="small"
-                    severity="warn"
+                    severity="warning"
                     label="Failed"
                     onClick={() =>
                       updateMutation.mutate({

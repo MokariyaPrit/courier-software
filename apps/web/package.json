@@ -10,15 +10,11 @@
   },
   "dependencies": {
     "@courier/shared": "workspace:^",
-    "@primeicons/react": "^8.0.2",
-    "@primereact/core": "^11.2.2",
-    "@primereact/ui": "^11.2.2",
-    "@primeuix/themes": "^3.1.0",
     "@tanstack/react-query": "^5.105.0",
     "axios": "^1.21.0",
     "next": "16.4.3",
     "primeicons": "^8.0.2",
-    "primereact": "11.2.2",
+    "primereact": "10.9.9",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },

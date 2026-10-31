@@ -323,18 +323,6 @@ importers:
       '@courier/shared':
         specifier: workspace:^
         version: link:../../packages/shared
-      '@primeicons/react':
-        specifier: ^8.0.2
-        version: 8.0.2(react@19.3.1)
-      '@primereact/core':
-        specifier: ^11.2.2
-        version: 11.2.2(react@19.3.1)
-      '@primereact/ui':
-        specifier: ^11.2.2
-        version: 11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@primeuix/themes':
-        specifier: ^3.1.0
-        version: 3.1.0
       '@tanstack/react-query':
         specifier: ^5.105.0
         version: 5.105.0(@types/react@19.3.0)(react@19.3.1)
@@ -348,8 +336,8 @@ importers:
         specifier: ^8.0.2
         version: 8.0.2
       primereact:
-        specifier: 11.2.2
-        version: 11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 10.9.9
+        version: 10.9.9(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -570,6 +558,10 @@ packages:
     engines: {node: '>=6.9.0'}
     peerDependencies:
       '@babel/core': ^7.0.0-0
+
+  '@babel/runtime@7.29.10':
+    resolution: {integrity: sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA==}
+    engines: {node: '>=6.9.0'}
 
   '@babel/template@7.29.7':
     resolution: {integrity: sha512-puq+Gf35oI24FeN11LkoUQFqv9uwNeWpxXZi/Ji3rRIoKAzKnxRaZ+Gkj0vKS9ZCiTESfng1N9LyOyXvo+m+Gg==}
@@ -1453,66 +1445,6 @@ packages:
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  '@primeicons/core@8.0.2':
-    resolution: {integrity: sha512-VySryvfIQH2xzNVXISIQg357gAt4oFYX2vKy27tWMB7UvEHu/gjRpeilBty3LBln7oVuAdFLPYOWr/FtTH8eJw==}
-
-  '@primeicons/react@8.0.2':
-    resolution: {integrity: sha512-PYI2WiehAP3CRIJW5YyGGu+IKh5Od1LUw9/Xu8/yqkbGLvEh5e4pel7gnqNAPybqNQRu8Up4Kvp7xWDZiCLApA==}
-    peerDependencies:
-      react: '>=17'
-
-  '@primereact/core@11.2.2':
-    resolution: {integrity: sha512-jJriUC9rGoMvSSjzkLmxziQ0znYQc+PgvZKyD+wB2FUpONL0kcKtbd1hK5/I4PEdGIu93+7xsZ/t824WfjgGpg==}
-    peerDependencies:
-      react: '>=19.0.0'
-
-  '@primereact/headless@11.2.2':
-    resolution: {integrity: sha512-0keiPXDQozTePRCExynTOah6MvBsrgLNxhW8NSTCe08H8VcE1rl8OaBKwyCbkacvNkZ2fG2EHx2rXGFFoMPbew==}
-
-  '@primereact/hooks@11.2.2':
-    resolution: {integrity: sha512-spo8Cjahl6CR0istzAMCC7oHrFvjObBpnXG3+XH9CYWo2zJ3A4Dff/nU+EzpfgAJey57v0UPbDKtTyMDu1jzoQ==}
-    peerDependencies:
-      react: '>=19.0.0'
-
-  '@primereact/styles@11.2.2':
-    resolution: {integrity: sha512-/VVfB0InmMPV2vzLN4YxAo58NaQq0AQvOdJcQ2pVHqlu+w4PCF41SL+Ki9CPjOT7n7vC3aY/bGQ8lL22Igjq0A==}
-
-  '@primereact/types@11.2.2':
-    resolution: {integrity: sha512-N835KSkTS4wFwLXtNd/zrNzEYudH0xK8H3NYjgMMpJDUCWFgBHLPY+rB2liV8/1UXtvJMp2gxZKZeBLT097lJQ==}
-    peerDependencies:
-      '@primeuix/motion': ^1.0.0
-      '@primeuix/styled': ^1.2.0
-
-  '@primereact/ui@11.2.2':
-    resolution: {integrity: sha512-OMohSThudeGavYplSLOTdyYGUgl8aVZKCIl14cHTaHF4SAiEVxYS+8eI0EBq4FjA6ZvAfenWt2q4Pq4ov9tqbg==}
-    peerDependencies:
-      react: '>=19.0.0'
-
-  '@primeui/license-manager@1.1.0':
-    resolution: {integrity: sha512-irjhOGs6Xjwh1JhMyXtdUsYCsve6kBySZzDUhS/mWxsjwQm/wSN7oulyP/f5huJKdhZSzaN6rVApwpp4nDWE1g==}
-
-  '@primeuix/locale@0.1.0':
-    resolution: {integrity: sha512-/qLGiwQ/YN83GPSygKEI3cwgZ+rb0R0rNNtQrOGGaHIaG3zpkGS3QbK/qtDUi0leC69jJgY39GDX+gCeUXPKdg==}
-    engines: {node: '>=12.11.0'}
-
-  '@primeuix/motion@1.0.0':
-    resolution: {integrity: sha512-rqpFRKmUVp9BI3YQKdok0rLUwzYShXzuuxy72Kq74xYRV14eR+4+XrIXOdyVs7j7CYV0ajYowiRpJCrVgdrq6A==}
-    engines: {node: '>=12.11.0'}
-
-  '@primeuix/styled@1.2.0':
-    resolution: {integrity: sha512-PaZ2CMkMGcW03XO3CawHbCCxB9rj0IFKj/7lOmNLYw9s4UqgeleJVii2BJ7P0Un3OxIG7oU9wnjsamrp1QFchQ==}
-    engines: {node: '>=12.11.0'}
-
-  '@primeuix/styles@3.1.0':
-    resolution: {integrity: sha512-xl1e8gcUhsqu1YgGIUe3R/PSKJHk88NMVwnOTVZZfptx955Rw0GkwvhRaeBh9iPVz4p5b7t9OiGJDWOu2qpX0Q==}
-
-  '@primeuix/themes@3.1.0':
-    resolution: {integrity: sha512-/co1Vfo5JunRvjatdrTNYJ37j3fyXlvlN/NHgSNXToLP0ahhv4fxWAE5Q5A0C1PS/krrpXfXS2XIUBmKj/hzFg==}
-
-  '@primeuix/utils@0.8.3':
-    resolution: {integrity: sha512-UyFtnzxHfG7UqbOqUsjMXpe96h36eDre9Iw+zkZuJHsplHdoXNWgovDkoGZNxw4V5ZUHP1Y3pIu0kJw0OhmT0g==}
-    engines: {node: '>=12.11.0'}
-
   '@rtsao/scc@1.1.0':
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
 
@@ -1665,6 +1597,11 @@ packages:
     resolution: {integrity: sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==}
     peerDependencies:
       '@types/react': ^19.3.0
+
+  '@types/react-transition-group@4.4.12':
+    resolution: {integrity: sha512-8TV6R3h2j7a91c+1DXdJi3Syo69zzIZbz7Lg5tORM5LEJG7X/E6a1V3drRyBRZq7/utz7A+c4OgYLiLcYGHG6w==}
+    peerDependencies:
+      '@types/react': '*'
 
   '@types/react@19.3.0':
     resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
@@ -2420,6 +2357,9 @@ packages:
   doctrine@2.1.0:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
+
+  dom-helpers@5.2.1:
+    resolution: {integrity: sha512-nRCa7CK3VTrM2NmGkIy4cbK7IZlgBE/PYMn55rrXefr5xXDP0LdtfPnblFDoVdcAfslJ7or6iqAUnx0CCGIWQA==}
 
   dotenv-expand@13.0.0:
     resolution: {integrity: sha512-aBfBS8eYIeXmpHI9ThIlA7/WLq+SLt18iXUZhb52rW89QLKQFoIpPG1bPeewoPZsTyjSSO3T7234FBVUM1V2rA==}
@@ -3902,11 +3842,16 @@ packages:
   primeicons@8.0.2:
     resolution: {integrity: sha512-o3UQey3nXMEQRAudVYZZWswz6mmnWpPnksYb7wIu4rEEVfdS3pLnxnmSJx5gKBRMer1MxnhJZG5QRDxVVJFNkA==}
 
-  primereact@11.2.2:
-    resolution: {integrity: sha512-AX4Bh+vrx08Fz4Pg6kBbtBTMKr/R8I+KAGH5H21XiYpHZlprEQi5S2kKljVeFD5cJ/zupDQSA+hWv8c68kZQVw==}
+  primereact@10.9.9:
+    resolution: {integrity: sha512-cM2mI1+usdIhQQQZre85Lv2GaiYrKaRlTUT+xXQSWwhPmel+YwhljNQ210mpjuY30aF3eQg6hU5Yl0VwJp0PWQ==}
+    engines: {node: '>=14.0.0'}
     peerDependencies:
-      react: '>=19.0.0'
-      react-dom: '>=19.0.0'
+      '@types/react': ^17.0.0 || ^18.0.0 || ^19.0.0
+      react: ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   prop-types@15.8.1:
     resolution: {integrity: sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==}
@@ -3954,6 +3899,12 @@ packages:
 
   react-is@19.3.1:
     resolution: {integrity: sha512-RRieF6IyxQBkcK6pP8xOHprLTPW6QjRkbGdImtqNme+/hYVwCZkLQLdlZGOhUqXwkS9IEynaGvPJtv6XB/cz0Q==}
+
+  react-transition-group@4.4.5:
+    resolution: {integrity: sha512-pZcd1MCJoiKiBR2NRxeCRg13uCXbydPnmB4EOeRrY7480qNWO8IIgQG6zlDkm6uRMsURXPuKq0GWtiM59a5Q6g==}
+    peerDependencies:
+      react: '>=16.6.0'
+      react-dom: '>=16.6.0'
 
   react@19.3.1:
     resolution: {integrity: sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==}
@@ -4915,6 +4866,8 @@ snapshots:
       '@babel/core': 7.29.7(supports-color@10.2.2)
       '@babel/helper-plugin-utils': 7.29.7
 
+  '@babel/runtime@7.29.10': {}
+
   '@babel/template@7.29.7':
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -5787,93 +5740,6 @@ snapshots:
 
   '@pkgr/core@0.3.6': {}
 
-  '@primeicons/core@8.0.2':
-    dependencies:
-      '@primeuix/utils': 0.8.3
-
-  '@primeicons/react@8.0.2(react@19.3.1)':
-    dependencies:
-      '@primeicons/core': 8.0.2
-      '@primeuix/utils': 0.8.3
-      react: 19.3.1
-
-  '@primereact/core@11.2.2(react@19.3.1)':
-    dependencies:
-      '@primereact/hooks': 11.2.2(react@19.3.1)
-      '@primereact/types': 11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)
-      '@primeui/license-manager': 1.1.0
-      '@primeuix/locale': 0.1.0
-      '@primeuix/motion': 1.0.0
-      '@primeuix/styled': 1.2.0
-      '@primeuix/utils': 0.8.3
-      react: 19.3.1
-
-  '@primereact/headless@11.2.2(@primeuix/motion@1.0.0)(react@19.3.1)':
-    dependencies:
-      '@primereact/core': 11.2.2(react@19.3.1)
-      '@primereact/hooks': 11.2.2(react@19.3.1)
-      '@primereact/types': 11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)
-      '@primeui/license-manager': 1.1.0
-      '@primeuix/styled': 1.2.0
-      '@primeuix/utils': 0.8.3
-    transitivePeerDependencies:
-      - '@primeuix/motion'
-      - react
-
-  '@primereact/hooks@11.2.2(react@19.3.1)':
-    dependencies:
-      '@primeuix/utils': 0.8.3
-      react: 19.3.1
-
-  '@primereact/styles@11.2.2(@primeuix/motion@1.0.0)':
-    dependencies:
-      '@primereact/types': 11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)
-      '@primeuix/styled': 1.2.0
-      '@primeuix/styles': 3.1.0
-      '@primeuix/utils': 0.8.3
-    transitivePeerDependencies:
-      - '@primeuix/motion'
-
-  '@primereact/types@11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)':
-    dependencies:
-      '@primeuix/motion': 1.0.0
-      '@primeuix/styled': 1.2.0
-
-  '@primereact/ui@11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
-    dependencies:
-      '@primereact/styles': 11.2.2(@primeuix/motion@1.0.0)
-      '@primereact/types': 11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)
-      primereact: 11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      react: 19.3.1
-    transitivePeerDependencies:
-      - '@primeuix/motion'
-      - '@primeuix/styled'
-      - react-dom
-
-  '@primeui/license-manager@1.1.0': {}
-
-  '@primeuix/locale@0.1.0':
-    dependencies:
-      '@primeuix/utils': 0.8.3
-
-  '@primeuix/motion@1.0.0':
-    dependencies:
-      '@primeuix/utils': 0.8.3
-
-  '@primeuix/styled@1.2.0':
-    dependencies:
-      '@primeuix/utils': 0.8.3
-
-  '@primeuix/styles@3.1.0':
-    dependencies:
-      '@primeuix/styled': 1.2.0
-
-  '@primeuix/themes@3.1.0':
-    dependencies:
-      '@primeuix/styled': 1.2.0
-
-  '@primeuix/utils@0.8.3': {}
-
   '@rtsao/scc@1.1.0': {}
 
   '@sinclair/typebox@0.34.52': {}
@@ -6042,6 +5908,10 @@ snapshots:
   '@types/range-parser@1.2.7': {}
 
   '@types/react-dom@19.3.0(@types/react@19.3.0)':
+    dependencies:
+      '@types/react': 19.3.0
+
+  '@types/react-transition-group@4.4.12(@types/react@19.3.0)':
     dependencies:
       '@types/react': 19.3.0
 
@@ -6839,6 +6709,11 @@ snapshots:
   doctrine@2.1.0:
     dependencies:
       esutils: 2.0.3
+
+  dom-helpers@5.2.1:
+    dependencies:
+      '@babel/runtime': 7.29.10
+      csstype: 3.2.3
 
   dotenv-expand@13.0.0:
     dependencies:
@@ -8620,16 +8495,14 @@ snapshots:
 
   primeicons@8.0.2: {}
 
-  primereact@11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  primereact@10.9.9(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
-      '@primereact/core': 11.2.2(react@19.3.1)
-      '@primereact/headless': 11.2.2(@primeuix/motion@1.0.0)(react@19.3.1)
-      '@primereact/types': 11.2.2(@primeuix/motion@1.0.0)(@primeuix/styled@1.2.0)
+      '@types/react-transition-group': 4.4.12(@types/react@19.3.0)
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
-    transitivePeerDependencies:
-      - '@primeuix/motion'
-      - '@primeuix/styled'
+      react-transition-group: 4.4.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+    optionalDependencies:
+      '@types/react': 19.3.0
 
   prop-types@15.8.1:
     dependencies:
@@ -8674,6 +8547,15 @@ snapshots:
   react-is@18.3.1: {}
 
   react-is@19.3.1: {}
+
+  react-transition-group@4.4.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+    dependencies:
+      '@babel/runtime': 7.29.10
+      dom-helpers: 5.2.1
+      loose-envify: 1.4.0
+      prop-types: 15.8.1
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
 
   react@19.3.1: {}
 

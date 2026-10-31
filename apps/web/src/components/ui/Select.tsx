@@ -1,7 +1,7 @@
 'use client';
 
-import { ChevronDown } from '@primeicons/react';
-import { Select as PRSelect } from '@primereact/ui/select';
+import { Dropdown } from 'primereact/dropdown';
+import { MultiSelect as PRMultiSelect } from 'primereact/multiselect';
 import type { CSSProperties } from 'react';
 
 export interface SelectOption {
@@ -17,11 +17,8 @@ interface SelectProps {
   className?: string;
   style?: CSSProperties;
   disabled?: boolean;
-  optionLabel?: string;
-  optionValue?: string;
 }
 
-/** Dropdown-shaped Select wrapper (PrimeReact 11). */
 export function Select({
   value,
   options,
@@ -32,34 +29,18 @@ export function Select({
   disabled,
 }: SelectProps) {
   return (
-    <PRSelect.Root
+    <Dropdown
       value={value}
       options={options}
-      optionLabel="label"
-      optionValue="value"
-      disabled={disabled}
+      onChange={(e) => onChange({ value: e.value })}
+      placeholder={placeholder}
       className={className}
       style={style}
-      onValueChange={(e: { value: unknown }) => onChange({ value: e.value })}
-    >
-      <PRSelect.Trigger style={{ width: '100%' }}>
-        <PRSelect.Value placeholder={placeholder} />
-        <PRSelect.Indicator>
-          <ChevronDown />
-        </PRSelect.Indicator>
-      </PRSelect.Trigger>
-      <PRSelect.Portal>
-        <PRSelect.Positioner>
-          <PRSelect.Popup>
-            <PRSelect.List />
-          </PRSelect.Popup>
-        </PRSelect.Positioner>
-      </PRSelect.Portal>
-    </PRSelect.Root>
+      disabled={disabled}
+    />
   );
 }
 
-/** Multi-select via Select.multiple */
 export function MultiSelect({
   value,
   options,
@@ -77,38 +58,16 @@ export function MultiSelect({
   style?: CSSProperties;
   disabled?: boolean;
 }) {
-  const selectedLabels = options
-    .filter((o) => value?.includes(o.value as never))
-    .map((o) => o.label)
-    .join(', ');
-
   return (
-    <PRSelect.Root
-      multiple
+    <PRMultiSelect
       value={value}
       options={options}
-      optionLabel="label"
-      optionValue="value"
-      disabled={disabled}
+      onChange={(e) => onChange({ value: e.value })}
+      placeholder={placeholder}
       className={className}
       style={style}
-      onValueChange={(e: { value: unknown }) => onChange({ value: e.value })}
-    >
-      <PRSelect.Trigger style={{ width: '100%' }}>
-        <PRSelect.Value placeholder={placeholder}>
-          {selectedLabels || null}
-        </PRSelect.Value>
-        <PRSelect.Indicator>
-          <ChevronDown />
-        </PRSelect.Indicator>
-      </PRSelect.Trigger>
-      <PRSelect.Portal>
-        <PRSelect.Positioner>
-          <PRSelect.Popup>
-            <PRSelect.List />
-          </PRSelect.Popup>
-        </PRSelect.Positioner>
-      </PRSelect.Portal>
-    </PRSelect.Root>
+      disabled={disabled}
+      display="chip"
+    />
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { DataTable as PRDataTable } from '@primereact/ui/datatable';
+import { Column } from 'primereact/column';
+import { DataTable as PRDataTable } from 'primereact/datatable';
 import type { ReactNode } from 'react';
 
 export interface AppColumn<T> {
@@ -25,63 +26,22 @@ export function DataTable<T>({
   emptyMessage = 'No records found',
   dataKey = 'id' as keyof T & string,
 }: AppDataTableProps<T>) {
-  const rows = value ?? [];
-
   return (
-    <PRDataTable.Root data={rows as object[]} dataKey={dataKey}>
-      {loading ? <PRDataTable.Loading /> : null}
-      <PRDataTable.TableContainer>
-        <PRDataTable.Table>
-          <PRDataTable.THead>
-            <PRDataTable.THeadRow>
-              {columns.map((col) => (
-                <PRDataTable.THeadCell key={col.header}>
-                  <PRDataTable.THeadTitle>{col.header}</PRDataTable.THeadTitle>
-                </PRDataTable.THeadCell>
-              ))}
-            </PRDataTable.THeadRow>
-          </PRDataTable.THead>
-          {rows.length === 0 && !loading ? (
-            <PRDataTable.EmptyTBody>
-              <tr>
-                <td
-                  colSpan={columns.length}
-                  style={{ padding: '1rem', textAlign: 'center' }}
-                >
-                  {emptyMessage}
-                </td>
-              </tr>
-            </PRDataTable.EmptyTBody>
-          ) : (
-            <PRDataTable.TBody>
-              {({ item }: { item: object }) => {
-                const row = item as T;
-                const key = String(
-                  (row as Record<string, unknown>)[dataKey] ?? Math.random(),
-                );
-                return (
-                  <PRDataTable.Row key={key}>
-                    {columns.map((col) => {
-                      let cell: ReactNode = null;
-                      if (col.body) cell = col.body(row);
-                      else if (col.field) {
-                        cell = String(
-                          (row as Record<string, unknown>)[col.field] ?? '',
-                        );
-                      }
-                      return (
-                        <PRDataTable.Cell key={col.header} style={col.style}>
-                          {cell}
-                        </PRDataTable.Cell>
-                      );
-                    })}
-                  </PRDataTable.Row>
-                );
-              }}
-            </PRDataTable.TBody>
-          )}
-        </PRDataTable.Table>
-      </PRDataTable.TableContainer>
-    </PRDataTable.Root>
+    <PRDataTable
+      value={(value ?? []) as object[]}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      dataKey={dataKey}
+    >
+      {columns.map((col) => (
+        <Column
+          key={col.header}
+          field={col.field}
+          header={col.header}
+          body={col.body as ((row: object) => ReactNode) | undefined}
+          style={col.style}
+        />
+      ))}
+    </PRDataTable>
   );
 }
