@@ -8,7 +8,6 @@ import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
-import { SignupDto } from './dto/signup.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtPayload } from './jwt.strategy';
 
@@ -20,25 +19,6 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
   ) {}
-
-  async signup(dto: SignupDto) {
-    return this.usersService.create({
-      email: dto.email,
-      password: dto.password,
-      role: dto.role,
-      isActive: dto.isActive ?? true,
-      fullName: dto.fullName,
-      phone: dto.phone,
-      infoEmail: dto.email,
-      address: dto.address,
-      city: dto.city,
-      state: dto.state,
-      pincode: dto.pincode,
-      companyName: dto.companyName,
-      gstin: dto.gstin,
-      notes: dto.notes,
-    });
-  }
 
   private cookieOptions() {
     const secure = this.config.get<string>('COOKIE_SECURE') === 'true';

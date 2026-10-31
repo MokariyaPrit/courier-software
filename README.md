@@ -17,8 +17,8 @@ Single-company courier ERP (modular monolith).
 | --- | --- |
 | **App (open this in browser)** | http://localhost:3000 |
 | **Login page** | http://localhost:3000/login |
-| **Signup page** | http://localhost:3000/signup |
 | **Dashboard (after login)** | http://localhost:3000/dashboard |
+| **Create users** | Admin only → **Users** tab (no public signup) |
 | **API health check** | http://localhost:3001/api/v1/health |
 | **API base path** | http://localhost:3001/api/v1 |
 

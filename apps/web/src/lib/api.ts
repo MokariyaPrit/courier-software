@@ -16,7 +16,6 @@ function isAuthBootstrapUrl(url?: string) {
   return (
     path.includes('/auth/login') ||
     path.includes('/auth/refresh') ||
-    path.includes('/auth/signup') ||
     path.includes('/auth/logout')
   );
 }
@@ -40,8 +39,7 @@ api.interceptors.response.use(
       } catch {
         if (
           typeof window !== 'undefined' &&
-          !window.location.pathname.startsWith('/login') &&
-          !window.location.pathname.startsWith('/signup')
+          !window.location.pathname.startsWith('/login')
         ) {
           window.location.href = '/login';
         }

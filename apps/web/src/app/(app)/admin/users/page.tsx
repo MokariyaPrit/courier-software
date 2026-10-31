@@ -12,24 +12,34 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Tag } from 'primereact/tag';
 import { useState } from 'react';
-import { api } from '@/lib/api';
+import { api, unwrap } from '@/lib/api';
 import { trimFormData } from '@/lib/trim';
+
+interface UserInfoFields {
+  fullName: string;
+  phone: string | null;
+  email: string | null;
+  companyName: string | null;
+  gstin: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  pincode: string | null;
+  notes: string | null;
+}
 
 interface UserRow {
   id: string;
   email: string;
   role: Role;
   isActive: boolean;
-  userInfo?: {
-    fullName: string;
-    phone: string | null;
-    companyName: string | null;
-  } | null;
+  userInfo?: UserInfoFields | null;
 }
 
-interface CreateUserFormState {
+interface UserFormState {
   fullName: string;
   emailAddress: string;
+  contactEmail: string;
   password: string;
   userRole: Role;
   phone: string;
@@ -39,12 +49,14 @@ interface CreateUserFormState {
   city: string;
   state: string;
   pincode: string;
+  notes: string;
   isActive: boolean;
 }
 
-const EMPTY_USER_FORM: CreateUserFormState = {
+const EMPTY_USER_FORM: UserFormState = {
   fullName: '',
   emailAddress: '',
+  contactEmail: '',
   password: '',
   userRole: Role.BRANCH_MANAGER,
   phone: '',
@@ -54,14 +66,44 @@ const EMPTY_USER_FORM: CreateUserFormState = {
   city: '',
   state: '',
   pincode: '',
+  notes: '',
   isActive: true,
 };
 
+const ROLE_OPTIONS = [
+  { label: 'Admin', value: Role.ADMIN },
+  { label: 'Branch Manager', value: Role.BRANCH_MANAGER },
+];
+
+function toFormFromUser(user: UserRow): UserFormState {
+  return {
+    fullName: user.userInfo?.fullName || '',
+    emailAddress: user.email || '',
+    contactEmail: user.userInfo?.email || '',
+    password: '',
+    userRole: user.role,
+    phone: user.userInfo?.phone || '',
+    companyName: user.userInfo?.companyName || '',
+    gstin: user.userInfo?.gstin || '',
+    address: user.userInfo?.address || '',
+    city: user.userInfo?.city || '',
+    state: user.userInfo?.state || '',
+    pincode: user.userInfo?.pincode || '',
+    notes: user.userInfo?.notes || '',
+    isActive: user.isActive,
+  };
+}
+
 export default function UsersPage() {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<CreateUserFormState>(EMPTY_USER_FORM);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [form, setForm] = useState<UserFormState>(EMPTY_USER_FORM);
+  const [editForm, setEditForm] = useState<UserFormState>(EMPTY_USER_FORM);
   const [error, setError] = useState('');
+  const [editError, setEditError] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
 
   const usersQuery = useQuery({
     queryKey: ['users'],
@@ -87,10 +129,11 @@ export default function UsersPage() {
         city: cleaned.city || undefined,
         state: cleaned.state || undefined,
         pincode: cleaned.pincode || undefined,
+        notes: cleaned.notes || undefined,
       });
     },
     onSuccess: async () => {
-      setOpen(false);
+      setCreateOpen(false);
       setError('');
       setForm(EMPTY_USER_FORM);
       await qc.invalidateQueries({ queryKey: ['users'] });
@@ -103,6 +146,41 @@ export default function UsersPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingUserId) return;
+      const cleaned = trimFormData(editForm);
+      await api.patch(`/users/${editingUserId}`, {
+        role: cleaned.userRole,
+        isActive: cleaned.isActive,
+        fullName: cleaned.fullName,
+        phone: cleaned.phone || null,
+        infoEmail: cleaned.contactEmail || null,
+        companyName: cleaned.companyName || null,
+        gstin: cleaned.gstin || null,
+        address: cleaned.address || null,
+        city: cleaned.city || null,
+        state: cleaned.state || null,
+        pincode: cleaned.pincode || null,
+        notes: cleaned.notes || null,
+        ...(cleaned.password ? { password: cleaned.password } : {}),
+      });
+    },
+    onSuccess: async () => {
+      setEditOpen(false);
+      setEditingUserId(null);
+      setEditError('');
+      setEditForm(EMPTY_USER_FORM);
+      await qc.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (err: unknown) => {
+      const message =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message || 'Failed to update user';
+      setEditError(message);
+    },
+  });
+
   const toggleMutation = useMutation({
     mutationFn: async (row: UserRow) => {
       await api.patch(`/users/${row.id}`, { isActive: !row.isActive });
@@ -112,11 +190,177 @@ export default function UsersPage() {
     },
   });
 
+  const openEdit = async (row: UserRow) => {
+    setEditError('');
+    setEditLoading(true);
+    setEditOpen(true);
+    setEditingUserId(row.id);
+    try {
+      const res = await api.get(`/users/${row.id}`);
+      const detail = unwrap<UserRow>(res.data);
+      setEditForm(toFormFromUser(detail));
+    } catch {
+      setEditForm(toFormFromUser(row));
+      setEditError('Could not load full profile; showing list data.');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const renderUserFields = (
+    state: UserFormState,
+    setState: (next: UserFormState) => void,
+    options?: { includePassword?: boolean; passwordOptional?: boolean },
+  ) => (
+    <div className="form-grid">
+      <div className="field">
+        <label>Full name</label>
+        <InputText
+          value={state.fullName}
+          onChange={(e) => setState({ ...state, fullName: e.target.value })}
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div className="field">
+        <label>{options?.passwordOptional ? 'Login email' : 'Email address'}</label>
+        <InputText
+          value={state.emailAddress}
+          onChange={(e) => setState({ ...state, emailAddress: e.target.value })}
+          disabled={options?.passwordOptional}
+          style={{ width: '100%' }}
+        />
+      </div>
+      {options?.passwordOptional ? (
+        <div className="field">
+          <label>Contact email</label>
+          <InputText
+            value={state.contactEmail}
+            onChange={(e) =>
+              setState({ ...state, contactEmail: e.target.value })
+            }
+            style={{ width: '100%' }}
+          />
+        </div>
+      ) : null}
+      {options?.includePassword !== false ? (
+        <div className="field">
+          <label>
+            Password
+            {options?.passwordOptional ? ' (leave blank to keep)' : ''}
+          </label>
+          <Password
+            feedback={false}
+            toggleMask
+            value={state.password}
+            onChange={(e) => setState({ ...state, password: e.target.value })}
+            inputStyle={{ width: '100%' }}
+            style={{ width: '100%' }}
+          />
+        </div>
+      ) : null}
+      <div className="field">
+        <label>User role</label>
+        <Dropdown
+          value={state.userRole}
+          options={ROLE_OPTIONS}
+          onChange={(e) => setState({ ...state, userRole: e.value })}
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div className="field">
+        <label>Phone</label>
+        <InputText
+          value={state.phone}
+          onChange={(e) => setState({ ...state, phone: e.target.value })}
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div className="field">
+        <label>Company name</label>
+        <InputText
+          value={state.companyName}
+          onChange={(e) => setState({ ...state, companyName: e.target.value })}
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div className="field">
+        <label>GSTIN</label>
+        <InputText
+          value={state.gstin}
+          onChange={(e) => setState({ ...state, gstin: e.target.value })}
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div className="field">
+        <label>City</label>
+        <InputText
+          value={state.city}
+          onChange={(e) => setState({ ...state, city: e.target.value })}
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div className="field full">
+        <label>Address</label>
+        <InputText
+          value={state.address}
+          onChange={(e) => setState({ ...state, address: e.target.value })}
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div className="field">
+        <label>State</label>
+        <InputText
+          value={state.state}
+          onChange={(e) => setState({ ...state, state: e.target.value })}
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div className="field">
+        <label>Pincode</label>
+        <InputText
+          value={state.pincode}
+          onChange={(e) => setState({ ...state, pincode: e.target.value })}
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div className="field full">
+        <label>Notes</label>
+        <InputText
+          value={state.notes}
+          onChange={(e) => setState({ ...state, notes: e.target.value })}
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div className="field full account-status-row">
+        <div>
+          <label>Account status</label>
+          <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+            {state.isActive ? 'Active' : 'Inactive'}
+          </p>
+        </div>
+        <InputSwitch
+          checked={state.isActive}
+          onChange={(e) =>
+            setState({ ...state, isActive: Boolean(e.value) })
+          }
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div>
       <div className="page-header">
         <h1>Users</h1>
-        <Button label="Add user" icon="pi pi-plus" onClick={() => setOpen(true)} />
+        <Button
+          label="Add user"
+          icon="pi pi-plus"
+          onClick={() => {
+            setError('');
+            setForm(EMPTY_USER_FORM);
+            setCreateOpen(true);
+          }}
+        />
       </div>
       <div className="panel">
         <DataTable value={usersQuery.data ?? []} loading={usersQuery.isLoading}>
@@ -142,84 +386,33 @@ export default function UsersPage() {
           <Column
             header="Actions"
             body={(row: UserRow) => (
-              <Button
-                size="small"
-                text
-                label={row.isActive ? 'Deactivate' : 'Activate'}
-                onClick={() => toggleMutation.mutate(row)}
-              />
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <Button
+                  size="small"
+                  icon="pi pi-pencil"
+                  label="Edit"
+                  text
+                  onClick={() => openEdit(row)}
+                />
+                <Button
+                  size="small"
+                  text
+                  label={row.isActive ? 'Deactivate' : 'Activate'}
+                  onClick={() => toggleMutation.mutate(row)}
+                />
+              </div>
             )}
           />
         </DataTable>
       </div>
 
-      <Dialog header="New user" visible={open} onHide={() => setOpen(false)} style={{ width: 560 }}>
-        <div className="form-grid">
-          <div className="field">
-            <label>Full name</label>
-            <InputText value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} style={{ width: '100%' }} />
-          </div>
-          <div className="field">
-            <label>Email address</label>
-            <InputText value={form.emailAddress} onChange={(e) => setForm({ ...form, emailAddress: e.target.value })} style={{ width: '100%' }} />
-          </div>
-          <div className="field">
-            <label>Password</label>
-            <Password feedback={false} toggleMask value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} inputStyle={{ width: '100%' }} style={{ width: '100%' }} />
-          </div>
-          <div className="field">
-            <label>User role</label>
-            <Dropdown
-              value={form.userRole}
-              options={[
-                { label: 'Admin', value: Role.ADMIN },
-                { label: 'Branch Manager', value: Role.BRANCH_MANAGER },
-              ]}
-              onChange={(e) => setForm({ ...form, userRole: e.value })}
-              style={{ width: '100%' }}
-            />
-          </div>
-          <div className="field">
-            <label>Phone</label>
-            <InputText value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={{ width: '100%' }} />
-          </div>
-          <div className="field">
-            <label>Company name</label>
-            <InputText value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} style={{ width: '100%' }} />
-          </div>
-          <div className="field">
-            <label>GSTIN</label>
-            <InputText value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value })} style={{ width: '100%' }} />
-          </div>
-          <div className="field">
-            <label>City</label>
-            <InputText value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} style={{ width: '100%' }} />
-          </div>
-          <div className="field full">
-            <label>Address</label>
-            <InputText value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={{ width: '100%' }} />
-          </div>
-          <div className="field">
-            <label>State</label>
-            <InputText value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} style={{ width: '100%' }} />
-          </div>
-          <div className="field">
-            <label>Pincode</label>
-            <InputText value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} style={{ width: '100%' }} />
-          </div>
-          <div className="field full account-status-row">
-            <div>
-              <label>Account status</label>
-              <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-                {form.isActive ? 'Active' : 'Inactive'}
-              </p>
-            </div>
-            <InputSwitch
-              checked={form.isActive}
-              onChange={(e) => setForm({ ...form, isActive: Boolean(e.value) })}
-            />
-          </div>
-        </div>
+      <Dialog
+        header="New user"
+        visible={createOpen}
+        onHide={() => setCreateOpen(false)}
+        style={{ width: 'min(560px, 95vw)' }}
+      >
+        {renderUserFields(form, setForm, { includePassword: true })}
         {error ? <p className="error-text">{error}</p> : null}
         <div style={{ marginTop: '1rem', textAlign: 'right' }}>
           <Button
@@ -228,6 +421,53 @@ export default function UsersPage() {
             onClick={() => {
               setError('');
               createMutation.mutate();
+            }}
+          />
+        </div>
+      </Dialog>
+
+      <Dialog
+        header="Edit user information"
+        visible={editOpen}
+        onHide={() => {
+          setEditOpen(false);
+          setEditingUserId(null);
+        }}
+        style={{ width: 'min(560px, 95vw)' }}
+      >
+        {editLoading ? (
+          <p className="muted">Loading user…</p>
+        ) : (
+          renderUserFields(editForm, setEditForm, {
+            includePassword: true,
+            passwordOptional: true,
+          })
+        )}
+        {editError ? <p className="error-text">{editError}</p> : null}
+        <div
+          style={{
+            marginTop: '1rem',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '0.5rem',
+          }}
+        >
+          <Button
+            label="Cancel"
+            severity="secondary"
+            text
+            onClick={() => {
+              setEditOpen(false);
+              setEditingUserId(null);
+            }}
+          />
+          <Button
+            label="Save changes"
+            loading={updateMutation.isPending}
+            disabled={editLoading}
+            onClick={() => {
+              setEditError('');
+              updateMutation.mutate();
             }}
           />
         </div>

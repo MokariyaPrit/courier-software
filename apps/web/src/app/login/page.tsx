@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -75,8 +74,8 @@ export default function LoginPage() {
           loading={submitting}
           style={{ width: '100%' }}
         />
-        <p className="auth-footer-link">
-          New user? <Link href="/signup">Create account</Link>
+        <p className="auth-footer-link muted">
+          New accounts are created by an Admin from the Users page.
         </p>
       </form>
     </div>
