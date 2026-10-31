@@ -138,7 +138,7 @@ export default function QuotationTemplatesPage() {
   const askDelete = (row: TemplateListItem) => {
     confirmDialog({
       header: 'Delete template',
-      message: `Delete "${row.name}"?`,
+      message: `Remove "${row.name}"? It will be hidden from lists (soft delete).`,
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',

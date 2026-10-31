@@ -1,6 +1,7 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   OneToOne,
@@ -59,4 +60,7 @@ export class UserInfo {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 }

@@ -27,6 +27,7 @@ Single-company courier ERP (modular monolith).
 - **No `branches` table** (removed completely)
 - **`users`** — login (`email`, `password`, `role`, `isActive`)
 - **`user_info`** — profile: fullName, phone, email, address, city, state, pincode, companyName, gstin, notes, isActive
+- **Soft delete:** all main tables use `deletedAt` (TypeORM). Delete actions hide records from lists; rows stay in the DB.
 - **Roles:** `ADMIN` (full) and `BRANCH_MANAGER` (ops; cannot manage Users/Pincodes)
 
 After login you are redirected to the dashboard. Use the left sidebar for Bookings, Tracking, Delivery, Masters, Billing, and Users (Admin only).

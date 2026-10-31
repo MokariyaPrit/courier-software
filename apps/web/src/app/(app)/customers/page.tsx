@@ -205,7 +205,7 @@ export default function CustomersPage() {
   const askDelete = (row: Customer) => {
     confirmDialog({
       header: 'Delete customer',
-      message: `Delete "${row.name}"?`,
+      message: `Remove "${row.name}"? It will be hidden from lists (soft delete).`,
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',

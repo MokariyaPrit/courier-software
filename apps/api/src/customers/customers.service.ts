@@ -77,6 +77,7 @@ export class CustomersService {
       .createQueryBuilder('customer')
       .leftJoinAndSelect('customer.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
+      .where('customer.deletedAt IS NULL')
       .orderBy(`customer.${sortBy}`, sortOrder)
       .skip((query.page - 1) * query.pageSize)
       .take(query.pageSize);
@@ -170,7 +171,7 @@ export class CustomersService {
 
   async remove(id: string, user: AuthUser) {
     await this.findOne(id, user);
-    await this.repo.delete(id);
+    await this.repo.softDelete(id);
     return { deleted: true };
   }
 }

@@ -60,7 +60,7 @@ async function mergeDuplicateStates(ds: DataSource) {
 
     for (const city of typoCities) {
       if (existing.has(city.name.toLowerCase())) {
-        await citiesRepo.delete(city.id);
+        await citiesRepo.softDelete(city.id);
       } else {
         city.stateId = correct.id;
         await citiesRepo.save(city);
@@ -68,7 +68,7 @@ async function mergeDuplicateStates(ds: DataSource) {
       }
     }
 
-    await statesRepo.delete(typo.id);
+    await statesRepo.softDelete(typo.id);
     console.log(`Merged typo state "${typo.name}" into "${correct.name}"`);
   }
 }

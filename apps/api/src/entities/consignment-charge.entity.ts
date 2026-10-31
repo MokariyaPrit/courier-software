@@ -2,6 +2,7 @@ import { ChargeType } from '@courier/shared';
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -32,4 +33,7 @@ export class ConsignmentCharge {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 }

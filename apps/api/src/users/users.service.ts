@@ -76,6 +76,7 @@ export class UsersService {
     const qb = this.usersRepo
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.userInfo', 'userInfo')
+      .where('user.deletedAt IS NULL')
       .skip((query.page - 1) * query.pageSize)
       .take(query.pageSize);
 

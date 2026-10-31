@@ -54,6 +54,8 @@ export class CitiesService {
     const qb = this.repo
       .createQueryBuilder('city')
       .leftJoinAndSelect('city.state', 'state')
+      .where('city.deletedAt IS NULL')
+      .andWhere('state.deletedAt IS NULL')
       .skip((query.page - 1) * query.pageSize)
       .take(query.pageSize);
 
@@ -121,7 +123,7 @@ export class CitiesService {
 
   async remove(id: string) {
     await this.findOne(id);
-    await this.repo.delete(id);
+    await this.repo.softDelete(id);
     return { deleted: true };
   }
 }

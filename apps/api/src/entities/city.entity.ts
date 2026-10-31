@@ -1,6 +1,7 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   Index,
   JoinColumn,
@@ -34,4 +35,7 @@ export class City {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 }

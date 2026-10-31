@@ -122,6 +122,7 @@ export class QuotationTemplatesService {
       .createQueryBuilder('template')
       .leftJoinAndSelect('template.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
+      .where('template.deletedAt IS NULL')
       .orderBy(`template.${sortBy}`, sortOrder)
       .skip((query.page - 1) * query.pageSize)
       .take(query.pageSize);
@@ -181,7 +182,7 @@ export class QuotationTemplatesService {
     await this.templatesRepo.save(template);
 
     if (dto.rows !== undefined) {
-      await this.rowsRepo.delete({ templateId: id });
+      await this.rowsRepo.softDelete({ templateId: id });
       if (dto.rows.length) {
         await this.rowsRepo.save(
           dto.rows.map((row, i) => this.mapRow(row, id, i)),
@@ -194,7 +195,8 @@ export class QuotationTemplatesService {
 
   async remove(id: string, user: AuthUser) {
     await this.findOne(id, user);
-    await this.templatesRepo.delete(id);
+    await this.rowsRepo.softDelete({ templateId: id });
+    await this.templatesRepo.softDelete(id);
     return { deleted: true };
   }
 }

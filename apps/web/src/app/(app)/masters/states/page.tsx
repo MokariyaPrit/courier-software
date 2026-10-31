@@ -90,7 +90,7 @@ export default function StatesPage() {
   const askDelete = (row: StateRow) => {
     confirmDialog({
       header: 'Delete state',
-      message: `Delete "${row.name}"? Only allowed if no cities are linked.`,
+      message: `Remove "${row.name}"? Only allowed if no cities are linked. Soft delete hides it from lists.`,
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',

@@ -87,7 +87,7 @@ export class StatesService {
         `Cannot delete state. ${cityCount} city(ies) are linked. Delete cities first.`,
       );
     }
-    await this.repo.delete(id);
+    await this.repo.softDelete(id);
     return { deleted: true };
   }
 }

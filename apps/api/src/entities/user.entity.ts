@@ -2,6 +2,7 @@ import { Role } from '@courier/shared';
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -34,4 +35,7 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 }

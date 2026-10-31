@@ -2,6 +2,7 @@ import { ConsignmentStatus, ServiceType } from '@courier/shared';
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -101,4 +102,7 @@ export class Consignment {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 }

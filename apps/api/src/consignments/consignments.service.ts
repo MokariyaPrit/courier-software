@@ -121,6 +121,7 @@ export class ConsignmentsService {
       .leftJoinAndSelect('c.customer', 'customer')
       .leftJoinAndSelect('c.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
+      .where('c.deletedAt IS NULL')
       .orderBy(`c.${sortBy}`, sortOrder)
       .skip((query.page - 1) * query.pageSize)
       .take(query.pageSize);
@@ -197,7 +198,9 @@ export class ConsignmentsService {
   async dashboardCounts() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const qb = this.consignmentsRepo.createQueryBuilder('c');
+    const qb = this.consignmentsRepo
+      .createQueryBuilder('c')
+      .where('c.deletedAt IS NULL');
     const total = await qb.getCount();
     const bookedToday = await qb
       .clone()

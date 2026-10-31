@@ -2,6 +2,7 @@ import { QuotationStatus } from '@courier/shared';
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -82,4 +83,7 @@ export class Quotation {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 }

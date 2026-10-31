@@ -196,6 +196,7 @@ export class QuotationsService {
       .leftJoinAndSelect('quotation.template', 'template')
       .leftJoinAndSelect('quotation.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
+      .where('quotation.deletedAt IS NULL')
       .orderBy(`quotation.${sortBy}`, sortOrder)
       .skip((query.page - 1) * query.pageSize)
       .take(query.pageSize);
@@ -307,11 +308,8 @@ export class QuotationsService {
   }
 
   async remove(id: string, user: AuthUser) {
-    const quotation = await this.findOne(id, user);
-    if (quotation.status === QuotationStatus.ISSUED) {
-      throw new BadRequestException('Issued quotations cannot be deleted');
-    }
-    await this.quotationsRepo.delete(id);
+    await this.findOne(id, user);
+    await this.quotationsRepo.softDelete(id);
     return { deleted: true };
   }
 

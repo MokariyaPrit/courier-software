@@ -119,7 +119,7 @@ export default function CitiesPage() {
   const askDelete = (row: CityRow) => {
     confirmDialog({
       header: 'Delete city',
-      message: `Delete "${row.name}"?`,
+      message: `Remove "${row.name}"? It will be hidden from lists (soft delete).`,
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',

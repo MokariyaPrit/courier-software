@@ -2,6 +2,7 @@ import { ConsignmentStatus } from '@courier/shared';
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -40,4 +41,7 @@ export class TrackingEvent {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 }

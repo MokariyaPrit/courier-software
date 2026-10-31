@@ -105,7 +105,9 @@ export default function QuotationsPage() {
   const askDelete = (row: QuotationRow) => {
     confirmDialog({
       header: 'Delete quotation',
-      message: `Delete draft quotation for "${row.customer?.name || 'client'}"?`,
+      message: `Remove quotation for "${row.customer?.name || 'client'}"${
+        row.quotationCode ? ` (#${row.quotationCode})` : ''
+      }? It will be hidden from lists (soft delete).`,
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',
@@ -149,16 +151,14 @@ export default function QuotationsPage() {
             <Link href={`/quotations/${row.id}`}>
               <Button size="small" text icon="pi pi-eye" label="Open" />
             </Link>
-            {row.status === QuotationStatus.DRAFT ? (
-              <Button
-                size="small"
-                text
-                severity="danger"
-                icon="pi pi-trash"
-                label="Delete"
-                onClick={() => askDelete(row)}
-              />
-            ) : null}
+            <Button
+              size="small"
+              text
+              severity="danger"
+              icon="pi pi-trash"
+              label="Delete"
+              onClick={() => askDelete(row)}
+            />
           </div>
         ),
       },
