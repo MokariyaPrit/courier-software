@@ -1,3 +1,4 @@
+import { RateTemplateKind } from '@courier/shared';
 import {
   Column,
   CreateDateColumn,
@@ -23,6 +24,13 @@ export class QuotationRateTemplate {
 
   @Column({ type: 'varchar' })
   name: string;
+
+  @Column({
+    type: 'enum',
+    enum: RateTemplateKind,
+    default: RateTemplateKind.QUOTATION,
+  })
+  kind: RateTemplateKind;
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;

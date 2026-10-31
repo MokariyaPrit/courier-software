@@ -12,9 +12,16 @@ type Props = {
   value: RateMatrixForm;
   onChange: (next: RateMatrixForm) => void;
   readOnly?: boolean;
+  /** Geography columns from Centers — labels locked, no add/remove columns */
+  lockColumns?: boolean;
 };
 
-export function RateMatrixEditor({ value, onChange, readOnly }: Props) {
+export function RateMatrixEditor({
+  value,
+  onChange,
+  readOnly,
+  lockColumns = true,
+}: Props) {
   const { columns, sections, rows } = value;
 
   const setMatrix = (patch: Partial<RateMatrixForm>) => {
@@ -22,12 +29,14 @@ export function RateMatrixEditor({ value, onChange, readOnly }: Props) {
   };
 
   const renameColumn = (colId: string, label: string) => {
+    if (lockColumns) return;
     setMatrix({
       columns: columns.map((c) => (c.id === colId ? { ...c, label } : c)),
     });
   };
 
   const addColumn = () => {
+    if (lockColumns) return;
     const id = newId('col');
     const nextColumns = [
       ...columns,
@@ -43,6 +52,7 @@ export function RateMatrixEditor({ value, onChange, readOnly }: Props) {
   };
 
   const removeColumn = (colId: string) => {
+    if (lockColumns) return;
     setMatrix({
       columns: columns
         .filter((c) => c.id !== colId)
@@ -124,11 +134,17 @@ export function RateMatrixEditor({ value, onChange, readOnly }: Props) {
     });
   };
 
-  const updateCell = (rowKey: string, colId: string, amount: number) => {
+  const updateCell = (rowKey: string, colId: string, amount: number | null) => {
     setMatrix({
       rows: rows.map((r) =>
         rowIdentity(r) === rowKey
-          ? { ...r, rates: { ...r.rates, [colId]: amount } }
+          ? {
+              ...r,
+              rates: {
+                ...r.rates,
+                [colId]: amount === null || Number.isNaN(amount) ? ('' as unknown as number) : amount,
+              },
+            }
           : r,
       ),
     });
@@ -138,14 +154,16 @@ export function RateMatrixEditor({ value, onChange, readOnly }: Props) {
     <div className="rate-matrix">
       {!readOnly ? (
         <div className="rate-matrix-toolbar">
-          <Button
-            type="button"
-            size="small"
-            label="Add column"
-            icon="pi pi-plus"
-            outlined
-            onClick={addColumn}
-          />
+          {!lockColumns ? (
+            <Button
+              type="button"
+              size="small"
+              label="Add column"
+              icon="pi pi-plus"
+              outlined
+              onClick={addColumn}
+            />
+          ) : null}
           <Button
             type="button"
             size="small"
@@ -155,6 +173,13 @@ export function RateMatrixEditor({ value, onChange, readOnly }: Props) {
             onClick={addSection}
           />
         </div>
+      ) : null}
+
+      {lockColumns && !readOnly && columns.length === 0 ? (
+        <p className="muted">
+          No rate columns yet. Select destination cities under Rate columns,
+          then reopen this page — city columns and ROI are added automatically.
+        </p>
       ) : null}
 
       {sections.map((section) => {
@@ -205,7 +230,7 @@ export function RateMatrixEditor({ value, onChange, readOnly }: Props) {
                     <th>Weight</th>
                     {columns.map((col) => (
                       <th key={col.id}>
-                        {readOnly ? (
+                        {readOnly || lockColumns ? (
                           col.label
                         ) : (
                           <div className="rate-matrix-col-head">
@@ -261,30 +286,42 @@ export function RateMatrixEditor({ value, onChange, readOnly }: Props) {
                               />
                             )}
                           </td>
-                          {columns.map((col) => (
-                            <td key={col.id}>
-                              {readOnly ? (
-                                <span>
-                                  {Number(row.rates[col.id] ?? 0).toFixed(2)}
-                                </span>
-                              ) : (
-                                <InputNumber
-                                  value={Number(row.rates[col.id] ?? 0)}
-                                  onValueChange={(e) =>
-                                    updateCell(
-                                      key,
-                                      col.id,
-                                      Number(e.value ?? 0),
-                                    )
-                                  }
-                                  min={0}
-                                  minFractionDigits={0}
-                                  maxFractionDigits={2}
-                                  inputStyle={{ width: '5.5rem' }}
-                                />
-                              )}
-                            </td>
-                          ))}
+                          {columns.map((col) => {
+                            const raw = row.rates[col.id];
+                            const hasValue =
+                              raw !== undefined &&
+                              raw !== null &&
+                              String(raw).trim() !== '';
+                            return (
+                              <td key={col.id}>
+                                {readOnly ? (
+                                  <span>
+                                    {hasValue
+                                      ? Number(raw).toFixed(2)
+                                      : '—'}
+                                  </span>
+                                ) : (
+                                  <InputNumber
+                                    value={hasValue ? Number(raw) : null}
+                                    onValueChange={(e) =>
+                                      updateCell(
+                                        key,
+                                        col.id,
+                                        e.value === null || e.value === undefined
+                                          ? null
+                                          : Number(e.value),
+                                      )
+                                    }
+                                    min={0}
+                                    minFractionDigits={0}
+                                    maxFractionDigits={2}
+                                    inputStyle={{ width: '5.5rem' }}
+                                    placeholder="—"
+                                  />
+                                )}
+                              </td>
+                            );
+                          })}
                           {!readOnly ? (
                             <td>
                               <Button

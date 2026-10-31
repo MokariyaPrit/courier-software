@@ -46,6 +46,14 @@ export class QuotationsController {
     return this.quotationsService.findAll(query, user);
   }
 
+  @Get('customer/:customerId/latest-issued')
+  latestIssued(
+    @Param('customerId') customerId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.quotationsService.latestIssuedForCustomer(customerId, user);
+  }
+
   @Get(':id/document')
   document(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.quotationsService.document(id, user);

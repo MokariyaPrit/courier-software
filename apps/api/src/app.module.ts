@@ -19,13 +19,19 @@ import {
   Quotation,
   QuotationRateRow,
   QuotationRateTemplate,
+  Receiver,
+  SenderLocation,
   State,
   TrackingEvent,
   User,
   UserInfo,
+  UserRateCity,
 } from './entities';
 import { HealthController } from './health/health.controller';
 import { QuotationsModule } from './quotations/quotations.module';
+import { RateColumnsModule } from './rate-columns/rate-columns.module';
+import { ReceiversModule } from './receivers/receivers.module';
+import { SenderLocationsModule } from './sender-locations/sender-locations.module';
 import { StatesModule } from './states/states.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { UsersModule } from './users/users.module';
@@ -56,6 +62,9 @@ import { UsersModule } from './users/users.module';
           QuotationRateTemplate,
           QuotationRateRow,
           Quotation,
+          Receiver,
+          SenderLocation,
+          UserRateCity,
         ],
         synchronize: config.get<string>('NODE_ENV') !== 'production',
       }),
@@ -69,6 +78,9 @@ import { UsersModule } from './users/users.module';
     TrackingModule,
     BillingModule,
     QuotationsModule,
+    RateColumnsModule,
+    ReceiversModule,
+    SenderLocationsModule,
   ],
   controllers: [HealthController],
   providers: [

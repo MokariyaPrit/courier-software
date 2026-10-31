@@ -58,6 +58,23 @@ export enum QuotationStatus {
   ISSUED = 'ISSUED',
 }
 
+/** Booking payment / billing mode */
+export enum BookingType {
+  ACCOUNT = 'ACCOUNT',
+  CASH = 'CASH',
+}
+
+export const BOOKING_TYPE_LABELS: Record<BookingType, string> = {
+  [BookingType.ACCOUNT]: 'Account',
+  [BookingType.CASH]: 'Cash',
+};
+
+/** Rate template purpose */
+export enum RateTemplateKind {
+  QUOTATION = 'QUOTATION',
+  CASH = 'CASH',
+}
+
 export const CONSIGNMENT_STATUS_FLOW: Record<
   ConsignmentStatus,
   ConsignmentStatus[]

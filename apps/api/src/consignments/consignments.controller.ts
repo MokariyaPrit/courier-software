@@ -36,8 +36,11 @@ export class ConsignmentsController {
   }
 
   @Get()
-  findAll(@Query() query: ConsignmentQueryDto) {
-    return this.consignmentsService.findAll(query);
+  findAll(
+    @Query() query: ConsignmentQueryDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.consignmentsService.findAll(query, user);
   }
 
   @Get('awb/:awb')

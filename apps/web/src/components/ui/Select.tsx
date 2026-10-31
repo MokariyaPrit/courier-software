@@ -17,6 +17,8 @@ interface SelectProps {
   className?: string;
   style?: CSSProperties;
   disabled?: boolean;
+  filter?: boolean;
+  showClear?: boolean;
 }
 
 export function Select({
@@ -27,6 +29,8 @@ export function Select({
   className,
   style,
   disabled,
+  filter,
+  showClear,
 }: SelectProps) {
   return (
     <Dropdown
@@ -37,6 +41,8 @@ export function Select({
       className={className}
       style={style}
       disabled={disabled}
+      filter={filter}
+      showClear={showClear}
     />
   );
 }

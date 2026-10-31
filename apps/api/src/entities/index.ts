@@ -10,3 +10,6 @@ export { Invoice } from './invoice.entity';
 export { QuotationRateTemplate } from './quotation-rate-template.entity';
 export { QuotationRateRow } from './quotation-rate-row.entity';
 export { Quotation } from './quotation.entity';
+export { Receiver } from './receiver.entity';
+export { SenderLocation } from './sender-location.entity';
+export { UserRateCity } from './user-rate-city.entity';

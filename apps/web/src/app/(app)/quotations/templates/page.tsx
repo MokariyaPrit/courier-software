@@ -203,8 +203,8 @@ export default function QuotationTemplatesPage() {
         />
       </div>
       <p className="muted" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-        Start from default DOX / PARCEL / air / TATKAL sections, then rename,
-        add, or remove columns, rows, and sections as needed.
+        Columns follow your Rate columns selection (cities + ROI). Edit cell
+        amounts; add or remove weight rows and sections as needed.
       </p>
       <ListSearch
         search={list.search}
@@ -246,8 +246,8 @@ export default function QuotationTemplatesPage() {
           />
         </div>
         <p className="muted">
-          Seeds default sections, weight bands, and zone columns (all editable
-          after create).
+          Seeds default sections and weight bands with columns from your Rate
+          columns selection (cities + ROI).
         </p>
         {error ? <p className="error-text">{error}</p> : null}
         <div

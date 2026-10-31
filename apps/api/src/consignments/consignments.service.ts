@@ -1,11 +1,14 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  BookingType,
   ChargeType,
   ConsignmentStatus,
+  Role,
   ServiceType,
 } from '@courier/shared';
 import { Repository } from 'typeorm';
@@ -23,6 +26,8 @@ const CONSIGNMENT_SORT = [
   'awb',
   'receiverName',
   'status',
+  'bookingType',
+  'bookingDate',
   'createdAt',
 ] as const;
 
@@ -37,6 +42,10 @@ export class ConsignmentsService {
     private readonly eventsRepo: Repository<TrackingEvent>,
   ) {}
 
+  private todayIsoDate() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
   private async nextAwb() {
     const year = new Date().getFullYear().toString().slice(-2);
     const count = await this.consignmentsRepo.count();
@@ -45,12 +54,47 @@ export class ConsignmentsService {
   }
 
   async create(dto: CreateConsignmentDto, user: AuthUser) {
+    const bookingType = dto.bookingType ?? BookingType.CASH;
+
+    if (bookingType === BookingType.ACCOUNT && !dto.customerId) {
+      throw new BadRequestException('Customer is required for account booking');
+    }
+    if (bookingType === BookingType.CASH && !dto.partyName?.trim()) {
+      throw new BadRequestException('Party name is required for cash booking');
+    }
+
     const awb = await this.nextAwb();
     const consignment = this.consignmentsRepo.create({
       awb,
       status: ConsignmentStatus.BOOKED,
+      bookingType,
       serviceType: dto.serviceType ?? ServiceType.STANDARD,
-      customerId: dto.customerId ?? null,
+      customerId:
+        bookingType === BookingType.ACCOUNT ? (dto.customerId ?? null) : null,
+      quotationId: dto.quotationId ?? null,
+      senderLocationId: dto.senderLocationId ?? null,
+      receiverId: dto.receiverId ?? null,
+      rateSectionId: dto.rateSectionId ?? null,
+      rateColumnId: dto.rateColumnId ?? null,
+      bookingDate: dto.bookingDate || this.todayIsoDate(),
+      partyName:
+        bookingType === BookingType.CASH
+          ? dto.partyName?.trim() || null
+          : null,
+      partyPhone:
+        bookingType === BookingType.CASH ? dto.partyPhone ?? null : null,
+      partyAddress:
+        bookingType === BookingType.CASH ? dto.partyAddress ?? null : null,
+      partyCity:
+        bookingType === BookingType.CASH ? dto.partyCity ?? null : null,
+      partyState:
+        bookingType === BookingType.CASH ? dto.partyState ?? null : null,
+      partyPincode:
+        bookingType === BookingType.CASH ? dto.partyPincode ?? null : null,
+      partyGstin:
+        bookingType === BookingType.CASH ? dto.partyGstin ?? null : null,
+      partyEmail:
+        bookingType === BookingType.CASH ? dto.partyEmail ?? null : null,
       senderName: dto.senderName,
       senderPhone: dto.senderPhone ?? null,
       senderAddress: dto.senderAddress ?? null,
@@ -58,7 +102,10 @@ export class ConsignmentsService {
       receiverPhone: dto.receiverPhone ?? null,
       receiverAddress: dto.receiverAddress ?? null,
       receiverCity: dto.receiverCity ?? null,
+      receiverState: dto.receiverState ?? null,
       receiverPincode: dto.receiverPincode ?? null,
+      receiverCityId: dto.receiverCityId ?? null,
+      receiverStateId: dto.receiverStateId ?? null,
       weightKg: String(dto.weightKg ?? 0),
       pieces: dto.pieces ?? 1,
       codAmount: String(dto.codAmount ?? 0),
@@ -111,7 +158,7 @@ export class ConsignmentsService {
     return this.findOne(saved.id);
   }
 
-  async findAll(query: ConsignmentQueryDto) {
+  async findAll(query: ConsignmentQueryDto, user?: AuthUser) {
     const { sortBy, sortOrder } = resolveSortPair(query, CONSIGNMENT_SORT, {
       sortBy: 'createdAt',
       sortOrder: 'DESC',
@@ -119,6 +166,8 @@ export class ConsignmentsService {
     const qb = this.consignmentsRepo
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.customer', 'customer')
+      .leftJoinAndSelect('c.receiver', 'receiver')
+      .leftJoinAndSelect('c.senderLocation', 'senderLocation')
       .leftJoinAndSelect('c.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
       .where('c.deletedAt IS NULL')
@@ -129,10 +178,29 @@ export class ConsignmentsService {
     if (query.status) {
       qb.andWhere('c.status = :status', { status: query.status });
     }
+    if (query.bookingType) {
+      qb.andWhere('c.bookingType = :bookingType', {
+        bookingType: query.bookingType,
+      });
+    }
+    if (query.receiverId) {
+      qb.andWhere('c.receiverId = :receiverId', {
+        receiverId: query.receiverId,
+      });
+    }
+
+    const mine =
+      query.mine === true ||
+      (user && user.role !== Role.ADMIN && query.mine !== false);
+    if (mine && user) {
+      qb.andWhere('c.createdById = :uid', { uid: user.id });
+    } else if (user && user.role !== Role.ADMIN) {
+      qb.andWhere('c.createdById = :uid', { uid: user.id });
+    }
 
     if (query.search) {
       qb.andWhere(
-        '(c.awb ILIKE :q OR c.receiverName ILIKE :q OR c.receiverPhone ILIKE :q)',
+        '(c.awb ILIKE :q OR c.receiverName ILIKE :q OR c.receiverPhone ILIKE :q OR c.partyName ILIKE :q)',
         { q: `%${query.search}%` },
       );
     }
@@ -154,6 +222,9 @@ export class ConsignmentsService {
       where: { id },
       relations: {
         customer: true,
+        receiver: true,
+        senderLocation: true,
+        quotation: true,
         charges: true,
         trackingEvents: {
           createdBy: {

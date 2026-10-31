@@ -2,6 +2,7 @@ import {
   QUOTATION_SERVICE_TYPE_LABELS,
   QuotationServiceType,
 } from '@courier/shared';
+import { ROI_RATE_COLUMN_ID } from '../rate-columns/rate-column-ids';
 import type {
   RateColumnDef,
   RateMatrix,
@@ -9,15 +10,9 @@ import type {
   RateSectionDef,
 } from './rate-matrix.types';
 
+/** Default matrix always includes ROI; city/state columns come from Centers. */
 export const DEFAULT_ZONE_COLUMNS: RateColumnDef[] = [
-  { id: 'local', label: 'Local', sortOrder: 0 },
-  { id: 'withinState', label: 'Within State', sortOrder: 1 },
-  { id: 'restOfIndia', label: 'Rest Of India', sortOrder: 2 },
-  { id: 'specialLocation', label: 'Special Location', sortOrder: 3 },
-  { id: 'mumbai', label: 'MUMBAI', sortOrder: 4 },
-  { id: 'mah', label: 'MAH', sortOrder: 5 },
-  { id: 'raj', label: 'RAJ', sortOrder: 6 },
-  { id: 'mp', label: 'MP', sortOrder: 7 },
+  { id: ROI_RATE_COLUMN_ID, label: 'ROI (Rest of India)', sortOrder: 0 },
 ];
 
 const DOX_BANDS = [
@@ -39,12 +34,14 @@ const PARCEL_BANDS = [
 
 function emptyRates(columns: RateColumnDef[]): Record<string, string> {
   const rates: Record<string, string> = {};
-  for (const col of columns) rates[col.id] = '0';
+  for (const col of columns) rates[col.id] = '';
   return rates;
 }
 
-export function defaultRateMatrix(): RateMatrix {
-  const columns = DEFAULT_ZONE_COLUMNS.map((c) => ({ ...c }));
+export function defaultRateMatrix(
+  columns: RateColumnDef[] = DEFAULT_ZONE_COLUMNS,
+): RateMatrix {
+  const cols = columns.map((c, i) => ({ ...c, sortOrder: c.sortOrder ?? i }));
   const sections: RateSectionDef[] = Object.values(QuotationServiceType).map(
     (id, sortOrder) => ({
       id,
@@ -66,7 +63,7 @@ export function defaultRateMatrix(): RateMatrix {
         weightGrams: band.weightGrams,
         isAdditional: band.isAdditional,
         sortOrder: band.sortOrder,
-        rates: emptyRates(columns),
+        rates: emptyRates(cols),
       });
     }
   }
@@ -81,10 +78,59 @@ export function defaultRateMatrix(): RateMatrix {
         weightGrams: band.weightGrams,
         isAdditional: band.isAdditional,
         sortOrder: band.sortOrder,
-        rates: emptyRates(columns),
+        rates: emptyRates(cols),
       });
     }
   }
 
-  return { columns, sections, rows };
+  return { columns: cols, sections, rows };
+}
+
+/**
+ * Align matrix columns to the user's Rate columns selection (+ ROI).
+ * Keeps rate values for columns that remain; drops stale city:/state:/roi
+ * columns not in the current geography so duplicates do not linger.
+ */
+export function syncMatrixToGeography(
+  existing: {
+    columns?: RateColumnDef[];
+    rows?: Array<{
+      rates: Record<string, string | number>;
+      [key: string]: unknown;
+    }>;
+  },
+  geographyColumns: RateColumnDef[],
+  _mode: 'cash' | 'quotation' = 'quotation',
+): { columns: RateColumnDef[]; rows: Array<Record<string, unknown>> } {
+  const prevCols = [...(existing.columns ?? [])];
+  const geoIds = new Set(geographyColumns.map((c) => c.id));
+
+  const nextColumns: RateColumnDef[] = geographyColumns.map((g, i) => ({
+    id: g.id,
+    label: g.label,
+    sortOrder: i,
+  }));
+
+  // Keep only legacy non-geo extras (old Local/MAH/…), never stale city/state/roi
+  let extraOrder = nextColumns.length;
+  for (const col of prevCols) {
+    if (geoIds.has(col.id)) continue;
+    if (col.id.startsWith('city:') || col.id.startsWith('state:')) continue;
+    if (col.id === ROI_RATE_COLUMN_ID) continue;
+    nextColumns.push({ ...col, sortOrder: extraOrder++ });
+  }
+
+  const keepIds = new Set(nextColumns.map((c) => c.id));
+  const rows = (existing.rows ?? []).map((row) => {
+    const rates: Record<string, string | number> = { ...(row.rates ?? {}) };
+    for (const id of Object.keys(rates)) {
+      if (!keepIds.has(id)) delete rates[id];
+    }
+    for (const col of nextColumns) {
+      if (rates[col.id] === undefined) rates[col.id] = '';
+    }
+    return { ...row, rates };
+  });
+
+  return { columns: nextColumns, rows };
 }

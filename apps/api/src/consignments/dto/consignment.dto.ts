@@ -1,7 +1,13 @@
-import { ChargeType, ServiceType } from '@courier/shared';
-import { Type } from 'class-transformer';
+import {
+  BookingType,
+  ChargeType,
+  ServiceType,
+} from '@courier/shared';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
+  IsDateString,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -9,6 +15,7 @@ import {
   IsUUID,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
@@ -28,8 +35,70 @@ class ChargeDto {
 
 export class CreateConsignmentDto {
   @IsOptional()
+  @IsEnum(BookingType)
+  bookingType?: BookingType;
+
+  @ValidateIf((o: CreateConsignmentDto) => o.bookingType === BookingType.ACCOUNT)
   @IsUUID()
   customerId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  quotationId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  senderLocationId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  receiverId?: string;
+
+  @IsOptional()
+  @IsString()
+  rateSectionId?: string;
+
+  @IsOptional()
+  @IsString()
+  rateColumnId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  bookingDate?: string;
+
+  /** Cash walk-in party (not a Customer record) */
+  @ValidateIf((o: CreateConsignmentDto) => o.bookingType === BookingType.CASH)
+  @IsString()
+  @MinLength(2)
+  partyName?: string;
+
+  @IsOptional()
+  @IsString()
+  partyPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  partyAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  partyCity?: string;
+
+  @IsOptional()
+  @IsString()
+  partyState?: string;
+
+  @IsOptional()
+  @IsString()
+  partyPincode?: string;
+
+  @IsOptional()
+  @IsString()
+  partyGstin?: string;
+
+  @IsOptional()
+  @IsString()
+  partyEmail?: string;
 
   @IsString()
   @MinLength(2)
@@ -61,7 +130,19 @@ export class CreateConsignmentDto {
 
   @IsOptional()
   @IsString()
+  receiverState?: string;
+
+  @IsOptional()
+  @IsString()
   receiverPincode?: string;
+
+  @IsOptional()
+  @IsUUID()
+  receiverCityId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  receiverStateId?: string;
 
   @IsOptional()
   @IsNumber()
@@ -101,4 +182,18 @@ export class ConsignmentQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @IsOptional()
+  @IsEnum(BookingType)
+  bookingType?: BookingType;
+
+  @IsOptional()
+  @IsUUID()
+  receiverId?: string;
+
+  /** When true, only consignments created by the current user */
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true' || value === '1')
+  @IsBoolean()
+  mine?: boolean;
 }

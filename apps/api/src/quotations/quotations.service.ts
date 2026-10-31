@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QuotationStatus, Role } from '@courier/shared';
@@ -18,12 +20,14 @@ import { Quotation, QuotationSnapshot } from '../entities/quotation.entity';
 import { QuotationRateRow } from '../entities/quotation-rate-row.entity';
 import { QuotationRateTemplate } from '../entities/quotation-rate-template.entity';
 import { User } from '../entities/user.entity';
+import { RateColumnsService } from '../rate-columns/rate-columns.service';
 import {
   CreateQuotationDto,
   IssueQuotationDto,
   UpdateQuotationDto,
 } from './dto/quotation.dto';
 import { RateRowDto } from './dto/quotation-template.dto';
+import { syncMatrixToGeography } from './default-rate-bands';
 import type {
   RateColumnDef,
   RateRowData,
@@ -48,6 +52,8 @@ export class QuotationsService {
     private readonly templatesRepo: Repository<QuotationRateTemplate>,
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    @Inject(forwardRef(() => RateColumnsService))
+    private readonly rateColumns: RateColumnsService,
   ) {}
 
   private sanitize(q: Quotation) {
@@ -166,6 +172,20 @@ export class QuotationsService {
             a.sortOrder - b.sortOrder,
         )
         .map((r) => this.rowToData(r));
+
+      const { columns: geo } =
+        await this.rateColumns.rateGeographyForUser(user.id);
+      const synced = syncMatrixToGeography(
+        { columns, rows },
+        geo.map((c) => ({
+          id: c.id,
+          label: c.label,
+          sortOrder: c.sortOrder,
+        })),
+        'quotation',
+      );
+      columns = synced.columns;
+      rows = synced.rows as RateRowData[];
     }
 
     const quotation = await this.quotationsRepo.save(
@@ -232,6 +252,29 @@ export class QuotationsService {
     });
     if (!quotation) {
       throw new NotFoundException('Quotation not found');
+    }
+    this.assertOwner(quotation, user);
+    return this.sanitize(quotation);
+  }
+
+  /** Latest issued quotation for a customer (for account booking rates) */
+  async latestIssuedForCustomer(customerId: string, user: AuthUser) {
+    await this.loadCustomer(customerId, user);
+    const quotation = await this.quotationsRepo.findOne({
+      where: {
+        customerId,
+        status: QuotationStatus.ISSUED,
+      },
+      order: { quotationDate: 'DESC', createdAt: 'DESC' },
+      relations: {
+        customer: true,
+        template: true,
+      },
+    });
+    if (!quotation) {
+      throw new NotFoundException(
+        'No issued quotation found for this customer',
+      );
     }
     this.assertOwner(quotation, user);
     return this.sanitize(quotation);

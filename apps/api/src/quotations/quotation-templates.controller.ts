@@ -9,8 +9,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { Role } from '@courier/shared';
-import { IsOptional, IsString } from 'class-validator';
+import { RateTemplateKind, Role } from '@courier/shared';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -27,6 +27,10 @@ class TemplateQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsEnum(RateTemplateKind)
+  kind?: RateTemplateKind;
 }
 
 @Controller('quotation-templates')
@@ -41,6 +45,11 @@ export class QuotationTemplatesController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.templatesService.create(dto, user);
+  }
+
+  @Get('cash/mine')
+  cashMine(@CurrentUser() user: AuthUser) {
+    return this.templatesService.getOrCreateCashTemplate(user);
   }
 
   @Get()

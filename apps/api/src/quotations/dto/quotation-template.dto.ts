@@ -1,7 +1,9 @@
+import { RateTemplateKind } from '@courier/shared';
 import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsObject,
   IsOptional,
@@ -80,6 +82,10 @@ export class CreateQuotationTemplateDto {
   @IsString()
   @MinLength(2)
   name: string;
+
+  @IsOptional()
+  @IsEnum(RateTemplateKind)
+  kind?: RateTemplateKind;
 
   @IsOptional()
   @IsBoolean()
