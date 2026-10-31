@@ -1,14 +1,16 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from 'primereact/button';
-import { Column } from 'primereact/column';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { DataTable } from 'primereact/datatable';
-import { Dialog } from 'primereact/dialog';
-import { Dropdown } from 'primereact/dropdown';
-import { InputText } from 'primereact/inputtext';
-import { Tag } from 'primereact/tag';
+import {
+  Button,
+  ConfirmDialog,
+  confirmDialog,
+  DataTable,
+  Dialog,
+  InputText,
+  Select,
+  Tag,
+} from '@/components/ui';
 import { useState } from 'react';
 import { ListPaginator, ListToolbar } from '@/components/ListControls';
 import { api } from '@/lib/api';
@@ -118,7 +120,6 @@ export default function CitiesPage() {
     confirmDialog({
       header: 'Delete city',
       message: `Delete "${row.name}"?`,
-      icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',
@@ -158,7 +159,7 @@ export default function CitiesPage() {
         onSortChange={list.setSortKey}
         sortOptions={SORT_OPTIONS}
         extra={
-          <Dropdown
+          <Select
             value={stateFilter}
             options={[{ label: 'All states', value: null }, ...stateOptions]}
             onChange={(e) => {
@@ -172,43 +173,46 @@ export default function CitiesPage() {
       />
       {listError ? <p className="error-text">{listError}</p> : null}
       <div className="panel">
-        <DataTable value={listQuery.data?.data ?? []} loading={listQuery.isLoading}>
-          <Column field="name" header="City" />
-          <Column
-            header="State"
-            body={(row: CityRow) => row.state?.name ?? '—'}
-          />
-          <Column
-            header="Status"
-            body={(row: CityRow) => (
-              <Tag
-                value={row.isActive ? 'Active' : 'Inactive'}
-                severity={row.isActive ? 'success' : 'danger'}
-              />
-            )}
-          />
-          <Column
-            header="Actions"
-            body={(row: CityRow) => (
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                <Button
-                  size="small"
-                  text
-                  label={row.isActive ? 'Deactivate' : 'Activate'}
-                  onClick={() => toggleMutation.mutate(row)}
-                />
-                <Button
-                  size="small"
-                  text
-                  severity="danger"
-                  icon="pi pi-trash"
-                  label="Delete"
-                  onClick={() => askDelete(row)}
-                />
-              </div>
-            )}
-          />
-        </DataTable>
+        <DataTable
+          value={listQuery.data?.data ?? []}
+          loading={listQuery.isLoading}
+          columns={[
+            { field: 'name', header: 'City' },
+            {
+              header: 'State',
+              body: (row: CityRow) => row.state?.name ?? '—',
+            },
+            {
+              header: 'Status',
+              body: (row: CityRow) => (
+                <Tag severity={row.isActive ? 'success' : 'danger'}>
+                  {row.isActive ? 'Active' : 'Inactive'}
+                </Tag>
+              ),
+            },
+            {
+              header: 'Actions',
+              body: (row: CityRow) => (
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <Button
+                    size="small"
+                    text
+                    label={row.isActive ? 'Deactivate' : 'Activate'}
+                    onClick={() => toggleMutation.mutate(row)}
+                  />
+                  <Button
+                    size="small"
+                    text
+                    severity="danger"
+                    icon="pi pi-trash"
+                    label="Delete"
+                    onClick={() => askDelete(row)}
+                  />
+                </div>
+              ),
+            },
+          ]}
+        />
         <ListPaginator
           meta={meta}
           onPageChange={list.setPage}
@@ -225,12 +229,11 @@ export default function CitiesPage() {
         <div className="form-grid">
           <div className="field full">
             <label>State</label>
-            <Dropdown
+            <Select
               value={form.stateId || null}
               options={stateOptions}
               onChange={(e) => setForm({ ...form, stateId: e.value })}
               placeholder="Select state"
-              filter
               style={{ width: '100%' }}
             />
           </div>

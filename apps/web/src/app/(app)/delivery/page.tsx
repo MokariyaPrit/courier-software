@@ -2,9 +2,7 @@
 
 import { ConsignmentStatus } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from 'primereact/button';
-import { Column } from 'primereact/column';
-import { DataTable } from 'primereact/datatable';
+import { Button, DataTable } from '@/components/ui';
 import { ListPaginator, ListToolbar } from '@/components/ListControls';
 import { api } from '@/lib/api';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
@@ -77,40 +75,41 @@ export default function DeliveryPage() {
           value={listQuery.data?.data ?? []}
           loading={listQuery.isLoading}
           emptyMessage="No OFD consignments"
-        >
-          <Column field="awb" header="AWB" />
-          <Column field="receiverName" header="Receiver" />
-          <Column field="receiverPhone" header="Phone" />
-          <Column field="receiverAddress" header="Address" />
-          <Column
-            header="Actions"
-            body={(row: OfdRow) => (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <Button
-                  size="small"
-                  label="Delivered"
-                  onClick={() =>
-                    updateMutation.mutate({
-                      id: row.id,
-                      status: ConsignmentStatus.DELIVERED,
-                    })
-                  }
-                />
-                <Button
-                  size="small"
-                  severity="warning"
-                  label="Failed"
-                  onClick={() =>
-                    updateMutation.mutate({
-                      id: row.id,
-                      status: ConsignmentStatus.FAILED_ATTEMPT,
-                    })
-                  }
-                />
-              </div>
-            )}
-          />
-        </DataTable>
+          columns={[
+            { field: 'awb', header: 'AWB' },
+            { field: 'receiverName', header: 'Receiver' },
+            { field: 'receiverPhone', header: 'Phone' },
+            { field: 'receiverAddress', header: 'Address' },
+            {
+              header: 'Actions',
+              body: (row: OfdRow) => (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <Button
+                    size="small"
+                    label="Delivered"
+                    onClick={() =>
+                      updateMutation.mutate({
+                        id: row.id,
+                        status: ConsignmentStatus.DELIVERED,
+                      })
+                    }
+                  />
+                  <Button
+                    size="small"
+                    severity="warn"
+                    label="Failed"
+                    onClick={() =>
+                      updateMutation.mutate({
+                        id: row.id,
+                        status: ConsignmentStatus.FAILED_ATTEMPT,
+                      })
+                    }
+                  />
+                </div>
+              ),
+            },
+          ]}
+        />
         <ListPaginator
           meta={meta}
           onPageChange={list.setPage}

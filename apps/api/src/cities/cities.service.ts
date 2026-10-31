@@ -82,7 +82,9 @@ export class CitiesService {
   async findOne(id: string) {
     const row = await this.repo.findOne({
       where: { id },
-      relations: ['state'],
+      relations: {
+        state: true,
+      },
     });
     if (!row) {
       throw new NotFoundException('City not found');

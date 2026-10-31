@@ -1,9 +1,6 @@
 'use client';
 
-import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
-import { InputText } from 'primereact/inputtext';
-import { Tag } from 'primereact/tag';
+import { Button, Dialog, InputText, Tag } from '@/components/ui';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -183,10 +180,9 @@ export default function ProfilePage() {
           <div className="profile-row">
             <span className="profile-label">Account status</span>
             <span className="profile-value">
-              <Tag
-                value={user.isActive ? 'Active' : 'Inactive'}
-                severity={user.isActive ? 'success' : 'danger'}
-              />
+              <Tag severity={user.isActive ? 'success' : 'danger'}>
+                {user.isActive ? 'Active' : 'Inactive'}
+              </Tag>
             </span>
           </div>
         </section>

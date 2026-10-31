@@ -105,7 +105,11 @@ export class CustomersService {
   async findOne(id: string, user: AuthUser) {
     const customer = await this.repo.findOne({
       where: { id },
-      relations: ['createdBy', 'createdBy.userInfo'],
+      relations: {
+        createdBy: {
+          userInfo: true,
+        },
+      },
     });
     if (!customer) {
       throw new NotFoundException('Customer not found');

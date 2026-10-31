@@ -1,9 +1,7 @@
 'use client';
 
-import { Dropdown } from 'primereact/dropdown';
-import { InputText } from 'primereact/inputtext';
-import { Paginator, PaginatorPageChangeEvent } from 'primereact/paginator';
 import type { ReactNode } from 'react';
+import { InputText, Paginator, type PaginatorPageChangeEvent, Select } from '@/components/ui';
 import {
   ListMeta,
   PAGE_SIZE_OPTIONS,
@@ -49,10 +47,10 @@ export function ListToolbar({
           />
         </span>
       ) : null}
-      <Dropdown
+      <Select
         value={sortKey}
         options={options}
-        onChange={(e) => onSortChange(e.value)}
+        onChange={(e) => onSortChange(String(e.value))}
         placeholder="Sort by"
         className="list-sort"
       />
@@ -92,7 +90,6 @@ export function ListPaginator({
         totalRecords={meta.total}
         rowsPerPageOptions={PAGE_SIZE_OPTIONS.map((o) => o.value)}
         onPageChange={handleChange}
-        template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
       />
     </div>
   );

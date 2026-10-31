@@ -3,8 +3,8 @@
 import { Role } from '@courier/shared';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Button } from 'primereact/button';
 import { useEffect } from 'react';
+import { Button } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 
 const NAV = [

@@ -69,7 +69,11 @@ export class TrackingService {
     }
     const events = await this.eventsRepo.find({
       where: { consignmentId: id },
-      relations: ['createdBy', 'createdBy.userInfo'],
+      relations: {
+        createdBy: {
+          userInfo: true,
+        },
+      },
       order: { createdAt: 'ASC' },
     });
     return events.map((event) => {

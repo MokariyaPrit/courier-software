@@ -1,7 +1,7 @@
 'use client';
 
-import { InputText } from 'primereact/inputtext';
 import { FocusEvent, useState } from 'react';
+import { InputText } from '@/components/ui';
 
 interface PasswordInputProps {
   id?: string;

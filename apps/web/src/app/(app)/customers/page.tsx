@@ -2,15 +2,18 @@
 
 import { Role } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from 'primereact/button';
-import { Column } from 'primereact/column';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { DataTable } from 'primereact/datatable';
-import { Dialog } from 'primereact/dialog';
-import { InputSwitch } from 'primereact/inputswitch';
-import { InputText } from 'primereact/inputtext';
-import { Tag } from 'primereact/tag';
-import { useState } from 'react';
+import {
+  Button,
+  ConfirmDialog,
+  confirmDialog,
+  DataTable,
+  Dialog,
+  InputText,
+  Tag,
+  ToggleSwitch,
+  type AppColumn,
+} from '@/components/ui';
+import { useMemo, useState } from 'react';
 import { ListPaginator, ListToolbar } from '@/components/ListControls';
 import { api, unwrap } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -192,7 +195,6 @@ export default function CustomersPage() {
     confirmDialog({
       header: 'Delete customer',
       message: `Delete "${row.name}"?`,
-      icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',
@@ -209,6 +211,55 @@ export default function CustomersPage() {
   const setField = (key: keyof CustomerForm, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
+
+  const tableColumns = useMemo((): AppColumn<Customer>[] => {
+    const cols: AppColumn<Customer>[] = [
+      { field: 'name', header: 'Name' },
+      { field: 'primaryPhone', header: 'Primary phone' },
+      { field: 'secondaryPhone', header: 'Secondary phone' },
+      { field: 'primaryEmail', header: 'Primary email' },
+      { field: 'secondaryEmail', header: 'Secondary email' },
+      { field: 'city', header: 'City' },
+      {
+        header: 'Status',
+        body: (row) => (
+          <Tag severity={row.isActive ? 'success' : 'danger'}>
+            {row.isActive ? 'Active' : 'Inactive'}
+          </Tag>
+        ),
+      },
+    ];
+    if (user?.role === Role.ADMIN) {
+      cols.push({
+        header: 'Owner',
+        body: (row) =>
+          row.createdBy?.userInfo?.fullName || row.createdBy?.email || '—',
+      });
+    }
+    cols.push({
+      header: 'Actions',
+      body: (row) => (
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+          <Button
+            size="small"
+            text
+            icon="pi pi-pencil"
+            label="Edit"
+            onClick={() => openEdit(row)}
+          />
+          <Button
+            size="small"
+            text
+            severity="danger"
+            icon="pi pi-trash"
+            label="Delete"
+            onClick={() => askDelete(row)}
+          />
+        </div>
+      ),
+    });
+    return cols;
+  }, [user?.role]);
 
   return (
     <div>
@@ -234,55 +285,8 @@ export default function CustomersPage() {
         <DataTable
           value={listQuery.data?.data ?? []}
           loading={listQuery.isLoading}
-        >
-          <Column field="name" header="Name" />
-          <Column field="primaryPhone" header="Primary phone" />
-          <Column field="secondaryPhone" header="Secondary phone" />
-          <Column field="primaryEmail" header="Primary email" />
-          <Column field="secondaryEmail" header="Secondary email" />
-          <Column field="city" header="City" />
-          <Column
-            header="Status"
-            body={(row: Customer) => (
-              <Tag
-                value={row.isActive ? 'Active' : 'Inactive'}
-                severity={row.isActive ? 'success' : 'danger'}
-              />
-            )}
-          />
-          {user?.role === Role.ADMIN ? (
-            <Column
-              header="Owner"
-              body={(row: Customer) =>
-                row.createdBy?.userInfo?.fullName ||
-                row.createdBy?.email ||
-                '—'
-              }
-            />
-          ) : null}
-          <Column
-            header="Actions"
-            body={(row: Customer) => (
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                <Button
-                  size="small"
-                  text
-                  icon="pi pi-pencil"
-                  label="Edit"
-                  onClick={() => openEdit(row)}
-                />
-                <Button
-                  size="small"
-                  text
-                  severity="danger"
-                  icon="pi pi-trash"
-                  label="Delete"
-                  onClick={() => askDelete(row)}
-                />
-              </div>
-            )}
-          />
-        </DataTable>
+          columns={tableColumns}
+        />
         <ListPaginator
           meta={meta}
           onPageChange={list.setPage}
@@ -392,7 +396,7 @@ export default function CustomersPage() {
                 {form.isActive ? 'Active' : 'Inactive'}
               </p>
             </div>
-            <InputSwitch
+            <ToggleSwitch
               checked={form.isActive}
               onChange={(e) => setField('isActive', Boolean(e.value))}
             />

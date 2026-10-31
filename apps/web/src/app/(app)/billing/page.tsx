@@ -1,13 +1,14 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from 'primereact/button';
-import { Column } from 'primereact/column';
-import { DataTable } from 'primereact/datatable';
-import { Dialog } from 'primereact/dialog';
-import { Dropdown } from 'primereact/dropdown';
-import { InputText } from 'primereact/inputtext';
-import { MultiSelect } from 'primereact/multiselect';
+import {
+  Button,
+  DataTable,
+  Dialog,
+  InputText,
+  MultiSelect,
+  Select,
+} from '@/components/ui';
 import { useState } from 'react';
 import { ListPaginator, ListToolbar } from '@/components/ListControls';
 import { api } from '@/lib/api';
@@ -109,19 +110,20 @@ export default function BillingPage() {
         <DataTable
           value={invoicesQuery.data?.data ?? []}
           loading={invoicesQuery.isLoading}
-        >
-          <Column field="invoiceNumber" header="Invoice #" />
-          <Column
-            header="Customer"
-            body={(row: Invoice) => row.customer?.name ?? '—'}
-          />
-          <Column field="totalAmount" header="Amount" />
-          <Column field="status" header="Status" />
-          <Column
-            header="Created"
-            body={(row: Invoice) => new Date(row.createdAt).toLocaleString()}
-          />
-        </DataTable>
+          columns={[
+            { field: 'invoiceNumber', header: 'Invoice #' },
+            {
+              header: 'Customer',
+              body: (row: Invoice) => row.customer?.name ?? '—',
+            },
+            { field: 'totalAmount', header: 'Amount' },
+            { field: 'status', header: 'Status' },
+            {
+              header: 'Created',
+              body: (row: Invoice) => new Date(row.createdAt).toLocaleString(),
+            },
+          ]}
+        />
         <ListPaginator
           meta={meta}
           onPageChange={list.setPage}
@@ -133,7 +135,7 @@ export default function BillingPage() {
         <div className="form-grid">
           <div className="field full">
             <label>Customer</label>
-            <Dropdown
+            <Select
               value={customerId}
               options={(customersQuery.data?.data ?? []).map((c) => ({
                 label: c.name,
@@ -154,7 +156,6 @@ export default function BillingPage() {
               }))}
               onChange={(e) => setConsignmentIds(e.value)}
               placeholder="Select AWBs"
-              display="chip"
               style={{ width: '100%' }}
             />
           </div>

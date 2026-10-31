@@ -95,7 +95,9 @@ export class UsersService {
   async findOne(id: string) {
     const user = await this.usersRepo.findOne({
       where: { id },
-      relations: ['userInfo'],
+      relations: {
+        userInfo: true,
+      },
     });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -106,7 +108,9 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto) {
     const user = await this.usersRepo.findOne({
       where: { id },
-      relations: ['userInfo'],
+      relations: {
+        userInfo: true,
+      },
     });
     if (!user) {
       throw new NotFoundException('User not found');

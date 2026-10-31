@@ -89,7 +89,9 @@ export class AuthService {
   async login(dto: LoginDto, res: Response) {
     const user = await this.usersRepo.findOne({
       where: { email: dto.email.toLowerCase() },
-      relations: ['userInfo'],
+      relations: {
+        userInfo: true,
+      },
     });
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
@@ -117,7 +119,9 @@ export class AuthService {
       });
       const user = await this.usersRepo.findOne({
         where: { id: payload.sub },
-        relations: ['userInfo'],
+        relations: {
+          userInfo: true,
+        },
       });
       if (!user || !user.isActive) {
         throw new UnauthorizedException('Invalid session');
@@ -132,7 +136,9 @@ export class AuthService {
   async me(userId: string) {
     const user = await this.usersRepo.findOne({
       where: { id: userId },
-      relations: ['userInfo'],
+      relations: {
+        userInfo: true,
+      },
     });
     if (!user) {
       throw new UnauthorizedException();

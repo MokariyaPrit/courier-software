@@ -2,14 +2,15 @@
 
 import { Role } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from 'primereact/button';
-import { Column } from 'primereact/column';
-import { DataTable } from 'primereact/datatable';
-import { Dialog } from 'primereact/dialog';
-import { Dropdown } from 'primereact/dropdown';
-import { InputSwitch } from 'primereact/inputswitch';
-import { InputText } from 'primereact/inputtext';
-import { Tag } from 'primereact/tag';
+import {
+  Button,
+  DataTable,
+  Dialog,
+  InputText,
+  Select,
+  Tag,
+  ToggleSwitch,
+} from '@/components/ui';
 import { Dispatch, SetStateAction, useState } from 'react';
 import { ListPaginator, ListToolbar } from '@/components/ListControls';
 import { PasswordInput } from '@/components/PasswordInput';
@@ -213,7 +214,7 @@ function UserFormFields({
 
       <div className="field">
         <label>User role</label>
-        <Dropdown
+        <Select
           value={state.userRole}
           options={ROLE_OPTIONS}
           onChange={(e) =>
@@ -318,7 +319,7 @@ function UserFormFields({
             {state.isActive ? 'Active' : 'Inactive'}
           </p>
         </div>
-        <InputSwitch
+        <ToggleSwitch
           checked={state.isActive}
           onChange={(e) =>
             setState((prev) => ({ ...prev, isActive: Boolean(e.value) }))
@@ -504,47 +505,47 @@ export default function UsersPage() {
         <DataTable
           value={usersQuery.data?.data ?? []}
           loading={usersQuery.isLoading}
-        >
-          <Column
-            header="Full name"
-            body={(row: UserRow) => row.userInfo?.fullName ?? '—'}
-          />
-          <Column field="email" header="Email" />
-          <Column field="role" header="Role" />
-          <Column
-            header="Company"
-            body={(row: UserRow) => row.userInfo?.companyName ?? '—'}
-          />
-          <Column
-            header="Status"
-            body={(row: UserRow) => (
-              <Tag
-                value={row.isActive ? 'Active' : 'Inactive'}
-                severity={row.isActive ? 'success' : 'danger'}
-              />
-            )}
-          />
-          <Column
-            header="Actions"
-            body={(row: UserRow) => (
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                <Button
-                  size="small"
-                  icon="pi pi-pencil"
-                  label="Edit"
-                  text
-                  onClick={() => openEdit(row)}
-                />
-                <Button
-                  size="small"
-                  text
-                  label={row.isActive ? 'Deactivate' : 'Activate'}
-                  onClick={() => toggleMutation.mutate(row)}
-                />
-              </div>
-            )}
-          />
-        </DataTable>
+          columns={[
+            {
+              header: 'Full name',
+              body: (row: UserRow) => row.userInfo?.fullName ?? '—',
+            },
+            { field: 'email', header: 'Email' },
+            { field: 'role', header: 'Role' },
+            {
+              header: 'Company',
+              body: (row: UserRow) => row.userInfo?.companyName ?? '—',
+            },
+            {
+              header: 'Status',
+              body: (row: UserRow) => (
+                <Tag severity={row.isActive ? 'success' : 'danger'}>
+                  {row.isActive ? 'Active' : 'Inactive'}
+                </Tag>
+              ),
+            },
+            {
+              header: 'Actions',
+              body: (row: UserRow) => (
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <Button
+                    size="small"
+                    icon="pi pi-pencil"
+                    label="Edit"
+                    text
+                    onClick={() => openEdit(row)}
+                  />
+                  <Button
+                    size="small"
+                    text
+                    label={row.isActive ? 'Deactivate' : 'Activate'}
+                    onClick={() => toggleMutation.mutate(row)}
+                  />
+                </div>
+              ),
+            },
+          ]}
+        />
         <ListPaginator
           meta={
             usersQuery.data?.meta ?? {

@@ -49,7 +49,9 @@ export class BillingService {
 
     const consignments = await this.consignmentsRepo.find({
       where: { id: In(dto.consignmentIds) },
-      relations: ['charges'],
+      relations: {
+        charges: true,
+      },
     });
     if (consignments.length !== dto.consignmentIds.length) {
       throw new BadRequestException('One or more consignments not found');
@@ -78,7 +80,9 @@ export class BillingService {
 
   async findAll(query: PaginationDto) {
     const [items, total] = await this.invoicesRepo.findAndCount({
-      relations: ['customer'],
+      relations: {
+        customer: true,
+      },
       order: resolveOrder(query, INVOICE_SORT, {
         sortBy: 'createdAt',
         sortOrder: 'DESC',
@@ -95,7 +99,10 @@ export class BillingService {
   async findOne(id: string) {
     const invoice = await this.invoicesRepo.findOne({
       where: { id },
-      relations: ['customer', 'createdBy'],
+      relations: {
+        customer: true,
+        createdBy: true,
+      },
     });
     if (!invoice) {
       throw new NotFoundException('Invoice not found');

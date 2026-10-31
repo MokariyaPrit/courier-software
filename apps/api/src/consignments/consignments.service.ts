@@ -151,15 +151,18 @@ export class ConsignmentsService {
   async findOne(id: string) {
     const consignment = await this.consignmentsRepo.findOne({
       where: { id },
-      relations: [
-        'customer',
-        'charges',
-        'trackingEvents',
-        'trackingEvents.createdBy',
-        'trackingEvents.createdBy.userInfo',
-        'createdBy',
-        'createdBy.userInfo',
-      ],
+      relations: {
+        customer: true,
+        charges: true,
+        trackingEvents: {
+          createdBy: {
+            userInfo: true,
+          },
+        },
+        createdBy: {
+          userInfo: true,
+        },
+      },
     });
     if (!consignment) {
       throw new NotFoundException('Consignment not found');

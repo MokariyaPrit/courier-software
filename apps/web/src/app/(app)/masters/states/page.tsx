@@ -1,13 +1,15 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from 'primereact/button';
-import { Column } from 'primereact/column';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { DataTable } from 'primereact/datatable';
-import { Dialog } from 'primereact/dialog';
-import { InputText } from 'primereact/inputtext';
-import { Tag } from 'primereact/tag';
+import {
+  Button,
+  ConfirmDialog,
+  confirmDialog,
+  DataTable,
+  Dialog,
+  InputText,
+  Tag,
+} from '@/components/ui';
 import { useState } from 'react';
 import { ListPaginator, ListToolbar } from '@/components/ListControls';
 import { api } from '@/lib/api';
@@ -89,7 +91,6 @@ export default function StatesPage() {
     confirmDialog({
       header: 'Delete state',
       message: `Delete "${row.name}"? Only allowed if no cities are linked.`,
-      icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',
@@ -128,39 +129,42 @@ export default function StatesPage() {
       />
       {listError ? <p className="error-text">{listError}</p> : null}
       <div className="panel">
-        <DataTable value={listQuery.data?.data ?? []} loading={listQuery.isLoading}>
-          <Column field="name" header="State" />
-          <Column
-            header="Status"
-            body={(row: StateRow) => (
-              <Tag
-                value={row.isActive ? 'Active' : 'Inactive'}
-                severity={row.isActive ? 'success' : 'danger'}
-              />
-            )}
-          />
-          <Column
-            header="Actions"
-            body={(row: StateRow) => (
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                <Button
-                  size="small"
-                  text
-                  label={row.isActive ? 'Deactivate' : 'Activate'}
-                  onClick={() => toggleMutation.mutate(row)}
-                />
-                <Button
-                  size="small"
-                  text
-                  severity="danger"
-                  icon="pi pi-trash"
-                  label="Delete"
-                  onClick={() => askDelete(row)}
-                />
-              </div>
-            )}
-          />
-        </DataTable>
+        <DataTable
+          value={listQuery.data?.data ?? []}
+          loading={listQuery.isLoading}
+          columns={[
+            { field: 'name', header: 'State' },
+            {
+              header: 'Status',
+              body: (row: StateRow) => (
+                <Tag severity={row.isActive ? 'success' : 'danger'}>
+                  {row.isActive ? 'Active' : 'Inactive'}
+                </Tag>
+              ),
+            },
+            {
+              header: 'Actions',
+              body: (row: StateRow) => (
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <Button
+                    size="small"
+                    text
+                    label={row.isActive ? 'Deactivate' : 'Activate'}
+                    onClick={() => toggleMutation.mutate(row)}
+                  />
+                  <Button
+                    size="small"
+                    text
+                    severity="danger"
+                    icon="pi pi-trash"
+                    label="Delete"
+                    onClick={() => askDelete(row)}
+                  />
+                </div>
+              ),
+            },
+          ]}
+        />
         <ListPaginator
           meta={meta}
           onPageChange={list.setPage}

@@ -192,7 +192,9 @@ async function run() {
 
   let admin = await users.findOne({
     where: { email: adminEmail },
-    relations: ['userInfo'],
+    relations: {
+      userInfo: true,
+    },
   });
   if (!admin) {
     admin = await users.save(
@@ -225,7 +227,9 @@ async function run() {
 
   let bm = await users.findOne({
     where: { email: bmEmail },
-    relations: ['userInfo'],
+    relations: {
+      userInfo: true,
+    },
   });
   if (!bm) {
     bm = await users.save(

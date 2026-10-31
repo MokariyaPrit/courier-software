@@ -1,8 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
+import { Button, InputText } from '@/components/ui';
 import { FormEvent, useEffect, useState } from 'react';
 import { PasswordInput } from '@/components/PasswordInput';
 import { useAuth } from '@/lib/auth';

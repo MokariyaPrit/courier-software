@@ -3,9 +3,7 @@
 import { CONSIGNMENT_STATUS_FLOW, ConsignmentStatus } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
-import { Button } from 'primereact/button';
-import { Dropdown } from 'primereact/dropdown';
-import { InputText } from 'primereact/inputtext';
+import { Button, InputText, Select } from '@/components/ui';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
 
@@ -110,7 +108,7 @@ function TrackingInner() {
               <p className="muted">Terminal status — no further transitions.</p>
             ) : (
               <div className="toolbar">
-                <Dropdown
+                <Select
                   value={nextStatus}
                   options={allowed.map((s) => ({ label: s, value: s }))}
                   onChange={(e) => setNextStatus(e.value)}

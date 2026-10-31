@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import 'primeicons/primeicons.css';
-import 'primereact/resources/themes/lara-light-teal/theme.css';
-import 'primereact/resources/primereact.min.css';
 import { Providers } from '@/components/Providers';
 import '@/styles/global-theme.css';
 import './globals.css';

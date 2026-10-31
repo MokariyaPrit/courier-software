@@ -3,14 +3,15 @@
 import { ChargeType, ServiceType } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Button } from 'primereact/button';
-import { Column } from 'primereact/column';
-import { DataTable } from 'primereact/datatable';
-import { Dialog } from 'primereact/dialog';
-import { Dropdown } from 'primereact/dropdown';
-import { InputNumber } from 'primereact/inputnumber';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
+import {
+  Button,
+  DataTable,
+  Dialog,
+  InputNumber,
+  InputText,
+  Select,
+  Textarea,
+} from '@/components/ui';
 import { useMemo, useState } from 'react';
 import { ListPaginator, ListToolbar } from '@/components/ListControls';
 import { api } from '@/lib/api';
@@ -133,29 +134,31 @@ export default function BookingsPage() {
         sortOptions={SORT_OPTIONS}
       />
       <div className="panel">
-        <DataTable value={listQuery.data?.data ?? []} loading={listQuery.isLoading}>
-          <Column
-            field="awb"
-            header="AWB"
-            body={(row: ConsignmentRow) => (
-              <Link href={`/tracking?awb=${row.awb}`}>{row.awb}</Link>
-            )}
-          />
-          <Column field="receiverName" header="Receiver" />
-          <Column field="status" header="Status" />
-          <Column
-            header="Created by"
-            body={(row: ConsignmentRow) =>
-              row.createdBy?.userInfo?.fullName ?? '—'
-            }
-          />
-          <Column
-            header="Created"
-            body={(row: ConsignmentRow) =>
-              new Date(row.createdAt).toLocaleString()
-            }
-          />
-        </DataTable>
+        <DataTable
+          value={listQuery.data?.data ?? []}
+          loading={listQuery.isLoading}
+          columns={[
+            {
+              field: 'awb',
+              header: 'AWB',
+              body: (row: ConsignmentRow) => (
+                <Link href={`/tracking?awb=${row.awb}`}>{row.awb}</Link>
+              ),
+            },
+            { field: 'receiverName', header: 'Receiver' },
+            { field: 'status', header: 'Status' },
+            {
+              header: 'Created by',
+              body: (row: ConsignmentRow) =>
+                row.createdBy?.userInfo?.fullName ?? '—',
+            },
+            {
+              header: 'Created',
+              body: (row: ConsignmentRow) =>
+                new Date(row.createdAt).toLocaleString(),
+            },
+          ]}
+        />
         <ListPaginator
           meta={meta}
           onPageChange={list.setPage}
@@ -180,7 +183,7 @@ export default function BookingsPage() {
           </div>
           <div className="field full">
             <label>Sender address</label>
-            <InputTextarea value={form.senderAddress} onChange={(e) => setForm({ ...form, senderAddress: e.target.value })} rows={2} style={{ width: '100%' }} />
+            <Textarea value={form.senderAddress} onChange={(e) => setForm({ ...form, senderAddress: e.target.value })} rows={2} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>Receiver name</label>
@@ -192,7 +195,7 @@ export default function BookingsPage() {
           </div>
           <div className="field full">
             <label>Receiver address</label>
-            <InputTextarea value={form.receiverAddress} onChange={(e) => setForm({ ...form, receiverAddress: e.target.value })} rows={2} style={{ width: '100%' }} />
+            <Textarea value={form.receiverAddress} onChange={(e) => setForm({ ...form, receiverAddress: e.target.value })} rows={2} style={{ width: '100%' }} />
           </div>
           <div className="field">
             <label>City</label>
@@ -220,7 +223,7 @@ export default function BookingsPage() {
           </div>
           <div className="field">
             <label>Service</label>
-            <Dropdown value={form.serviceType} options={serviceOptions} onChange={(e) => setForm({ ...form, serviceType: e.value })} style={{ width: '100%' }} />
+            <Select value={form.serviceType} options={serviceOptions} onChange={(e) => setForm({ ...form, serviceType: e.value })} style={{ width: '100%' }} />
           </div>
           <div className="field full">
             <label>Remarks</label>
