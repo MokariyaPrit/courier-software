@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: courier-erp-db
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: courier
+      POSTGRES_PASSWORD: courier
+      POSTGRES_DB: courier_erp
+    volumes:
+      - courier_pg_data:/var/lib/postgresql/data
+
+volumes:
+  courier_pg_data:

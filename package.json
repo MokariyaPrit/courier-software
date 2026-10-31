@@ -1,0 +1,21 @@
+{
+  "name": "courier-erp",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @courier/api --filter @courier/web run dev",
+    "dev:api": "pnpm --filter @courier/api dev",
+    "dev:web": "pnpm --filter @courier/web dev",
+    "build": "pnpm --filter @courier/shared build && pnpm --filter @courier/api build && pnpm --filter @courier/web build",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:embedded": "pnpm --filter @courier/api db:embedded",
+    "seed": "pnpm --filter @courier/api seed"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
