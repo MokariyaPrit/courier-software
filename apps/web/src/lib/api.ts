@@ -1,7 +1,9 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+
+type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -9,26 +11,43 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+function isAuthBootstrapUrl(url?: string) {
+  const path = String(url || '');
+  return (
+    path.includes('/auth/login') ||
+    path.includes('/auth/refresh') ||
+    path.includes('/auth/signup') ||
+    path.includes('/auth/logout')
+  );
+}
+
 api.interceptors.response.use(
   (res) => res,
-  async (error) => {
-    const original = error.config;
+  async (error: AxiosError) => {
+    const original = error.config as RetryConfig | undefined;
+
+    // Never try to refresh again on auth bootstrap endpoints (avoids refresh loops → 429)
     if (
       error.response?.status === 401 &&
       original &&
       !original._retry &&
-      !String(original.url || '').includes('/auth/login')
+      !isAuthBootstrapUrl(original.url)
     ) {
       original._retry = true;
       try {
         await api.post('/auth/refresh');
         return api(original);
       } catch {
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        if (
+          typeof window !== 'undefined' &&
+          !window.location.pathname.startsWith('/login') &&
+          !window.location.pathname.startsWith('/signup')
+        ) {
           window.location.href = '/login';
         }
       }
     }
+
     return Promise.reject(error);
   },
 );
