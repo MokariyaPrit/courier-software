@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
-import { Password } from 'primereact/password';
 import { FormEvent, useEffect, useState } from 'react';
+import { PasswordInput } from '@/components/PasswordInput';
 import { useAuth } from '@/lib/auth';
 import { trimFormData } from '@/lib/trim';
 
@@ -57,14 +57,11 @@ export default function LoginPage() {
         </div>
         <div className="field">
           <label htmlFor="password">Password</label>
-          <Password
+          <PasswordInput
             id="password"
-            feedback={false}
-            toggleMask
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            inputStyle={{ width: '100%' }}
-            style={{ width: '100%' }}
+            autoComplete="current-password"
+            onChange={setPassword}
           />
         </div>
         {error ? <p className="error-text">{error}</p> : null}

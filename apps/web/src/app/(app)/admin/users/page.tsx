@@ -9,9 +9,9 @@ import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { InputSwitch } from 'primereact/inputswitch';
 import { InputText } from 'primereact/inputtext';
-import { Password } from 'primereact/password';
 import { Tag } from 'primereact/tag';
 import { Dispatch, SetStateAction, useState } from 'react';
+import { PasswordInput } from '@/components/PasswordInput';
 import { api, unwrap } from '@/lib/api';
 import {
   FieldErrors,
@@ -178,15 +178,12 @@ function UserFormFields({
       <div className={fieldClass(errors, 'password')}>
         <label>
           Password
+          {passwordOptional ? ' (leave blank to keep current)' : ''}
         </label>
-        <Password
-          feedback={false}
-          toggleMask
+        <PasswordInput
           value={state.password}
-          className={errors.password ? 'p-invalid' : undefined}
-          inputClassName={errors.password ? 'p-invalid' : undefined}
-          onChange={(e) => {
-            const value = e.target.value;
+          invalid={Boolean(errors.password)}
+          onChange={(value) => {
             setState((prev) => ({ ...prev, password: value }));
             if (errors.password) {
               clearOrUpdate(
@@ -196,8 +193,6 @@ function UserFormFields({
             }
           }}
           onBlur={() => onBlurField('password')}
-          inputStyle={{ width: '100%' }}
-          style={{ width: '100%' }}
         />
         {errors.password ? (
           <small className="field-error">{errors.password}</small>

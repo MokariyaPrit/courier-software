@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -87,12 +91,17 @@ export class AuthService {
       where: { email: dto.email.toLowerCase() },
       relations: ['userInfo'],
     });
-    if (!user || !user.isActive) {
+    if (!user) {
       throw new UnauthorizedException('Invalid email or password');
     }
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+    if (!user.isActive) {
+      throw new ForbiddenException(
+        'Your account is inactive. Please contact the administrator.',
+      );
     }
     this.setAuthCookies(res, user);
     return this.sanitize(user);
