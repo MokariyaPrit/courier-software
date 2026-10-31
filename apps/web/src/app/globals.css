@@ -1,17 +1,4 @@
-:root {
-  --ink: #0f1c2e;
-  --ink-soft: #4a5d73;
-  --paper: #f3f6f9;
-  --panel: #ffffff;
-  --line: #d7e0ea;
-  --accent: #0b6e4f;
-  --accent-soft: #e6f4ef;
-  --warn: #b45309;
-  --sidebar: #102a43;
-  --sidebar-text: #d9e2ec;
-  --radius: 10px;
-  --font: "Segoe UI", "IBM Plex Sans", system-ui, sans-serif;
-}
+@import '../styles/global-theme.css';
 
 * {
   box-sizing: border-box;
@@ -22,11 +9,11 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  font-family: var(--font);
-  color: var(--ink);
+  font-family: var(--font-family);
+  color: var(--main-text);
   background:
     radial-gradient(circle at top left, #dcecf7 0, transparent 40%),
-    linear-gradient(180deg, #eef3f7 0%, var(--paper) 50%);
+    linear-gradient(180deg, var(--main-background-soft) 0%, var(--main-background) 50%);
 }
 
 a {
@@ -46,26 +33,32 @@ a {
   place-items: center;
   padding: 1.5rem;
   background:
-    linear-gradient(135deg, rgba(16, 42, 67, 0.92), rgba(11, 110, 79, 0.85)),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--header-background) 92%, transparent),
+      color-mix(in srgb, var(--main-primary) 85%, transparent)
+    ),
     url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 
 .login-card {
   width: min(420px, 100%);
-  background: var(--panel);
-  border-radius: 16px;
+  background: var(--main-surface);
+  border-radius: var(--radius-lg);
   padding: 2rem;
-  box-shadow: 0 24px 60px rgba(16, 42, 67, 0.28);
+  box-shadow: var(--shadow-card);
+  color: var(--main-text);
 }
 
 .login-card h1 {
   margin: 0 0 0.35rem;
-  font-size: 1.75rem;
+  font-size: var(--font-size-xl);
+  color: var(--main-text);
 }
 
 .login-card p {
   margin: 0 0 1.5rem;
-  color: var(--ink-soft);
+  color: var(--main-text-muted);
 }
 
 .login-card .field {
@@ -76,6 +69,7 @@ a {
   display: block;
   margin-bottom: 0.35rem;
   font-size: 0.9rem;
+  color: var(--main-text-muted);
 }
 
 .signup-card {
@@ -94,17 +88,22 @@ a {
 .auth-footer-link {
   margin: 1rem 0 0;
   text-align: center;
-  color: var(--ink-soft);
+  color: var(--main-text-muted);
   font-size: 0.9rem;
 }
 
 .auth-footer-link a {
-  color: var(--accent);
+  color: var(--main-primary);
   font-weight: 600;
 }
 
 .success-text {
-  color: #047857;
+  color: var(--status-success);
+  margin: 0.5rem 0;
+}
+
+.error-text {
+  color: var(--status-error);
   margin: 0.5rem 0;
 }
 
@@ -112,14 +111,16 @@ a {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background: var(--main-background);
+  color: var(--main-text);
 }
 
 .topbar {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: var(--sidebar);
-  color: var(--sidebar-text);
+  background: var(--header-background);
+  color: var(--header-text);
   padding: 0.65rem 1rem;
   position: sticky;
   top: 0;
@@ -129,7 +130,7 @@ a {
 .topbar-brand {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--header-text-strong);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -147,16 +148,16 @@ a {
 .nav-link {
   display: inline-block;
   padding: 0.45rem 0.7rem;
-  border-radius: 8px;
-  color: var(--sidebar-text);
+  border-radius: var(--radius-sm);
+  color: var(--header-text);
   white-space: nowrap;
-  font-size: 0.92rem;
+  font-size: var(--font-size-md);
 }
 
 .nav-link:hover,
 .nav-link.active {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: var(--header-hover);
+  color: var(--header-text-strong);
 }
 
 .topbar-user {
@@ -174,12 +175,14 @@ a {
   font-size: 0.8rem;
   text-align: right;
   line-height: 1.2;
+  color: var(--header-text);
 }
 
 .content {
   padding: 1.5rem 1.75rem 2rem;
   min-width: 0;
   flex: 1;
+  color: var(--main-text);
 }
 
 .profile-grid {
@@ -191,6 +194,7 @@ a {
 .profile-card h2 {
   margin: 0;
   font-size: 1.1rem;
+  color: var(--main-text);
 }
 
 .profile-card-header {
@@ -206,7 +210,7 @@ a {
   grid-template-columns: 140px minmax(0, 1fr);
   gap: 0.75rem;
   padding: 0.55rem 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--main-border);
 }
 
 .profile-row:last-child {
@@ -214,13 +218,14 @@ a {
 }
 
 .profile-label {
-  color: var(--ink-soft);
+  color: var(--main-text-muted);
   font-size: 0.9rem;
 }
 
 .profile-value {
   font-weight: 500;
   word-break: break-word;
+  color: var(--main-text);
 }
 
 .page-header {
@@ -233,14 +238,16 @@ a {
 
 .page-header h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: var(--font-size-lg);
+  color: var(--main-text);
 }
 
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  background: var(--main-surface);
+  border: 1px solid var(--main-border);
+  border-radius: var(--radius-md);
   padding: 1rem;
+  color: var(--main-text);
 }
 
 .stats {
@@ -251,21 +258,21 @@ a {
 }
 
 .stat-card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  background: var(--main-surface);
+  border: 1px solid var(--main-border);
+  border-radius: var(--radius-md);
   padding: 1rem 1.1rem;
 }
 
 .stat-card span {
   display: block;
-  color: var(--ink-soft);
-  font-size: 0.85rem;
+  color: var(--main-text-muted);
+  font-size: var(--font-size-sm);
 }
 
 .stat-card strong {
   font-size: 1.6rem;
-  color: var(--accent);
+  color: var(--main-primary);
 }
 
 .form-grid {
@@ -282,7 +289,7 @@ a {
   display: block;
   margin-bottom: 0.35rem;
   font-size: 0.9rem;
-  color: var(--ink-soft);
+  color: var(--main-text-muted);
 }
 
 .toolbar {
@@ -302,7 +309,8 @@ a {
 .timeline li {
   position: relative;
   padding: 0 0 1.25rem 1.25rem;
-  border-left: 2px solid var(--line);
+  border-left: 2px solid var(--main-border);
+  color: var(--main-text);
 }
 
 .timeline li::before {
@@ -313,7 +321,7 @@ a {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--main-primary);
 }
 
 .timeline li:last-child {
@@ -321,13 +329,8 @@ a {
 }
 
 .muted {
-  color: var(--ink-soft);
+  color: var(--main-text-muted);
   font-size: 0.9rem;
-}
-
-.error-text {
-  color: #b91c1c;
-  margin: 0.5rem 0;
 }
 
 @media (max-width: 900px) {

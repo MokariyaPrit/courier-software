@@ -13,6 +13,7 @@ import { Password } from 'primereact/password';
 import { Tag } from 'primereact/tag';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { trimFormData } from '@/lib/trim';
 
 interface UserRow {
   id: string;
@@ -72,19 +73,20 @@ export default function UsersPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      const cleaned = trimFormData(form);
       await api.post('/users', {
-        email: form.emailAddress,
-        password: form.password,
-        role: form.userRole,
-        isActive: form.isActive,
-        fullName: form.fullName,
-        phone: form.phone || undefined,
-        companyName: form.companyName || undefined,
-        gstin: form.gstin || undefined,
-        address: form.address || undefined,
-        city: form.city || undefined,
-        state: form.state || undefined,
-        pincode: form.pincode || undefined,
+        email: cleaned.emailAddress.toLowerCase(),
+        password: cleaned.password,
+        role: cleaned.userRole,
+        isActive: cleaned.isActive,
+        fullName: cleaned.fullName,
+        phone: cleaned.phone || undefined,
+        companyName: cleaned.companyName || undefined,
+        gstin: cleaned.gstin || undefined,
+        address: cleaned.address || undefined,
+        city: cleaned.city || undefined,
+        state: cleaned.state || undefined,
+        pincode: cleaned.pincode || undefined,
       });
     },
     onSuccess: async () => {

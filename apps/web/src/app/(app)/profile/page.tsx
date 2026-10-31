@@ -7,6 +7,7 @@ import { Tag } from 'primereact/tag';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { trimFormData } from '@/lib/trim';
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
@@ -78,17 +79,18 @@ export default function ProfilePage() {
     setSaving(true);
     setErrorMessage('');
     try {
+      const cleaned = trimFormData(form);
       await api.patch('/auth/profile', {
-        fullName: form.fullName.trim(),
-        phone: form.phone || null,
-        infoEmail: form.infoEmail || null,
-        companyName: form.companyName || null,
-        gstin: form.gstin || null,
-        address: form.address || null,
-        city: form.city || null,
-        state: form.state || null,
-        pincode: form.pincode || null,
-        notes: form.notes || null,
+        fullName: cleaned.fullName,
+        phone: cleaned.phone || null,
+        infoEmail: cleaned.infoEmail || null,
+        companyName: cleaned.companyName || null,
+        gstin: cleaned.gstin || null,
+        address: cleaned.address || null,
+        city: cleaned.city || null,
+        state: cleaned.state || null,
+        pincode: cleaned.pincode || null,
+        notes: cleaned.notes || null,
       });
       await refreshMe();
       setEditOpen(false);

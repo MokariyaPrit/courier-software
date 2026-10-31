@@ -13,6 +13,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { useMemo, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
+import { trimFormData } from '@/lib/trim';
 
 interface ConsignmentRow {
   id: string;
@@ -61,24 +62,25 @@ export default function BookingsPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      const cleaned = trimFormData(form);
       await api.post('/consignments', {
-        senderName: form.senderName,
-        senderPhone: form.senderPhone || undefined,
-        senderAddress: form.senderAddress || undefined,
-        receiverName: form.receiverName,
-        receiverPhone: form.receiverPhone || undefined,
-        receiverAddress: form.receiverAddress || undefined,
-        receiverCity: form.receiverCity || undefined,
-        receiverPincode: form.receiverPincode || undefined,
-        weightKg: form.weightKg,
-        pieces: form.pieces,
-        codAmount: form.codAmount,
-        serviceType: form.serviceType,
-        remarks: form.remarks || undefined,
+        senderName: cleaned.senderName,
+        senderPhone: cleaned.senderPhone || undefined,
+        senderAddress: cleaned.senderAddress || undefined,
+        receiverName: cleaned.receiverName,
+        receiverPhone: cleaned.receiverPhone || undefined,
+        receiverAddress: cleaned.receiverAddress || undefined,
+        receiverCity: cleaned.receiverCity || undefined,
+        receiverPincode: cleaned.receiverPincode || undefined,
+        weightKg: cleaned.weightKg,
+        pieces: cleaned.pieces,
+        codAmount: cleaned.codAmount,
+        serviceType: cleaned.serviceType,
+        remarks: cleaned.remarks || undefined,
         charges: [
           {
             type: ChargeType.FREIGHT,
-            amount: form.freight,
+            amount: cleaned.freight,
             description: 'Freight',
           },
         ],

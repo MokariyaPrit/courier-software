@@ -11,6 +11,7 @@ import { Password } from 'primereact/password';
 import { FormEvent, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { trimFormData } from '@/lib/trim';
 
 interface SignupFormState {
   fullName: string;
@@ -84,20 +85,21 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
+      const cleaned = trimFormData(form);
       await api.post('/auth/signup', {
-        email: form.emailAddress.trim().toLowerCase(),
-        password: form.password,
-        role: form.userRole,
-        isActive: form.isActive,
-        fullName: form.fullName.trim(),
-        phone: form.phone || undefined,
-        address: form.address || undefined,
-        city: form.city || undefined,
-        state: form.state || undefined,
-        pincode: form.pincode || undefined,
-        companyName: form.companyName || undefined,
-        gstin: form.gstin || undefined,
-        notes: form.notes || undefined,
+        email: cleaned.emailAddress.toLowerCase(),
+        password: cleaned.password,
+        role: cleaned.userRole,
+        isActive: cleaned.isActive,
+        fullName: cleaned.fullName,
+        phone: cleaned.phone || undefined,
+        address: cleaned.address || undefined,
+        city: cleaned.city || undefined,
+        state: cleaned.state || undefined,
+        pincode: cleaned.pincode || undefined,
+        companyName: cleaned.companyName || undefined,
+        gstin: cleaned.gstin || undefined,
+        notes: cleaned.notes || undefined,
       });
       setSuccessMessage(
         form.isActive

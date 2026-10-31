@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { TrimStringsPipe } from './common/pipes/trim-strings.pipe';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,7 +15,9 @@ async function bootstrap() {
     origin: config.get('CORS_ORIGIN', 'http://localhost:3000'),
     credentials: true,
   });
+  // Trim body/query strings first, then validate
   app.useGlobalPipes(
+    new TrimStringsPipe(),
     new ValidationPipe({
       whitelist: true,
       transform: true,

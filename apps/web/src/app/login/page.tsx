@@ -7,6 +7,7 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import { trimFormData } from '@/lib/trim';
 
 export default function LoginPage() {
   const { user, loading, login } = useAuth();
@@ -27,7 +28,8 @@ export default function LoginPage() {
     setSubmitting(true);
     setError('');
     try {
-      await login(email, password);
+      const cleaned = trimFormData({ email, password });
+      await login(cleaned.email, cleaned.password);
       router.replace('/dashboard');
     } catch (err: unknown) {
       const message =
