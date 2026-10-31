@@ -11,7 +11,7 @@ import {
   Tag,
 } from '@/components/ui';
 import { useState } from 'react';
-import { ListPaginator, ListToolbar } from '@/components/ListControls';
+import { ListFilterChrome, ListSearch } from '@/components/ListControls';
 import { api } from '@/lib/api';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
 import { trimFormData } from '@/lib/trim';
@@ -23,7 +23,7 @@ interface StateRow {
 }
 
 const SORT_OPTIONS: SortOption[] = [
-  { label: 'Name Asc', sortBy: 'name', sortOrder: 'ASC' },
+  { label: 'Name Asc', sortBy: 'name', sortOrder: 'ASC', isDefault: true },
   { label: 'Name Desc', sortBy: 'name', sortOrder: 'DESC' },
   { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC' },
   { label: 'Oldest first', sortBy: 'createdAt', sortOrder: 'ASC' },
@@ -32,7 +32,7 @@ const SORT_OPTIONS: SortOption[] = [
 
 export default function StatesPage() {
   const qc = useQueryClient();
-  const list = useListParams({ defaultSort: SORT_OPTIONS[0] });
+  const list = useListParams({ sortOptions: SORT_OPTIONS });
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -119,57 +119,61 @@ export default function StatesPage() {
           }}
         />
       </div>
-      <ListToolbar
+      <ListSearch
         search={list.search}
         onSearchChange={list.setSearch}
         searchPlaceholder="Search state"
-        sortKey={list.sortKey}
-        onSortChange={list.setSortKey}
-        sortOptions={SORT_OPTIONS}
       />
       {listError ? <p className="error-text">{listError}</p> : null}
       <div className="panel">
-        <DataTable
-          value={listQuery.data?.data ?? []}
-          loading={listQuery.isLoading}
-          columns={[
-            { field: 'name', header: 'State' },
-            {
-              header: 'Status',
-              body: (row: StateRow) => (
-                <Tag severity={row.isActive ? 'success' : 'danger'}>
-                  {row.isActive ? 'Active' : 'Inactive'}
-                </Tag>
-              ),
-            },
-            {
-              header: 'Actions',
-              body: (row: StateRow) => (
-                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                  <Button
-                    size="small"
-                    text
-                    label={row.isActive ? 'Deactivate' : 'Activate'}
-                    onClick={() => toggleMutation.mutate(row)}
-                  />
-                  <Button
-                    size="small"
-                    text
-                    severity="danger"
-                    icon="pi pi-trash"
-                    label="Delete"
-                    onClick={() => askDelete(row)}
-                  />
-                </div>
-              ),
-            },
-          ]}
-        />
-        <ListPaginator
+        <ListFilterChrome
           meta={meta}
+          sortOptions={SORT_OPTIONS}
+          sortKey={list.sortKey}
+          onSortChange={list.setSortKey}
           onPageChange={list.setPage}
           onPageSizeChange={list.setPageSize}
-        />
+          showClearFilters
+          onClearFilters={list.clearFilters}
+          clearFiltersDisabled={!list.hasActiveFilters}
+        >
+          <DataTable
+            value={listQuery.data?.data ?? []}
+            loading={listQuery.isLoading}
+            columns={[
+              { field: 'name', header: 'State' },
+              {
+                header: 'Status',
+                body: (row: StateRow) => (
+                  <Tag severity={row.isActive ? 'success' : 'danger'}>
+                    {row.isActive ? 'Active' : 'Inactive'}
+                  </Tag>
+                ),
+              },
+              {
+                header: 'Actions',
+                body: (row: StateRow) => (
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                    <Button
+                      size="small"
+                      text
+                      label={row.isActive ? 'Deactivate' : 'Activate'}
+                      onClick={() => toggleMutation.mutate(row)}
+                    />
+                    <Button
+                      size="small"
+                      text
+                      severity="danger"
+                      icon="pi pi-trash"
+                      label="Delete"
+                      onClick={() => askDelete(row)}
+                    />
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </ListFilterChrome>
       </div>
 
       <Dialog

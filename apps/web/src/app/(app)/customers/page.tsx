@@ -14,7 +14,7 @@ import {
   type AppColumn,
 } from '@/components/ui';
 import { useMemo, useState } from 'react';
-import { ListPaginator, ListToolbar } from '@/components/ListControls';
+import { ListFilterChrome, ListSearch } from '@/components/ListControls';
 import { api, unwrap } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
@@ -74,7 +74,7 @@ const EMPTY_FORM: CustomerForm = {
 };
 
 const SORT_OPTIONS: SortOption[] = [
-  { label: 'Name Asc', sortBy: 'name', sortOrder: 'ASC' },
+  { label: 'Name Asc', sortBy: 'name', sortOrder: 'ASC', isDefault: true },
   { label: 'Name Desc', sortBy: 'name', sortOrder: 'DESC' },
   { label: 'Primary phone Asc', sortBy: 'primaryPhone', sortOrder: 'ASC' },
   { label: 'Primary email Asc', sortBy: 'primaryEmail', sortOrder: 'ASC' },
@@ -120,7 +120,7 @@ function toPayload(form: CustomerForm) {
 export default function CustomersPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const list = useListParams({ defaultSort: SORT_OPTIONS[0] });
+  const list = useListParams({ sortOptions: SORT_OPTIONS });
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CustomerForm>(EMPTY_FORM);
@@ -272,26 +272,30 @@ export default function CustomersPage() {
         Customers are saved under your login. Branch managers see only their own
         customers; Admin can see all.
       </p>
-      <ListToolbar
+      <ListSearch
         search={list.search}
         onSearchChange={list.setSearch}
         searchPlaceholder="Search name / phone / email"
-        sortKey={list.sortKey}
-        onSortChange={list.setSortKey}
-        sortOptions={SORT_OPTIONS}
       />
       {listError ? <p className="error-text">{listError}</p> : null}
       <div className="panel">
-        <DataTable
-          value={listQuery.data?.data ?? []}
-          loading={listQuery.isLoading}
-          columns={tableColumns}
-        />
-        <ListPaginator
+        <ListFilterChrome
           meta={meta}
+          sortOptions={SORT_OPTIONS}
+          sortKey={list.sortKey}
+          onSortChange={list.setSortKey}
           onPageChange={list.setPage}
           onPageSizeChange={list.setPageSize}
-        />
+          showClearFilters
+          onClearFilters={list.clearFilters}
+          clearFiltersDisabled={!list.hasActiveFilters}
+        >
+          <DataTable
+            value={listQuery.data?.data ?? []}
+            loading={listQuery.isLoading}
+            columns={tableColumns}
+          />
+        </ListFilterChrome>
       </div>
 
       <Dialog

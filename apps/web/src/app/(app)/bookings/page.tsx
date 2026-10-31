@@ -13,7 +13,7 @@ import {
   Textarea,
 } from '@/components/ui';
 import { useMemo, useState } from 'react';
-import { ListPaginator, ListToolbar } from '@/components/ListControls';
+import { ListFilterChrome, ListSearch } from '@/components/ListControls';
 import { api } from '@/lib/api';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
 import { trimFormData } from '@/lib/trim';
@@ -29,7 +29,7 @@ interface ConsignmentRow {
 }
 
 const SORT_OPTIONS: SortOption[] = [
-  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC' },
+  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC', isDefault: true },
   { label: 'Oldest first', sortBy: 'createdAt', sortOrder: 'ASC' },
   { label: 'AWB Asc', sortBy: 'awb', sortOrder: 'ASC' },
   { label: 'AWB Desc', sortBy: 'awb', sortOrder: 'DESC' },
@@ -57,7 +57,7 @@ const emptyForm = {
 
 export default function BookingsPage() {
   const qc = useQueryClient();
-  const list = useListParams({ defaultSort: SORT_OPTIONS[0] });
+  const list = useListParams({ sortOptions: SORT_OPTIONS });
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
@@ -125,45 +125,49 @@ export default function BookingsPage() {
         <h1>Bookings</h1>
         <Button label="New booking" icon="pi pi-plus" onClick={() => setOpen(true)} />
       </div>
-      <ListToolbar
+      <ListSearch
         search={list.search}
         onSearchChange={list.setSearch}
         searchPlaceholder="Search AWB / receiver"
-        sortKey={list.sortKey}
-        onSortChange={list.setSortKey}
-        sortOptions={SORT_OPTIONS}
       />
       <div className="panel">
-        <DataTable
-          value={listQuery.data?.data ?? []}
-          loading={listQuery.isLoading}
-          columns={[
-            {
-              field: 'awb',
-              header: 'AWB',
-              body: (row: ConsignmentRow) => (
-                <Link href={`/tracking?awb=${row.awb}`}>{row.awb}</Link>
-              ),
-            },
-            { field: 'receiverName', header: 'Receiver' },
-            { field: 'status', header: 'Status' },
-            {
-              header: 'Created by',
-              body: (row: ConsignmentRow) =>
-                row.createdBy?.userInfo?.fullName ?? '—',
-            },
-            {
-              header: 'Created',
-              body: (row: ConsignmentRow) =>
-                new Date(row.createdAt).toLocaleString(),
-            },
-          ]}
-        />
-        <ListPaginator
+        <ListFilterChrome
           meta={meta}
+          sortOptions={SORT_OPTIONS}
+          sortKey={list.sortKey}
+          onSortChange={list.setSortKey}
           onPageChange={list.setPage}
           onPageSizeChange={list.setPageSize}
-        />
+          showClearFilters
+          onClearFilters={list.clearFilters}
+          clearFiltersDisabled={!list.hasActiveFilters}
+        >
+          <DataTable
+            value={listQuery.data?.data ?? []}
+            loading={listQuery.isLoading}
+            columns={[
+              {
+                field: 'awb',
+                header: 'AWB',
+                body: (row: ConsignmentRow) => (
+                  <Link href={`/tracking?awb=${row.awb}`}>{row.awb}</Link>
+                ),
+              },
+              { field: 'receiverName', header: 'Receiver' },
+              { field: 'status', header: 'Status' },
+              {
+                header: 'Created by',
+                body: (row: ConsignmentRow) =>
+                  row.createdBy?.userInfo?.fullName ?? '—',
+              },
+              {
+                header: 'Created',
+                body: (row: ConsignmentRow) =>
+                  new Date(row.createdAt).toLocaleString(),
+              },
+            ]}
+          />
+        </ListFilterChrome>
       </div>
 
       <Dialog

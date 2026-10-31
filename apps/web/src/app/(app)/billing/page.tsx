@@ -10,7 +10,7 @@ import {
   Select,
 } from '@/components/ui';
 import { useState } from 'react';
-import { ListPaginator, ListToolbar } from '@/components/ListControls';
+import { ListFilterChrome } from '@/components/ListControls';
 import { api } from '@/lib/api';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
 
@@ -24,7 +24,7 @@ interface Invoice {
 }
 
 const SORT_OPTIONS: SortOption[] = [
-  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC' },
+  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC', isDefault: true },
   { label: 'Oldest first', sortBy: 'createdAt', sortOrder: 'ASC' },
   { label: 'Invoice # Asc', sortBy: 'invoiceNumber', sortOrder: 'ASC' },
   { label: 'Invoice # Desc', sortBy: 'invoiceNumber', sortOrder: 'DESC' },
@@ -35,7 +35,7 @@ const SORT_OPTIONS: SortOption[] = [
 
 export default function BillingPage() {
   const qc = useQueryClient();
-  const list = useListParams({ defaultSort: SORT_OPTIONS[0] });
+  const list = useListParams({ sortOptions: SORT_OPTIONS });
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState('');
   const [consignmentIds, setConsignmentIds] = useState<string[]>([]);
@@ -101,34 +101,36 @@ export default function BillingPage() {
         <h1>Billing</h1>
         <Button label="Create invoice" icon="pi pi-plus" onClick={() => setOpen(true)} />
       </div>
-      <ListToolbar
-        sortKey={list.sortKey}
-        onSortChange={list.setSortKey}
-        sortOptions={SORT_OPTIONS}
-      />
       <div className="panel">
-        <DataTable
-          value={invoicesQuery.data?.data ?? []}
-          loading={invoicesQuery.isLoading}
-          columns={[
-            { field: 'invoiceNumber', header: 'Invoice #' },
-            {
-              header: 'Customer',
-              body: (row: Invoice) => row.customer?.name ?? '—',
-            },
-            { field: 'totalAmount', header: 'Amount' },
-            { field: 'status', header: 'Status' },
-            {
-              header: 'Created',
-              body: (row: Invoice) => new Date(row.createdAt).toLocaleString(),
-            },
-          ]}
-        />
-        <ListPaginator
+        <ListFilterChrome
           meta={meta}
+          sortOptions={SORT_OPTIONS}
+          sortKey={list.sortKey}
+          onSortChange={list.setSortKey}
           onPageChange={list.setPage}
           onPageSizeChange={list.setPageSize}
-        />
+          showClearFilters
+          onClearFilters={list.clearFilters}
+          clearFiltersDisabled={!list.hasActiveFilters}
+        >
+          <DataTable
+            value={invoicesQuery.data?.data ?? []}
+            loading={invoicesQuery.isLoading}
+            columns={[
+              { field: 'invoiceNumber', header: 'Invoice #' },
+              {
+                header: 'Customer',
+                body: (row: Invoice) => row.customer?.name ?? '—',
+              },
+              { field: 'totalAmount', header: 'Amount' },
+              { field: 'status', header: 'Status' },
+              {
+                header: 'Created',
+                body: (row: Invoice) => new Date(row.createdAt).toLocaleString(),
+              },
+            ]}
+          />
+        </ListFilterChrome>
       </div>
 
       <Dialog header="New invoice" visible={open} onHide={() => setOpen(false)} style={{ width: 560 }}>

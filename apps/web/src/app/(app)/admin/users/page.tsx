@@ -12,7 +12,7 @@ import {
   ToggleSwitch,
 } from '@/components/ui';
 import { Dispatch, SetStateAction, useState } from 'react';
-import { ListPaginator, ListToolbar } from '@/components/ListControls';
+import { ListFilterChrome } from '@/components/ListControls';
 import { PasswordInput } from '@/components/PasswordInput';
 import { api, unwrap } from '@/lib/api';
 import {
@@ -26,7 +26,7 @@ import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
 import { trimFormData } from '@/lib/trim';
 
 const USER_SORT_OPTIONS: SortOption[] = [
-  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC' },
+  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC', isDefault: true },
   { label: 'Oldest first', sortBy: 'createdAt', sortOrder: 'ASC' },
   { label: 'Name Asc', sortBy: 'fullName', sortOrder: 'ASC' },
   { label: 'Name Desc', sortBy: 'fullName', sortOrder: 'DESC' },
@@ -332,7 +332,7 @@ function UserFormFields({
 
 export default function UsersPage() {
   const qc = useQueryClient();
-  const list = useListParams({ defaultSort: USER_SORT_OPTIONS[0] });
+  const list = useListParams({ sortOptions: USER_SORT_OPTIONS });
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -496,57 +496,8 @@ export default function UsersPage() {
           }}
         />
       </div>
-      <ListToolbar
-        sortKey={list.sortKey}
-        onSortChange={list.setSortKey}
-        sortOptions={USER_SORT_OPTIONS}
-      />
       <div className="panel">
-        <DataTable
-          value={usersQuery.data?.data ?? []}
-          loading={usersQuery.isLoading}
-          columns={[
-            {
-              header: 'Full name',
-              body: (row: UserRow) => row.userInfo?.fullName ?? '—',
-            },
-            { field: 'email', header: 'Email' },
-            { field: 'role', header: 'Role' },
-            {
-              header: 'Company',
-              body: (row: UserRow) => row.userInfo?.companyName ?? '—',
-            },
-            {
-              header: 'Status',
-              body: (row: UserRow) => (
-                <Tag severity={row.isActive ? 'success' : 'danger'}>
-                  {row.isActive ? 'Active' : 'Inactive'}
-                </Tag>
-              ),
-            },
-            {
-              header: 'Actions',
-              body: (row: UserRow) => (
-                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                  <Button
-                    size="small"
-                    icon="pi pi-pencil"
-                    label="Edit"
-                    text
-                    onClick={() => openEdit(row)}
-                  />
-                  <Button
-                    size="small"
-                    text
-                    label={row.isActive ? 'Deactivate' : 'Activate'}
-                    onClick={() => toggleMutation.mutate(row)}
-                  />
-                </div>
-              ),
-            },
-          ]}
-        />
-        <ListPaginator
+        <ListFilterChrome
           meta={
             usersQuery.data?.meta ?? {
               page: list.page,
@@ -554,9 +505,60 @@ export default function UsersPage() {
               total: 0,
             }
           }
+          sortOptions={USER_SORT_OPTIONS}
+          sortKey={list.sortKey}
+          onSortChange={list.setSortKey}
           onPageChange={list.setPage}
           onPageSizeChange={list.setPageSize}
-        />
+          showClearFilters
+          onClearFilters={list.clearFilters}
+          clearFiltersDisabled={!list.hasActiveFilters}
+        >
+          <DataTable
+            value={usersQuery.data?.data ?? []}
+            loading={usersQuery.isLoading}
+            columns={[
+              {
+                header: 'Full name',
+                body: (row: UserRow) => row.userInfo?.fullName ?? '—',
+              },
+              { field: 'email', header: 'Email' },
+              { field: 'role', header: 'Role' },
+              {
+                header: 'Company',
+                body: (row: UserRow) => row.userInfo?.companyName ?? '—',
+              },
+              {
+                header: 'Status',
+                body: (row: UserRow) => (
+                  <Tag severity={row.isActive ? 'success' : 'danger'}>
+                    {row.isActive ? 'Active' : 'Inactive'}
+                  </Tag>
+                ),
+              },
+              {
+                header: 'Actions',
+                body: (row: UserRow) => (
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                    <Button
+                      size="small"
+                      icon="pi pi-pencil"
+                      label="Edit"
+                      text
+                      onClick={() => openEdit(row)}
+                    />
+                    <Button
+                      size="small"
+                      text
+                      label={row.isActive ? 'Deactivate' : 'Activate'}
+                      onClick={() => toggleMutation.mutate(row)}
+                    />
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </ListFilterChrome>
       </div>
 
       <Dialog
