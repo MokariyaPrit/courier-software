@@ -1,7 +1,7 @@
 {
   "name": "courier-erp",
   "private": true,
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "pnpm@12.16.1",
   "scripts": {
     "dev": "pnpm -r --parallel --filter @courier/api --filter @courier/web run dev",
     "dev:api": "pnpm --filter @courier/api dev",
