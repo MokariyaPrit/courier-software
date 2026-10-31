@@ -13,8 +13,9 @@ import {
   Button,
   InputNumber,
   InputText,
-  Select,
+  SearchSelect,
   Textarea,
+  type SearchSelectOption,
 } from '@/components/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
@@ -37,7 +38,15 @@ interface ConsignmentRow {
 interface CustomerOpt {
   id: string;
   name: string;
+  primaryPhone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  cityId?: string | null;
+  stateId?: string | null;
+  pincode?: string | null;
 }
+
 interface ReceiverOpt {
   id: string;
   name: string;
@@ -49,21 +58,23 @@ interface ReceiverOpt {
   stateId: string | null;
   pincode: string | null;
 }
-interface SenderLocOpt {
+
+interface DestCityOpt {
   id: string;
-  label: string;
   cityId: string;
   stateId: string | null;
+  label: string;
+  stateName: string | null;
   rateColumnId: string;
-  isDefault: boolean;
-  cityRef?: { name: string } | null;
-  state?: { name: string } | null;
 }
-interface GeoOpt {
+
+interface SenderLocOpt {
   id: string;
-  name: string;
-  stateId?: string;
+  cityId: string;
+  label: string;
+  stateId: string | null;
 }
+
 interface RateSource {
   id?: string;
   columns?: Array<{ id: string; label: string; sortOrder: number }>;
@@ -87,10 +98,12 @@ const emptyForm = {
   bookingType: BookingType.ACCOUNT as BookingType,
   bookingDate: todayIso(),
   customerId: '',
+  customerLabel: '',
   quotationId: '',
   senderLocationId: '',
   receiverId: '',
   rateSectionId: '',
+  rateSectionLabel: '',
   rateColumnId: '',
   partyName: '',
   partyPhone: '',
@@ -111,11 +124,11 @@ const emptyForm = {
   receiverPincode: '',
   receiverCityId: '',
   receiverStateId: '',
-  weightKg: 1,
+  destLabel: '',
+  weightKg: 0.1,
   pieces: 1,
   codAmount: 0,
   freight: 0,
-  serviceType: ServiceType.STANDARD,
   remarks: '',
 };
 
@@ -134,15 +147,7 @@ export default function BookingsPage() {
   const [freightAuto, setFreightAuto] = useState(true);
 
   useEffect(() => {
-    setForm((p) => ({
-      ...emptyForm,
-      bookingType: mode,
-      bookingDate: todayIso(),
-      senderLocationId: p.senderLocationId,
-      senderName: p.senderName,
-      senderPhone: p.senderPhone,
-      senderAddress: p.senderAddress,
-    }));
+    setForm({ ...emptyForm, bookingType: mode, bookingDate: todayIso() });
     setRateSource(null);
     setRateHint('');
     setError('');
@@ -171,7 +176,7 @@ export default function BookingsPage() {
     queryFn: () =>
       fetchPaginated<CustomerOpt>('/customers', {
         page: 1,
-        pageSize: 300,
+        pageSize: 500,
         sortBy: 'name',
         sortOrder: 'ASC',
       }),
@@ -183,13 +188,26 @@ export default function BookingsPage() {
     queryFn: () =>
       fetchPaginated<ReceiverOpt>('/receivers', {
         page: 1,
-        pageSize: 300,
+        pageSize: 500,
         sortBy: 'name',
         sortOrder: 'ASC',
       }),
   });
 
-  const senderLocQuery = useQuery({
+  const destCitiesQuery = useQuery({
+    queryKey: ['rate-columns-booking'],
+    queryFn: async () => {
+      const res = await api.get('/rate-columns/booking-options');
+      const payload = unwrap<DestCityOpt[] | { data: DestCityOpt[] }>(res.data);
+      if (Array.isArray(payload)) return payload;
+      if (payload && typeof payload === 'object' && 'data' in payload) {
+        return payload.data;
+      }
+      return [];
+    },
+  });
+
+  const centersQuery = useQuery({
     queryKey: ['sender-locations-booking'],
     queryFn: async () => {
       const res = await api.get('/sender-locations/booking-options');
@@ -204,31 +222,6 @@ export default function BookingsPage() {
     },
   });
 
-  const statesQuery = useQuery({
-    queryKey: ['states-booking'],
-    queryFn: () =>
-      fetchPaginated<GeoOpt>('/states', {
-        page: 1,
-        pageSize: 500,
-        sortBy: 'name',
-        sortOrder: 'ASC',
-      }),
-  });
-
-  const citiesQuery = useQuery({
-    queryKey: ['cities-booking', form.receiverStateId],
-    queryFn: () =>
-      fetchPaginated<GeoOpt>('/cities', {
-        page: 1,
-        pageSize: 500,
-        sortBy: 'name',
-        sortOrder: 'ASC',
-        ...(form.receiverStateId
-          ? { stateId: form.receiverStateId }
-          : {}),
-      }),
-  });
-
   const cashRatesQuery = useQuery({
     queryKey: ['cash-rates-booking'],
     queryFn: async () => {
@@ -238,22 +231,6 @@ export default function BookingsPage() {
     enabled: mode === BookingType.CASH,
   });
 
-  // Default center when centers load
-  useEffect(() => {
-    const locs = senderLocQuery.data ?? [];
-    if (!locs.length || form.senderLocationId) return;
-    const def = locs.find((l) => l.isDefault) || locs[0];
-    setForm((p) => ({
-      ...p,
-      senderLocationId: def.id,
-      senderName: def.label,
-      senderAddress: [def.cityRef?.name, def.state?.name]
-        .filter(Boolean)
-        .join(', '),
-    }));
-  }, [senderLocQuery.data, form.senderLocationId]);
-
-  // Account quotation / cash matrix
   useEffect(() => {
     if (mode === BookingType.CASH) {
       if (cashRatesQuery.data) {
@@ -278,13 +255,23 @@ export default function BookingsPage() {
         );
         if (cancelled) return;
         setForm((p) => ({ ...p, quotationId: q.id }));
-        setRateSource(q.snapshot || q);
-        setRateHint('Rates from latest issued quotation');
+        const snap =
+          q.snapshot && (q.snapshot.columns || q.snapshot.rows)
+            ? q.snapshot
+            : q;
+        setRateSource(snap);
+        setFreightAuto(true);
+        const status = (q as { status?: string }).status;
+        setRateHint(
+          status === 'ISSUED'
+            ? 'Rates from latest issued quotation'
+            : 'Rates from latest quotation (not issued yet)',
+        );
       } catch {
         if (cancelled) return;
         setForm((p) => ({ ...p, quotationId: '' }));
         setRateSource(null);
-        setRateHint('No issued quotation for this customer');
+        setRateHint('No quotation found for this customer');
       }
     })();
     return () => {
@@ -295,24 +282,28 @@ export default function BookingsPage() {
   const matrix = useMemo(() => {
     if (!rateSource) return null;
     const src = rateSource.snapshot || rateSource;
+    const rows = src.rows ?? [];
+    if (!(src.columns?.length) && !rows.length) return null;
     return toMatrixForm({
       columns: src.columns,
       sections: src.sections,
-      rows: (src.rows ?? []).map((r) => ({
+      rows: rows.map((r) => ({
         ...r,
         weightLabel: r.weightLabel || `Up to ${r.weightGrams ?? 0} gms`,
       })),
     });
   }, [rateSource]);
 
-  // Auto freight: city → state → ROI
   useEffect(() => {
     if (!freightAuto || !matrix || !form.rateSectionId) return;
+    if (!form.receiverCityId && !form.receiverStateId) return;
     const resolved = resolveRate(matrix, {
       sectionId: form.rateSectionId,
       weightKg: form.weightKg,
       receiverCityId: form.receiverCityId || null,
       receiverStateId: form.receiverStateId || null,
+      receiverCityName: form.receiverCity || form.destLabel || null,
+      receiverStateName: form.receiverState || null,
     });
     setForm((p) => ({
       ...p,
@@ -326,35 +317,129 @@ export default function BookingsPage() {
     form.weightKg,
     form.receiverCityId,
     form.receiverStateId,
+    form.receiverCity,
+    form.receiverState,
+    form.destLabel,
   ]);
 
-  const applySenderLocation = (id: string) => {
-    const loc = (senderLocQuery.data ?? []).find((l) => l.id === id);
+  const customerOptions: SearchSelectOption[] = useMemo(
+    () =>
+      (customersQuery.data?.data ?? []).map((c) => ({
+        value: c.id,
+        label: c.name,
+        subLabel: c.city || c.primaryPhone || undefined,
+      })),
+    [customersQuery.data],
+  );
+
+  const receiverNameOptions: SearchSelectOption[] = useMemo(
+    () =>
+      (receiversQuery.data?.data ?? []).map((r) => ({
+        value: r.id,
+        label: r.name,
+        subLabel: [r.city, r.phone].filter(Boolean).join(' · ') || undefined,
+      })),
+    [receiversQuery.data],
+  );
+
+  const destOptions: SearchSelectOption[] = useMemo(
+    () =>
+      (destCitiesQuery.data ?? []).map((d) => ({
+        value: d.cityId,
+        label: d.label,
+        subLabel: d.stateName || undefined,
+      })),
+    [destCitiesQuery.data],
+  );
+
+  const sectionOptions: SearchSelectOption[] = useMemo(
+    () =>
+      (matrix?.sections ?? []).map((s) => ({
+        value: s.id,
+        label: s.label,
+      })),
+    [matrix],
+  );
+
+  const applyCustomer = (opt: SearchSelectOption | null) => {
+    if (!opt) {
+      setForm((p) => ({
+        ...p,
+        customerId: '',
+        customerLabel: p.customerLabel,
+        quotationId: '',
+        senderLocationId: '',
+        senderName: '',
+        senderPhone: '',
+        senderAddress: '',
+        rateSectionId: '',
+        rateSectionLabel: '',
+      }));
+      return;
+    }
+    const c = (customersQuery.data?.data ?? []).find((x) => x.id === opt.value);
+    const center = (centersQuery.data ?? []).find(
+      (l) => l.cityId && l.cityId === c?.cityId,
+    );
     setForm((p) => ({
       ...p,
-      senderLocationId: id,
-      senderName: loc?.label || p.senderName,
+      customerId: opt.value,
+      customerLabel: opt.label,
+      rateSectionId: '',
+      rateSectionLabel: '',
+      senderLocationId: center?.id || '',
+      senderName: c?.name || opt.label,
+      senderPhone: c?.primaryPhone || '',
       senderAddress:
-        [loc?.cityRef?.name || loc?.label, loc?.state?.name]
-          .filter(Boolean)
-          .join(', ') || p.senderAddress,
+        [c?.address, c?.city, c?.state, c?.pincode].filter(Boolean).join(', ') ||
+        '',
     }));
   };
 
-  const applyReceiver = (id: string) => {
-    const r = (receiversQuery.data?.data ?? []).find((x) => x.id === id);
+  const applyReceiverSuggestion = (opt: SearchSelectOption | null) => {
+    if (!opt) {
+      setForm((p) => ({ ...p, receiverId: '' }));
+      return;
+    }
+    const r = (receiversQuery.data?.data ?? []).find((x) => x.id === opt.value);
     setFreightAuto(true);
     setForm((p) => ({
       ...p,
-      receiverId: id,
-      receiverName: r?.name || p.receiverName,
+      receiverId: opt.value,
+      receiverName: r?.name || opt.label,
       receiverPhone: r?.phone || p.receiverPhone,
       receiverAddress: r?.address || p.receiverAddress,
-      receiverCity: r?.city || p.receiverCity,
-      receiverState: r?.state || p.receiverState,
       receiverPincode: r?.pincode || p.receiverPincode,
-      receiverCityId: r?.cityId || '',
-      receiverStateId: r?.stateId || '',
+      // Keep destination from rate-columns pick if already set; else from receiver
+      receiverCityId: p.receiverCityId || r?.cityId || '',
+      receiverStateId: p.receiverStateId || r?.stateId || '',
+      receiverCity: p.receiverCity || r?.city || '',
+      receiverState: p.receiverState || r?.state || '',
+      destLabel: p.destLabel || r?.city || '',
+    }));
+  };
+
+  const applyDestination = (opt: SearchSelectOption | null) => {
+    if (!opt) {
+      setForm((p) => ({
+        ...p,
+        receiverCityId: '',
+        receiverStateId: '',
+        receiverCity: '',
+        receiverState: '',
+        destLabel: p.destLabel,
+      }));
+      return;
+    }
+    const d = (destCitiesQuery.data ?? []).find((x) => x.cityId === opt.value);
+    setFreightAuto(true);
+    setForm((p) => ({
+      ...p,
+      destLabel: opt.label,
+      receiverCityId: opt.value,
+      receiverStateId: d?.stateId || '',
+      receiverCity: d?.label || opt.label,
+      receiverState: d?.stateName || '',
     }));
   };
 
@@ -362,16 +447,61 @@ export default function BookingsPage() {
     mutationFn: async () => {
       const cleaned = trimFormData(form);
       if (cleaned.bookingType === BookingType.ACCOUNT && !cleaned.customerId) {
-        throw new Error('Select a customer for account booking');
+        throw new Error('Select a customer');
       }
       if (cleaned.bookingType === BookingType.CASH && !cleaned.partyName) {
         throw new Error('Party name is required for cash booking');
       }
-      if (!cleaned.senderLocationId) {
-        throw new Error('Select a sender center');
-      }
-      if (!cleaned.receiverName) {
+      if (!cleaned.receiverName.trim()) {
         throw new Error('Receiver name is required');
+      }
+      if (!cleaned.receiverCityId) {
+        throw new Error('Select a destination city from Rate columns');
+      }
+
+      const receiverRes = await api.post('/receivers/find-or-create', {
+        name: cleaned.receiverName,
+        phone: cleaned.receiverPhone || undefined,
+        address: cleaned.receiverAddress || undefined,
+        city: cleaned.receiverCity || undefined,
+        state: cleaned.receiverState || undefined,
+        cityId: cleaned.receiverCityId || undefined,
+        stateId: cleaned.receiverStateId || undefined,
+        pincode: cleaned.receiverPincode || undefined,
+      });
+      const receiver = unwrap<ReceiverOpt>(receiverRes.data);
+
+      let senderLocationId = cleaned.senderLocationId || undefined;
+      let senderName = cleaned.senderName;
+      let senderPhone = cleaned.senderPhone || undefined;
+      let senderAddress = cleaned.senderAddress || undefined;
+
+      if (cleaned.bookingType === BookingType.ACCOUNT && cleaned.customerId) {
+        const c = (customersQuery.data?.data ?? []).find(
+          (x) => x.id === cleaned.customerId,
+        );
+        const center = (centersQuery.data ?? []).find(
+          (l) => l.cityId && l.cityId === c?.cityId,
+        );
+        senderLocationId = center?.id || senderLocationId;
+        senderName = c?.name || senderName || 'Sender';
+        senderPhone = c?.primaryPhone || senderPhone;
+        senderAddress =
+          [c?.address, c?.city, c?.state, c?.pincode]
+            .filter(Boolean)
+            .join(', ') || senderAddress;
+      } else if (cleaned.bookingType === BookingType.CASH) {
+        senderName = cleaned.partyName || senderName || 'Cash party';
+        senderPhone = cleaned.partyPhone || senderPhone;
+        senderAddress =
+          [
+            cleaned.partyAddress,
+            cleaned.partyCity,
+            cleaned.partyState,
+            cleaned.partyPincode,
+          ]
+            .filter(Boolean)
+            .join(', ') || senderAddress;
       }
 
       await api.post('/consignments', {
@@ -382,8 +512,8 @@ export default function BookingsPage() {
             ? cleaned.customerId || undefined
             : undefined,
         quotationId: cleaned.quotationId || undefined,
-        senderLocationId: cleaned.senderLocationId || undefined,
-        receiverId: cleaned.receiverId || undefined,
+        senderLocationId,
+        receiverId: receiver.id,
         rateSectionId: cleaned.rateSectionId || undefined,
         rateColumnId: cleaned.rateColumnId || undefined,
         partyName:
@@ -418,9 +548,9 @@ export default function BookingsPage() {
           cleaned.bookingType === BookingType.CASH
             ? cleaned.partyEmail || undefined
             : undefined,
-        senderName: cleaned.senderName || cleaned.partyName || 'Sender',
-        senderPhone: cleaned.senderPhone || undefined,
-        senderAddress: cleaned.senderAddress || undefined,
+        senderName: senderName || 'Sender',
+        senderPhone,
+        senderAddress,
         receiverName: cleaned.receiverName,
         receiverPhone: cleaned.receiverPhone || undefined,
         receiverAddress: cleaned.receiverAddress || undefined,
@@ -432,7 +562,7 @@ export default function BookingsPage() {
         weightKg: cleaned.weightKg,
         pieces: cleaned.pieces,
         codAmount: cleaned.codAmount,
-        serviceType: cleaned.serviceType,
+        serviceType: ServiceType.STANDARD,
         remarks: cleaned.remarks || undefined,
         charges: [
           {
@@ -444,23 +574,13 @@ export default function BookingsPage() {
       });
     },
     onSuccess: async () => {
-      const keepCenter = form.senderLocationId;
-      const keepSender = {
-        senderName: form.senderName,
-        senderPhone: form.senderPhone,
-        senderAddress: form.senderAddress,
-      };
-      setForm({
-        ...emptyForm,
-        bookingType: mode,
-        bookingDate: todayIso(),
-        senderLocationId: keepCenter,
-        ...keepSender,
-      });
+      setForm({ ...emptyForm, bookingType: mode, bookingDate: todayIso() });
       setFreightAuto(true);
       setError('');
       await qc.invalidateQueries({ queryKey: ['consignments-recent'] });
       await qc.invalidateQueries({ queryKey: ['consignments'] });
+      await qc.invalidateQueries({ queryKey: ['receivers'] });
+      await qc.invalidateQueries({ queryKey: ['receivers-booking'] });
       await qc.invalidateQueries({ queryKey: ['dashboard-counts'] });
     },
     onError: (err: unknown) => {
@@ -472,20 +592,6 @@ export default function BookingsPage() {
       setError(message);
     },
   });
-
-  const sectionOptions = (matrix?.sections ?? []).map((s) => ({
-    label: s.label,
-    value: s.id,
-  }));
-
-  const stateOptions = (statesQuery.data?.data ?? []).map((s) => ({
-    label: s.name,
-    value: s.id,
-  }));
-  const cityOptions = (citiesQuery.data?.data ?? []).map((c) => ({
-    label: c.name,
-    value: c.id,
-  }));
 
   return (
     <div>
@@ -512,6 +618,9 @@ export default function BookingsPage() {
               ? 'New account booking'
               : 'New cash booking'}
           </h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Type to search — Tab or Enter selects the first result.
+          </p>
 
           <div className="form-grid">
             <div className="field">
@@ -525,39 +634,24 @@ export default function BookingsPage() {
                 style={{ width: '100%' }}
               />
             </div>
-            <div className="field">
-              <label>Sender center</label>
-              <Select
-                value={form.senderLocationId || null}
-                options={(senderLocQuery.data ?? []).map((l) => ({
-                  label: l.label,
-                  value: l.id,
-                }))}
-                onChange={(e) => applySenderLocation(String(e.value || ''))}
-                placeholder="Select center city"
-                style={{ width: '100%' }}
-              />
-            </div>
 
             {mode === BookingType.ACCOUNT ? (
-              <div className="field full">
-                <label>Customer (bill-to)</label>
-                <Select
-                  value={form.customerId || null}
-                  options={(customersQuery.data?.data ?? []).map((c) => ({
-                    label: c.name,
-                    value: c.id,
-                  }))}
-                  onChange={(e) =>
+              <div className="field">
+                <label>Customer</label>
+                <SearchSelect
+                  value={form.customerLabel}
+                  options={customerOptions}
+                  placeholder="Type customer name…"
+                  allowFreeText={false}
+                  emptyHint="No customers match"
+                  onChange={(text) =>
                     setForm((p) => ({
                       ...p,
-                      customerId: String(e.value || ''),
-                      rateSectionId: '',
+                      customerLabel: text,
+                      customerId: '',
                     }))
                   }
-                  placeholder="Select customer"
-                  filter
-                  style={{ width: '100%' }}
+                  onSelect={applyCustomer}
                 />
               </div>
             ) : (
@@ -603,26 +697,6 @@ export default function BookingsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>Party state</label>
-                  <InputText
-                    value={form.partyState}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, partyState: e.target.value }))
-                    }
-                    style={{ width: '100%' }}
-                  />
-                </div>
-                <div className="field">
-                  <label>Party pincode</label>
-                  <InputText
-                    value={form.partyPincode}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, partyPincode: e.target.value }))
-                    }
-                    style={{ width: '100%' }}
-                  />
-                </div>
-                <div className="field">
                   <label>Party GSTIN</label>
                   <InputText
                     value={form.partyGstin}
@@ -632,43 +706,25 @@ export default function BookingsPage() {
                     style={{ width: '100%' }}
                   />
                 </div>
-                <div className="field full">
-                  <label>Party email (optional)</label>
-                  <InputText
-                    value={form.partyEmail}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, partyEmail: e.target.value }))
-                    }
-                    style={{ width: '100%' }}
-                  />
-                </div>
               </>
             )}
 
-            <div className="field full">
-              <label>Receiver (master)</label>
-              <Select
-                value={form.receiverId || null}
-                options={(receiversQuery.data?.data ?? []).map((r) => ({
-                  label: `${r.name}${r.city ? ` — ${r.city}` : ''}`,
-                  value: r.id,
-                }))}
-                onChange={(e) => applyReceiver(String(e.value || ''))}
-                placeholder="Pick receiver or fill below"
-                filter
-                showClear
-                style={{ width: '100%' }}
-              />
-            </div>
-
             <div className="field">
               <label>Receiver name</label>
-              <InputText
+              <SearchSelect
                 value={form.receiverName}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, receiverName: e.target.value }))
+                options={receiverNameOptions}
+                placeholder="Type receiver name…"
+                allowFreeText
+                emptyHint="New receiver will be created"
+                onChange={(text) =>
+                  setForm((p) => ({
+                    ...p,
+                    receiverName: text,
+                    receiverId: '',
+                  }))
                 }
-                style={{ width: '100%' }}
+                onSelect={applyReceiverSuggestion}
               />
             </div>
             <div className="field">
@@ -693,51 +749,21 @@ export default function BookingsPage() {
             </div>
 
             <div className="field">
-              <label>Destination state</label>
-              <Select
-                value={form.receiverStateId || null}
-                options={stateOptions}
-                onChange={(e) => {
-                  const stateId = String(e.value || '');
-                  const st = (statesQuery.data?.data ?? []).find(
-                    (s) => s.id === stateId,
-                  );
-                  setFreightAuto(true);
+              <label>Destination</label>
+              <SearchSelect
+                value={form.destLabel}
+                options={destOptions}
+                placeholder="Type destination from Rate columns…"
+                allowFreeText={false}
+                emptyHint="Configure Rate columns first"
+                onChange={(text) =>
                   setForm((p) => ({
                     ...p,
-                    receiverStateId: stateId,
-                    receiverState: st?.name || '',
+                    destLabel: text,
                     receiverCityId: '',
-                    receiverCity: '',
-                  }));
-                }}
-                placeholder="State"
-                filter
-                style={{ width: '100%' }}
-              />
-            </div>
-            <div className="field">
-              <label>Destination city</label>
-              <Select
-                value={form.receiverCityId || null}
-                options={cityOptions}
-                onChange={(e) => {
-                  const cityId = String(e.value || '');
-                  const city = (citiesQuery.data?.data ?? []).find(
-                    (c) => c.id === cityId,
-                  );
-                  setFreightAuto(true);
-                  setForm((p) => ({
-                    ...p,
-                    receiverCityId: cityId,
-                    receiverCity: city?.name || '',
-                    receiverStateId: city?.stateId || p.receiverStateId,
-                  }));
-                }}
-                placeholder="City (for rate)"
-                filter
-                style={{ width: '100%' }}
-                disabled={!form.receiverStateId && !cityOptions.length}
+                  }))
+                }
+                onSelect={applyDestination}
               />
             </div>
             <div className="field">
@@ -753,19 +779,37 @@ export default function BookingsPage() {
 
             <div className="field">
               <label>Service section</label>
-              <Select
-                value={form.rateSectionId || null}
+              <SearchSelect
+                value={form.rateSectionLabel}
                 options={sectionOptions}
-                onChange={(e) => {
-                  setFreightAuto(true);
+                placeholder="DOX / PARCEL / …"
+                allowFreeText={false}
+                emptyHint={
+                  matrix ? 'No sections' : 'Select customer / cash rates first'
+                }
+                onChange={(text) =>
                   setForm((p) => ({
                     ...p,
-                    rateSectionId: String(e.value || ''),
+                    rateSectionLabel: text,
+                    rateSectionId: '',
+                  }))
+                }
+                onSelect={(opt) => {
+                  setFreightAuto(true);
+                  if (!opt) {
+                    setForm((p) => ({
+                      ...p,
+                      rateSectionId: '',
+                      rateSectionLabel: p.rateSectionLabel,
+                    }));
+                    return;
+                  }
+                  setForm((p) => ({
+                    ...p,
+                    rateSectionId: opt.value,
+                    rateSectionLabel: opt.label,
                   }));
                 }}
-                placeholder="DOX / PARCEL / …"
-                style={{ width: '100%' }}
-                disabled={!sectionOptions.length}
               />
             </div>
             <div className="field">
@@ -799,7 +843,7 @@ export default function BookingsPage() {
               />
             </div>
             <div className="field">
-              <label>Freight {freightAuto ? '(auto)' : '(manual)'}</label>
+              <label>Price {freightAuto ? '(auto)' : '(manual)'}</label>
               <InputNumber
                 value={form.freight}
                 onValueChange={(e) => {
@@ -833,23 +877,6 @@ export default function BookingsPage() {
                 inputStyle={{ width: '100%' }}
               />
             </div>
-            <div className="field">
-              <label>Service</label>
-              <Select
-                value={form.serviceType}
-                options={Object.values(ServiceType).map((v) => ({
-                  label: v,
-                  value: v,
-                }))}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    serviceType: e.value as ServiceType,
-                  }))
-                }
-                style={{ width: '100%' }}
-              />
-            </div>
             <div className="field full">
               <label>Remarks</label>
               <Textarea
@@ -864,9 +891,15 @@ export default function BookingsPage() {
           </div>
 
           {rateHint ? <p className="muted">{rateHint}</p> : null}
-          {form.rateColumnId ? (
+          {freightAuto &&
+          form.rateSectionId &&
+          form.receiverCityId &&
+          matrix &&
+          form.freight === 0 ? (
             <p className="muted" style={{ fontSize: '0.85rem' }}>
-              Rate column: {form.rateColumnId}
+              No rate found for this destination / section / weight on the
+              quotation (tried city → state → ROI). Check the issued quotation
+              matrix cells are filled for that weight band.
             </p>
           ) : null}
           {error ? <p className="error-text">{error}</p> : null}

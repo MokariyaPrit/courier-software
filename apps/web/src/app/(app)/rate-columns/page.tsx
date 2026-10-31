@@ -144,9 +144,8 @@ export default function RateColumnsPage() {
           <h1>Rate columns</h1>
           <p className="muted" style={{ margin: 0 }}>
             Choose destination cities for your rate matrices. Each selected
-            city becomes a column (plus ROI). A “Within State” column is added
-            only when you did not already pick a city with that state name.
-            Separate from Centers (booking sender locations).
+            city becomes a column, plus a “Within State” column for each parent
+            state, and ROI. Separate from Centers (booking sender locations).
           </p>
         </div>
         <Button

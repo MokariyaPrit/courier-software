@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -142,11 +143,36 @@ export class QuotationsService {
     return template;
   }
 
-  private async nextQuotationCode(userId: string) {
-    const count = await this.quotationsRepo.count({
-      where: { createdById: userId },
+  /**
+   * Next global numeric quotation code. Counts soft-deleted rows too so we
+   * never reuse a code still blocked by the unique index.
+   */
+  private async nextQuotationCode(_userId: string) {
+    const rows = await this.quotationsRepo.find({
+      select: ['quotationCode'],
+      withDeleted: true,
     });
-    return String(count + 1).padStart(4, '0');
+    let max = 0;
+    for (const row of rows) {
+      const raw = row.quotationCode?.trim();
+      if (!raw) continue;
+      const n = Number.parseInt(raw.replace(/\D/g, ''), 10);
+      if (!Number.isNaN(n) && n > max) max = n;
+    }
+    return String(max + 1).padStart(4, '0');
+  }
+
+  private async allocateQuotationCode(userId: string) {
+    // Retry a few times if another request grabs the same code
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = await this.nextQuotationCode(userId);
+      const exists = await this.quotationsRepo.findOne({
+        where: { quotationCode: code },
+        withDeleted: true,
+      });
+      if (!exists) return code;
+    }
+    return `Q${Date.now().toString(36).toUpperCase()}`;
   }
 
   async create(dto: CreateQuotationDto, user: AuthUser) {
@@ -257,10 +283,10 @@ export class QuotationsService {
     return this.sanitize(quotation);
   }
 
-  /** Latest issued quotation for a customer (for account booking rates) */
+  /** Best quotation for account booking rates: latest issued, else latest draft */
   async latestIssuedForCustomer(customerId: string, user: AuthUser) {
     await this.loadCustomer(customerId, user);
-    const quotation = await this.quotationsRepo.findOne({
+    const issued = await this.quotationsRepo.findOne({
       where: {
         customerId,
         status: QuotationStatus.ISSUED,
@@ -271,13 +297,26 @@ export class QuotationsService {
         template: true,
       },
     });
-    if (!quotation) {
+    if (issued) {
+      this.assertOwner(issued, user);
+      return this.sanitize(issued);
+    }
+
+    const draft = await this.quotationsRepo.findOne({
+      where: { customerId },
+      order: { quotationDate: 'DESC', createdAt: 'DESC' },
+      relations: {
+        customer: true,
+        template: true,
+      },
+    });
+    if (!draft) {
       throw new NotFoundException(
-        'No issued quotation found for this customer',
+        'No quotation found for this customer',
       );
     }
-    this.assertOwner(quotation, user);
-    return this.sanitize(quotation);
+    this.assertOwner(draft, user);
+    return this.sanitize(draft);
   }
 
   async update(id: string, dto: UpdateQuotationDto, user: AuthUser) {
@@ -342,11 +381,21 @@ export class QuotationsService {
     if (dto.quotationCode?.trim()) {
       quotation.quotationCode = dto.quotationCode.trim();
     } else if (!quotation.quotationCode) {
-      quotation.quotationCode = await this.nextQuotationCode(user.id);
+      quotation.quotationCode = await this.allocateQuotationCode(user.id);
     }
     quotation.status = QuotationStatus.ISSUED;
 
-    await this.quotationsRepo.save(quotation);
+    try {
+      await this.quotationsRepo.save(quotation);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/duplicate key|unique constraint/i.test(msg)) {
+        throw new ConflictException(
+          'Could not issue quotation: quotation code already exists. Try again.',
+        );
+      }
+      throw err;
+    }
     return this.findOne(id, user);
   }
 

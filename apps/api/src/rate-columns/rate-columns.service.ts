@@ -70,6 +70,24 @@ export class RateColumnsService {
     };
   }
 
+  async listForBooking(user: AuthUser) {
+    const selected = await this.repo.find({
+      where: { createdById: user.id, deletedAt: IsNull() },
+      relations: { state: true, cityRef: true },
+      order: { label: 'ASC' },
+    });
+    return {
+      data: selected.map((s) => ({
+        id: s.cityId,
+        cityId: s.cityId,
+        stateId: s.stateId,
+        label: s.label,
+        stateName: s.state?.name ?? null,
+        rateColumnId: cityRateColumnId(s.cityId),
+      })),
+    };
+  }
+
   async syncSelection(dto: SyncRateColumnSelectionDto, user: AuthUser) {
     const userId = user.id;
     const cityIds = [...new Set(dto.cityIds ?? [])];
@@ -125,9 +143,7 @@ export class RateColumnsService {
   /**
    * Matrix columns from Rate columns selection:
    * - one column per selected city
-   * - one "Within {state}" column per parent state, but skipped when the user
-   *   already selected a city with the same name as that state (avoids
-   *   Gujarat + Gujarat duplicates)
+   * - one "Within {state}" column per distinct parent state (for city→state→ROI)
    * - ROI always
    */
   async rateGeographyForUser(userId: string) {
@@ -145,10 +161,6 @@ export class RateColumnsService {
       stateId: s.stateId,
     }));
 
-    const cityNamesLower = new Set(
-      selected.map((s) => s.label.trim().toLowerCase()),
-    );
-
     const stateMap = new Map<
       string,
       {
@@ -161,10 +173,8 @@ export class RateColumnsService {
     >();
     for (const s of selected) {
       if (!s.stateId || !s.state?.name) continue;
-      const stateName = s.state.name.trim();
-      // User already has a city chip named like this state → no extra state col
-      if (cityNamesLower.has(stateName.toLowerCase())) continue;
       if (stateMap.has(s.stateId)) continue;
+      const stateName = s.state.name.trim();
       stateMap.set(s.stateId, {
         id: stateRateColumnId(s.stateId),
         label: `Within ${stateName}`,

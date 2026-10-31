@@ -39,6 +39,13 @@ export class Customer {
   @Column({ type: 'varchar', nullable: true })
   state: string | null;
 
+  /** Linked center / master city for booking sender */
+  @Column({ type: 'uuid', nullable: true })
+  cityId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  stateId: string | null;
+
   @Column({ type: 'varchar', nullable: true })
   pincode: string | null;
 

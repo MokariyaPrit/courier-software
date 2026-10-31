@@ -145,39 +145,53 @@ export function toMatrixForm(input: {
   return { columns, sections, rows };
 }
 
-function pickWeightRow(
-  matrix: {
-    rows?: Array<{
-      sectionId: string;
-      weightGrams?: number | null;
-      isAdditional?: boolean;
-      sortOrder?: number;
-      rates: Record<string, string | number>;
-    }>;
-  },
+type MatrixRow = {
+  sectionId: string;
+  weightGrams?: number | null;
+  isAdditional?: boolean;
+  sortOrder?: number;
+  rates: Record<string, string | number>;
+};
+
+function sectionRows(
+  matrix: { rows?: MatrixRow[] },
   sectionId: string,
-  weightKg: number,
-) {
-  const weightGrams = Math.max(0, Number(weightKg || 0) * 1000);
-  const rows = (matrix.rows ?? [])
-    .filter((r) => r.sectionId === sectionId && !r.isAdditional)
+): MatrixRow[] {
+  const sid = String(sectionId || '').trim();
+  return (matrix.rows ?? [])
+    .filter(
+      (r) =>
+        !r.isAdditional &&
+        String(r.sectionId || '').trim().toLowerCase() === sid.toLowerCase(),
+    )
     .sort(
       (a, b) =>
         (a.weightGrams ?? a.sortOrder ?? 0) - (b.weightGrams ?? b.sortOrder ?? 0),
     );
+}
 
-  if (!rows.length) return null;
+/** Rows to try for a weight: matching band first, then lighter bands (with rates). */
+function weightRowsToTry(
+  matrix: { rows?: MatrixRow[] },
+  sectionId: string,
+  weightKg: number,
+): MatrixRow[] {
+  const rows = sectionRows(matrix, sectionId);
+  if (!rows.length) return [];
 
-  let match = rows[0];
-  for (const row of rows) {
-    const band = row.weightGrams ?? 0;
-    if (band > 0 && weightGrams <= band) {
-      match = row;
-      break;
-    }
-    match = row;
+  const weightGrams = Math.max(0, Number(weightKg || 0) * 1000);
+  let matchIdx = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const band = rows[i].weightGrams ?? 0;
+    matchIdx = i;
+    if (band > 0 && weightGrams <= band) break;
   }
-  return match;
+
+  // Prefer exact band, then walk toward lighter bands that may have rates filled
+  const ordered = [rows[matchIdx]];
+  for (let i = matchIdx - 1; i >= 0; i--) ordered.push(rows[i]);
+  for (let i = matchIdx + 1; i < rows.length; i++) ordered.push(rows[i]);
+  return ordered;
 }
 
 /** Pick freight from a rate matrix using section + column + weight (kg). */
@@ -185,13 +199,7 @@ export function lookupMatrixRate(
   matrix: {
     sections?: RateSectionDef[];
     columns?: RateColumnDef[];
-    rows?: Array<{
-      sectionId: string;
-      weightGrams?: number | null;
-      isAdditional?: boolean;
-      sortOrder?: number;
-      rates: Record<string, string | number>;
-    }>;
+    rows?: MatrixRow[];
   },
   opts: {
     sectionId: string;
@@ -199,51 +207,93 @@ export function lookupMatrixRate(
     weightKg: number;
   },
 ): number {
-  const match = pickWeightRow(matrix, opts.sectionId, opts.weightKg);
-  if (!match) return 0;
-  const raw = match.rates?.[opts.columnId];
-  if (!isRateConfigured(raw)) return 0;
-  return Number(raw);
+  for (const row of weightRowsToTry(matrix, opts.sectionId, opts.weightKg)) {
+    const raw = row.rates?.[opts.columnId];
+    if (isRateConfigured(raw)) return Number(raw);
+  }
+  return 0;
+}
+
+function candidateColumnIds(
+  matrix: { columns?: RateColumnDef[]; rows?: MatrixRow[] },
+  opts: {
+    receiverCityId?: string | null;
+    receiverStateId?: string | null;
+    receiverCityName?: string | null;
+    receiverStateName?: string | null;
+  },
+): string[] {
+  const columns = matrix.columns ?? [];
+  const byId = new Map(columns.map((c) => [c.id, c]));
+  const ids: string[] = [];
+  const push = (id: string | null | undefined) => {
+    if (!id || ids.includes(id)) return;
+    ids.push(id);
+  };
+
+  if (opts.receiverCityId) push(cityRateColumnId(opts.receiverCityId));
+
+  // Match city column by label if id prefix missing (legacy / renamed)
+  if (opts.receiverCityName) {
+    const name = opts.receiverCityName.trim().toLowerCase();
+    for (const col of columns) {
+      if (col.label.trim().toLowerCase() === name) push(col.id);
+    }
+  }
+
+  if (opts.receiverStateId) push(stateRateColumnId(opts.receiverStateId));
+
+  // City chip named like the state (Gujarat city) used as state-level rate
+  if (opts.receiverStateName) {
+    const stateName = opts.receiverStateName.trim().toLowerCase();
+    for (const col of columns) {
+      const label = col.label.trim().toLowerCase();
+      if (label === stateName || label === `within ${stateName}`) push(col.id);
+    }
+  }
+
+  push(ROI_RATE_COLUMN_ID);
+  // Also accept legacy restOfIndia key
+  push('restOfIndia');
+
+  // Include any id that appears in row rates even if not listed in columns
+  for (const id of ids) {
+    if (!byId.has(id) && id.startsWith('city:')) {
+      // keep — rate may still exist on rows
+    }
+  }
+
+  return ids;
 }
 
 /**
  * City → state → ROI freight resolver for booking.
  * Empty/missing cell falls through; explicit 0 is a valid rate.
+ * If the weight band cell is empty, lighter/heavier bands in the section are tried.
  */
 export function resolveRate(
   matrix: {
     columns?: RateColumnDef[];
-    rows?: Array<{
-      sectionId: string;
-      weightGrams?: number | null;
-      isAdditional?: boolean;
-      sortOrder?: number;
-      rates: Record<string, string | number>;
-    }>;
+    rows?: MatrixRow[];
   },
   opts: {
     sectionId: string;
     weightKg: number;
     receiverCityId?: string | null;
     receiverStateId?: string | null;
+    receiverCityName?: string | null;
+    receiverStateName?: string | null;
   },
 ): { amount: number; columnId: string } {
-  const columnIds: string[] = [];
-  if (opts.receiverCityId) columnIds.push(cityRateColumnId(opts.receiverCityId));
-  if (opts.receiverStateId) {
-    columnIds.push(stateRateColumnId(opts.receiverStateId));
-  }
-  columnIds.push(ROI_RATE_COLUMN_ID);
+  const columnIds = candidateColumnIds(matrix, opts);
+  const rows = weightRowsToTry(matrix, opts.sectionId, opts.weightKg);
 
-  const colSet = new Set((matrix.columns ?? []).map((c) => c.id));
-  const match = pickWeightRow(matrix, opts.sectionId, opts.weightKg);
-
-  for (const columnId of columnIds) {
-    if (!colSet.has(columnId)) continue;
-    if (!match) continue;
-    const raw = match.rates?.[columnId];
-    if (!isRateConfigured(raw)) continue;
-    return { amount: Number(raw), columnId };
+  for (const row of rows) {
+    for (const columnId of columnIds) {
+      const raw = row.rates?.[columnId];
+      if (!isRateConfigured(raw)) continue;
+      return { amount: Number(raw), columnId };
+    }
   }
 
   return { amount: 0, columnId: ROI_RATE_COLUMN_ID };

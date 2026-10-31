@@ -32,6 +32,12 @@ export class RateColumnsController {
     return this.service.getSelectionBoard(user);
   }
 
+  /** Selected rate cities for booking destination combobox */
+  @Get('booking-options')
+  bookingOptions(@CurrentUser() user: AuthUser) {
+    return this.service.listForBooking(user);
+  }
+
   @Put('selection')
   async sync(
     @Body() dto: SyncRateColumnSelectionDto,

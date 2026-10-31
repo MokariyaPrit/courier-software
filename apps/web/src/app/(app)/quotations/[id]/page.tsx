@@ -88,8 +88,30 @@ export default function QuotationDetailPage() {
     quotationDate: quotationDate || undefined,
   });
 
+  const apiErrorMessage = (err: unknown, fallback: string) => {
+    const data = (
+      err as {
+        response?: {
+          data?: {
+            error?: { message?: string | string[] };
+            message?: string | string[];
+          };
+        };
+        message?: string;
+      }
+    )?.response?.data;
+    const raw =
+      data?.error?.message ??
+      data?.message ??
+      (err as { message?: string })?.message;
+    if (Array.isArray(raw)) return raw.join(', ');
+    if (typeof raw === 'string' && raw.trim()) return raw;
+    return fallback;
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
+      setError('');
       await api.patch(`/quotations/${id}`, savePayload());
     },
     onSuccess: async () => {
@@ -98,29 +120,28 @@ export default function QuotationDetailPage() {
       await qc.invalidateQueries({ queryKey: ['quotation', id] });
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message || 'Failed to save';
-      setError(message);
+      setSavedHint('');
+      setError(apiErrorMessage(err, 'Failed to save'));
     },
   });
 
   const issueMutation = useMutation({
     mutationFn: async () => {
+      setError('');
+      setSavedHint('');
       await api.patch(`/quotations/${id}`, savePayload());
       const res = await api.post(`/quotations/${id}/issue`, {});
       return unwrap<QuotationDetail>(res.data);
     },
     onSuccess: async () => {
       setError('');
+      setSavedHint('Quotation issued');
       await qc.invalidateQueries({ queryKey: ['quotation', id] });
       await qc.invalidateQueries({ queryKey: ['quotations'] });
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message || 'Failed to issue';
-      setError(message);
+      setSavedHint('');
+      setError(apiErrorMessage(err, 'Failed to issue quotation'));
     },
   });
 
@@ -173,10 +194,35 @@ export default function QuotationDetailPage() {
             label={isIssued ? 'Re-issue' : 'Issue quotation'}
             icon="pi pi-check"
             loading={issueMutation.isPending}
-            onClick={() => issueMutation.mutate()}
+            onClick={() => {
+              setError('');
+              setSavedHint('');
+              issueMutation.mutate();
+            }}
           />
         </div>
       </div>
+
+      {error ? (
+        <div
+          className="panel"
+          style={{
+            marginBottom: '1rem',
+            borderColor: '#c45c5c',
+            background: '#fdf2f2',
+          }}
+          role="alert"
+        >
+          <p className="error-text" style={{ margin: 0 }}>
+            {error}
+          </p>
+        </div>
+      ) : null}
+      {savedHint ? (
+        <p className="muted" style={{ marginTop: 0 }}>
+          {savedHint}
+        </p>
+      ) : null}
 
       <div className="panel" style={{ marginBottom: '1rem' }}>
         <div className="form-grid" style={{ marginBottom: '0.75rem' }}>
@@ -214,9 +260,6 @@ export default function QuotationDetailPage() {
       </div>
 
       <RateMatrixEditor value={matrix} onChange={setMatrix} />
-
-      {error ? <p className="error-text">{error}</p> : null}
-      {savedHint ? <p className="muted">{savedHint}</p> : null}
     </div>
   );
 }

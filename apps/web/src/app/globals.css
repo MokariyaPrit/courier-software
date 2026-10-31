@@ -337,6 +337,49 @@ a {
   flex-wrap: wrap;
 }
 
+.search-select {
+  position: relative;
+  width: 100%;
+}
+
+.search-select-list {
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  top: calc(100% + 2px);
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  max-height: 220px;
+  overflow: auto;
+  background: var(--main-surface, #fff);
+  border: 1px solid var(--main-border, #c5ced8);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.search-select-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.search-select-option.active,
+.search-select-option:hover {
+  background: #eef4fb;
+}
+
+.search-select-sub {
+  font-size: 0.8rem;
+}
+
+.search-select-empty {
+  padding: 0.55rem 0.75rem;
+}
+
 .bookings-split {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);

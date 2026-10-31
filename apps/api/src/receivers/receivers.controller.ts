@@ -37,6 +37,14 @@ export class ReceiversController {
     return this.receiversService.create(dto, user);
   }
 
+  @Post('find-or-create')
+  findOrCreate(
+    @Body() dto: CreateReceiverDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.receiversService.findOrCreate(dto, user);
+  }
+
   @Get()
   findAll(@Query() query: ReceiverQueryDto, @CurrentUser() user: AuthUser) {
     return this.receiversService.findAll(query, user);

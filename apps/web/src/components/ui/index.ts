@@ -5,6 +5,7 @@ export { Dialog } from './Dialog';
 export { InputNumber } from './InputNumber';
 export { InputText } from './InputText';
 export { MultiSelect, Select } from './Select';
+export { SearchSelect, type SearchSelectOption } from './SearchSelect';
 export { Paginator, type PaginatorPageChangeEvent } from './Paginator';
 export { Tag } from './Tag';
 export { Textarea } from './Textarea';

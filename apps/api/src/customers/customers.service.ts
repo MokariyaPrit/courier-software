@@ -55,6 +55,8 @@ export class CustomersService {
         address: this.emptyToNull(dto.address) ?? null,
         city: this.emptyToNull(dto.city) ?? null,
         state: this.emptyToNull(dto.state) ?? null,
+        cityId: dto.cityId ?? null,
+        stateId: dto.stateId ?? null,
         pincode: this.emptyToNull(dto.pincode) ?? null,
         gstin: this.emptyToNull(dto.gstin) ?? null,
         notes: this.emptyToNull(dto.notes) ?? null,
@@ -148,6 +150,8 @@ export class CustomersService {
     if (dto.state !== undefined) {
       customer.state = this.emptyToNull(dto.state) ?? null;
     }
+    if (dto.cityId !== undefined) customer.cityId = dto.cityId;
+    if (dto.stateId !== undefined) customer.stateId = dto.stateId;
     if (dto.pincode !== undefined) {
       customer.pincode = this.emptyToNull(dto.pincode) ?? null;
     }

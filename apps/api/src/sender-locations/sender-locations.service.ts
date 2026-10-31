@@ -82,7 +82,7 @@ export class SenderLocationsService {
     };
   }
 
-  /** Centers available for booking dropdown */
+  /** Centers available for booking / customer city pickers */
   async listForBooking(user: AuthUser) {
     const userId = this.scopeUserId(user);
     const items = await this.repo.find({
@@ -90,7 +90,21 @@ export class SenderLocationsService {
       relations: { state: true, cityRef: true },
       order: { label: 'ASC' },
     });
-    return { data: items };
+    return {
+      data: items.map((s) => ({
+        id: s.id,
+        cityId: s.cityId,
+        stateId: s.stateId,
+        label: s.label,
+        stateName: s.state?.name ?? null,
+        rateColumnId: s.rateColumnId,
+        isDefault: s.isDefault,
+        cityRef: s.cityRef
+          ? { id: s.cityRef.id, name: s.cityRef.name }
+          : null,
+        state: s.state ? { id: s.state.id, name: s.state.name } : null,
+      })),
+    };
   }
 
   async syncSelection(dto: SyncSenderLocationSelectionDto, user: AuthUser) {

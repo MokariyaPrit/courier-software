@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Min,
   MinLength,
   ValidateIf,
@@ -44,6 +45,14 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   state?: string;
+
+  @IsOptional()
+  @IsUUID()
+  cityId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  stateId?: string;
 
   @IsOptional()
   @IsString()
@@ -109,6 +118,14 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsString()
   state?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  cityId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  stateId?: string | null;
 
   @IsOptional()
   @IsString()

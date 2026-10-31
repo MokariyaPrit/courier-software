@@ -10,6 +10,7 @@ import {
   Dialog,
   InputNumber,
   InputText,
+  SearchSelect,
   Tag,
   ToggleSwitch,
   type AppColumn,
@@ -37,6 +38,8 @@ interface Customer {
   address: string | null;
   city: string | null;
   state: string | null;
+  cityId: string | null;
+  stateId: string | null;
   pincode: string | null;
   gstin: string | null;
   notes: string | null;
@@ -55,6 +58,8 @@ interface CustomerForm {
   address: string;
   city: string;
   state: string;
+  cityId: string;
+  stateId: string;
   pincode: string;
   gstin: string;
   notes: string;
@@ -72,6 +77,8 @@ const EMPTY_FORM: CustomerForm = {
   address: '',
   city: '',
   state: '',
+  cityId: '',
+  stateId: '',
   pincode: '',
   gstin: '',
   notes: '',
@@ -99,6 +106,8 @@ function toForm(c: Customer): CustomerForm {
     address: c.address || '',
     city: c.city || '',
     state: c.state || '',
+    cityId: c.cityId || '',
+    stateId: c.stateId || '',
     pincode: c.pincode || '',
     gstin: c.gstin || '',
     notes: c.notes || '',
@@ -119,6 +128,8 @@ function toPayload(form: CustomerForm) {
     address: cleaned.address || null,
     city: cleaned.city || null,
     state: cleaned.state || null,
+    cityId: cleaned.cityId || null,
+    stateId: cleaned.stateId || null,
     pincode: cleaned.pincode || null,
     gstin: cleaned.gstin || null,
     notes: cleaned.notes || null,
@@ -137,6 +148,49 @@ export default function CustomersPage() {
   const [form, setForm] = useState<CustomerForm>(EMPTY_FORM);
   const [error, setError] = useState('');
   const [listError, setListError] = useState('');
+
+  const centersQuery = useQuery({
+    queryKey: ['sender-locations-booking'],
+    queryFn: async () => {
+      const res = await api.get('/sender-locations/booking-options');
+      const payload = unwrap<
+        | Array<{
+            id: string;
+            cityId: string;
+            stateId: string | null;
+            label: string;
+            stateName?: string | null;
+            state?: { name: string } | null;
+          }>
+        | {
+            data: Array<{
+              id: string;
+              cityId: string;
+              stateId: string | null;
+              label: string;
+              stateName?: string | null;
+              state?: { name: string } | null;
+            }>;
+          }
+      >(res.data);
+      if (Array.isArray(payload)) return payload;
+      if (payload && typeof payload === 'object' && 'data' in payload) {
+        return payload.data;
+      }
+      return [];
+    },
+    enabled: open,
+  });
+
+  const centerOptions = useMemo(
+    () =>
+      (centersQuery.data ?? []).map((c) => ({
+        value: c.cityId,
+        label: c.label,
+        subLabel: c.stateName || c.state?.name || undefined,
+      })),
+    [centersQuery.data],
+  );
 
   const listQuery = useQuery({
     queryKey: ['customers', list.queryParams],
@@ -369,17 +423,47 @@ export default function CustomersPage() {
           </div>
           <div className="field">
             <label>City</label>
-            <InputText
+            <SearchSelect
               value={form.city}
-              onChange={(e) => setField('city', e.target.value)}
-              style={{ width: '100%' }}
+              options={centerOptions}
+              placeholder="Search city from your Centers…"
+              allowFreeText={false}
+              emptyHint="No centers — open Centers and select cities first"
+              onChange={(text) =>
+                setForm((p) => ({
+                  ...p,
+                  city: text,
+                  cityId: '',
+                  stateId: '',
+                  state: '',
+                }))
+              }
+              onSelect={(opt) => {
+                if (!opt) return;
+                const loc = (centersQuery.data ?? []).find(
+                  (c) => c.cityId === opt.value,
+                );
+                const stateName =
+                  loc?.stateName || loc?.state?.name || opt.subLabel || '';
+                setForm((p) => ({
+                  ...p,
+                  city: opt.label,
+                  cityId: opt.value,
+                  stateId: loc?.stateId || '',
+                  state: stateName,
+                }));
+              }}
             />
+            <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.8rem' }}>
+              Pick from Centers only — do not type a free city name.
+            </p>
           </div>
           <div className="field">
             <label>State</label>
             <InputText
               value={form.state}
-              onChange={(e) => setField('state', e.target.value)}
+              disabled
+              placeholder="Filled automatically from city"
               style={{ width: '100%' }}
             />
           </div>
@@ -466,6 +550,7 @@ export default function CustomersPage() {
           <Button
             label={editingId ? 'Save changes' : 'Create'}
             loading={saveMutation.isPending}
+            disabled={!form.name.trim() || !form.cityId}
             onClick={() => saveMutation.mutate()}
           />
         </div>

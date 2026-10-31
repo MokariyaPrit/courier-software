@@ -56,6 +56,47 @@ export class ReceiversService {
     return this.findOne(saved.id, user);
   }
 
+  /**
+   * Same name (case-insensitive) for this branch manager → reuse;
+   * otherwise create a new receiver.
+   */
+  async findOrCreate(dto: CreateReceiverDto, user: AuthUser) {
+    const name = dto.name.trim();
+    const existing = await this.repo
+      .createQueryBuilder('receiver')
+      .where('receiver.deletedAt IS NULL')
+      .andWhere('receiver.createdById = :uid', { uid: user.id })
+      .andWhere('LOWER(receiver.name) = LOWER(:name)', { name })
+      .orderBy('receiver.createdAt', 'DESC')
+      .getOne();
+
+    if (existing) {
+      if (dto.phone !== undefined) {
+        existing.phone = this.emptyToNull(dto.phone) ?? existing.phone;
+      }
+      if (dto.address !== undefined) {
+        existing.address = this.emptyToNull(dto.address) ?? existing.address;
+      }
+      if (dto.city !== undefined) {
+        existing.city = this.emptyToNull(dto.city) ?? existing.city;
+      }
+      if (dto.state !== undefined) {
+        existing.state = this.emptyToNull(dto.state) ?? existing.state;
+      }
+      if (dto.cityId !== undefined) existing.cityId = dto.cityId ?? existing.cityId;
+      if (dto.stateId !== undefined) {
+        existing.stateId = dto.stateId ?? existing.stateId;
+      }
+      if (dto.pincode !== undefined) {
+        existing.pincode = this.emptyToNull(dto.pincode) ?? existing.pincode;
+      }
+      await this.repo.save(existing);
+      return this.findOne(existing.id, user);
+    }
+
+    return this.create(dto, user);
+  }
+
   async findAll(query: PaginationDto & { search?: string }, user: AuthUser) {
     const { sortBy, sortOrder } = resolveSortPair(query, RECEIVER_SORT, {
       sortBy: 'name',
