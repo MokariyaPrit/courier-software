@@ -9,6 +9,7 @@ import { User } from '../entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtPayload } from './jwt.strategy';
 
 @Injectable()
@@ -148,5 +149,21 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     return this.sanitize(user);
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    await this.usersService.update(userId, {
+      fullName: dto.fullName,
+      phone: dto.phone,
+      infoEmail: dto.infoEmail,
+      address: dto.address,
+      city: dto.city,
+      state: dto.state,
+      pincode: dto.pincode,
+      companyName: dto.companyName,
+      gstin: dto.gstin,
+      notes: dto.notes,
+    });
+    return this.me(userId);
   }
 }

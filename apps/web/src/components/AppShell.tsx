@@ -16,6 +16,7 @@ const NAV = [
   { href: '/masters/pincodes', label: 'Pincodes', roles: [Role.ADMIN] },
   { href: '/billing', label: 'Billing', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/admin/users', label: 'Users', roles: [Role.ADMIN] },
+  { href: '/profile', label: 'Profile', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -37,26 +38,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">Courier ERP</div>
-        <nav>
-          {links.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={pathname.startsWith(item.href) ? 'nav-link active' : 'nav-link'}
-            >
-              {item.label}
-            </Link>
-          ))}
+      <header className="topbar" aria-label="Main navigation">
+        <div className="topbar-brand">Courier ERP</div>
+        <nav className="topbar-nav">
+          {links.map((item) => {
+            const isActive =
+              item.href === '/profile'
+                ? pathname === '/profile'
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={isActive ? 'nav-link active' : 'nav-link'}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
-        <div className="sidebar-footer">
+        <div className="topbar-user">
           <div className="user-meta">
             <strong>{user.fullName}</strong>
-            <span>{user.role.replace('_', ' ')}</span>
-            {user.userInfo?.companyName ? (
-              <span>{user.userInfo.companyName}</span>
-            ) : null}
+            <span>{user.role.replace(/_/g, ' ')}</span>
           </div>
           <Button
             label="Logout"
@@ -68,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             }}
           />
         </div>
-      </aside>
+      </header>
       <main className="content">{children}</main>
     </div>
   );
