@@ -12,7 +12,9 @@ import { InputNumber } from 'primereact/inputnumber';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { useMemo, useState } from 'react';
-import { api, unwrap } from '@/lib/api';
+import { ListPaginator, ListToolbar } from '@/components/ListControls';
+import { api } from '@/lib/api';
+import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
 import { trimFormData } from '@/lib/trim';
 
 interface ConsignmentRow {
@@ -24,6 +26,16 @@ interface ConsignmentRow {
   createdAt: string;
   createdBy?: { userInfo?: { fullName?: string } | null };
 }
+
+const SORT_OPTIONS: SortOption[] = [
+  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC' },
+  { label: 'Oldest first', sortBy: 'createdAt', sortOrder: 'ASC' },
+  { label: 'AWB Asc', sortBy: 'awb', sortOrder: 'ASC' },
+  { label: 'AWB Desc', sortBy: 'awb', sortOrder: 'DESC' },
+  { label: 'Receiver Asc', sortBy: 'receiverName', sortOrder: 'ASC' },
+  { label: 'Receiver Desc', sortBy: 'receiverName', sortOrder: 'DESC' },
+  { label: 'Status Asc', sortBy: 'status', sortOrder: 'ASC' },
+];
 
 const emptyForm = {
   senderName: '',
@@ -44,20 +56,15 @@ const emptyForm = {
 
 export default function BookingsPage() {
   const qc = useQueryClient();
-  const [search, setSearch] = useState('');
+  const list = useListParams({ defaultSort: SORT_OPTIONS[0] });
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
 
   const listQuery = useQuery({
-    queryKey: ['consignments', search],
-    queryFn: async () => {
-      const res = await api.get('/consignments', {
-        params: { search: search || undefined, pageSize: 50 },
-      });
-      const body = res.data as { data: ConsignmentRow[]; meta?: unknown };
-      return body.data ?? unwrap<ConsignmentRow[]>(res.data);
-    },
+    queryKey: ['consignments', list.queryParams],
+    queryFn: () =>
+      fetchPaginated<ConsignmentRow>('/consignments', list.queryParams),
   });
 
   const createMutation = useMutation({
@@ -105,21 +112,28 @@ export default function BookingsPage() {
     [],
   );
 
+  const meta = listQuery.data?.meta ?? {
+    page: list.page,
+    pageSize: list.pageSize,
+    total: 0,
+  };
+
   return (
     <div>
       <div className="page-header">
         <h1>Bookings</h1>
         <Button label="New booking" icon="pi pi-plus" onClick={() => setOpen(true)} />
       </div>
-      <div className="toolbar">
-        <InputText
-          placeholder="Search AWB / receiver"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      <ListToolbar
+        search={list.search}
+        onSearchChange={list.setSearch}
+        searchPlaceholder="Search AWB / receiver"
+        sortKey={list.sortKey}
+        onSortChange={list.setSortKey}
+        sortOptions={SORT_OPTIONS}
+      />
       <div className="panel">
-        <DataTable value={listQuery.data ?? []} loading={listQuery.isLoading} paginator rows={10}>
+        <DataTable value={listQuery.data?.data ?? []} loading={listQuery.isLoading}>
           <Column
             field="awb"
             header="AWB"
@@ -142,6 +156,11 @@ export default function BookingsPage() {
             }
           />
         </DataTable>
+        <ListPaginator
+          meta={meta}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
       </div>
 
       <Dialog

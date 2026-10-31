@@ -11,6 +11,7 @@ import { InputSwitch } from 'primereact/inputswitch';
 import { InputText } from 'primereact/inputtext';
 import { Tag } from 'primereact/tag';
 import { Dispatch, SetStateAction, useState } from 'react';
+import { ListPaginator, ListToolbar } from '@/components/ListControls';
 import { PasswordInput } from '@/components/PasswordInput';
 import { api, unwrap } from '@/lib/api';
 import {
@@ -20,7 +21,18 @@ import {
   validateFullName,
   validatePassword,
 } from '@/lib/form-validation';
+import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
 import { trimFormData } from '@/lib/trim';
+
+const USER_SORT_OPTIONS: SortOption[] = [
+  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC' },
+  { label: 'Oldest first', sortBy: 'createdAt', sortOrder: 'ASC' },
+  { label: 'Name Asc', sortBy: 'fullName', sortOrder: 'ASC' },
+  { label: 'Name Desc', sortBy: 'fullName', sortOrder: 'DESC' },
+  { label: 'Email Asc', sortBy: 'email', sortOrder: 'ASC' },
+  { label: 'Email Desc', sortBy: 'email', sortOrder: 'DESC' },
+  { label: 'Role Asc', sortBy: 'role', sortOrder: 'ASC' },
+];
 
 interface UserInfoFields {
   fullName: string;
@@ -319,6 +331,7 @@ function UserFormFields({
 
 export default function UsersPage() {
   const qc = useQueryClient();
+  const list = useListParams({ defaultSort: USER_SORT_OPTIONS[0] });
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -331,11 +344,8 @@ export default function UsersPage() {
   const [editLoading, setEditLoading] = useState(false);
 
   const usersQuery = useQuery({
-    queryKey: ['users'],
-    queryFn: async () => {
-      const res = await api.get('/users', { params: { pageSize: 100 } });
-      return (res.data as { data: UserRow[] }).data;
-    },
+    queryKey: ['users', list.queryParams],
+    queryFn: () => fetchPaginated<UserRow>('/users', list.queryParams),
   });
 
   const createMutation = useMutation({
@@ -485,8 +495,16 @@ export default function UsersPage() {
           }}
         />
       </div>
+      <ListToolbar
+        sortKey={list.sortKey}
+        onSortChange={list.setSortKey}
+        sortOptions={USER_SORT_OPTIONS}
+      />
       <div className="panel">
-        <DataTable value={usersQuery.data ?? []} loading={usersQuery.isLoading}>
+        <DataTable
+          value={usersQuery.data?.data ?? []}
+          loading={usersQuery.isLoading}
+        >
           <Column
             header="Full name"
             body={(row: UserRow) => row.userInfo?.fullName ?? '—'}
@@ -527,6 +545,17 @@ export default function UsersPage() {
             )}
           />
         </DataTable>
+        <ListPaginator
+          meta={
+            usersQuery.data?.meta ?? {
+              page: list.page,
+              pageSize: list.pageSize,
+              total: 0,
+            }
+          }
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
       </div>
 
       <Dialog

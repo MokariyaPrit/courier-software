@@ -10,9 +10,16 @@ import {
 } from '@courier/shared';
 import { Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
+import {
+  paginateMeta,
+  PaginationDto,
+  resolveOrder,
+} from '../common/dto/pagination.dto';
 import { Consignment } from '../entities/consignment.entity';
 import { TrackingEvent } from '../entities/tracking-event.entity';
 import { UpdateStatusDto } from './dto/update-status.dto';
+
+const OFD_SORT = ['awb', 'receiverName', 'updatedAt', 'createdAt'] as const;
 
 @Injectable()
 export class TrackingService {
@@ -73,10 +80,19 @@ export class TrackingService {
     });
   }
 
-  async ofdList() {
-    return this.consignmentsRepo.find({
+  async ofdList(query: PaginationDto) {
+    const [items, total] = await this.consignmentsRepo.findAndCount({
       where: { status: ConsignmentStatus.OUT_FOR_DELIVERY },
-      order: { updatedAt: 'DESC' },
+      order: resolveOrder(query, OFD_SORT, {
+        sortBy: 'updatedAt',
+        sortOrder: 'DESC',
+      }),
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
     });
+    return {
+      data: items,
+      meta: paginateMeta(query.page, query.pageSize, total),
+    };
   }
 }

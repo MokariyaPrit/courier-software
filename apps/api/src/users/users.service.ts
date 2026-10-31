@@ -6,11 +6,17 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
-import { paginateMeta, PaginationDto } from '../common/dto/pagination.dto';
+import {
+  paginateMeta,
+  PaginationDto,
+  resolveSortPair,
+} from '../common/dto/pagination.dto';
 import { UserInfo } from '../entities/user-info.entity';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+
+const USER_SORT = ['email', 'role', 'createdAt', 'isActive', 'fullName'] as const;
 
 @Injectable()
 export class UsersService {
@@ -63,12 +69,23 @@ export class UsersService {
   }
 
   async findAll(query: PaginationDto) {
-    const [items, total] = await this.usersRepo.findAndCount({
-      relations: ['userInfo'],
-      order: { createdAt: 'DESC' },
-      skip: (query.page - 1) * query.pageSize,
-      take: query.pageSize,
+    const { sortBy, sortOrder } = resolveSortPair(query, USER_SORT, {
+      sortBy: 'createdAt',
+      sortOrder: 'DESC',
     });
+    const qb = this.usersRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.userInfo', 'userInfo')
+      .skip((query.page - 1) * query.pageSize)
+      .take(query.pageSize);
+
+    if (sortBy === 'fullName') {
+      qb.orderBy('userInfo.fullName', sortOrder);
+    } else {
+      qb.orderBy(`user.${sortBy}`, sortOrder);
+    }
+
+    const [items, total] = await qb.getManyAndCount();
     return {
       data: items.map((u) => this.sanitize(u)),
       meta: paginateMeta(query.page, query.pageSize, total),

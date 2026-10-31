@@ -5,22 +5,24 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
+import { CitiesModule } from './cities/cities.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { ConsignmentsModule } from './consignments/consignments.module';
 import { CustomersModule } from './customers/customers.module';
 import {
+  City,
   Consignment,
   ConsignmentCharge,
   Customer,
   Invoice,
-  Pincode,
+  State,
   TrackingEvent,
   User,
   UserInfo,
 } from './entities';
 import { HealthController } from './health/health.controller';
-import { PincodesModule } from './pincodes/pincodes.module';
+import { StatesModule } from './states/states.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { UsersModule } from './users/users.module';
 
@@ -41,7 +43,8 @@ import { UsersModule } from './users/users.module';
           User,
           UserInfo,
           Customer,
-          Pincode,
+          State,
+          City,
           Consignment,
           ConsignmentCharge,
           TrackingEvent,
@@ -53,7 +56,8 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     UsersModule,
     CustomersModule,
-    PincodesModule,
+    StatesModule,
+    CitiesModule,
     ConsignmentsModule,
     TrackingModule,
     BillingModule,

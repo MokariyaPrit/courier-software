@@ -11,6 +11,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 class ChargeDto {
   @IsEnum(ChargeType)
@@ -92,15 +93,7 @@ export class CreateConsignmentDto {
   charges?: ChargeDto[];
 }
 
-export class ConsignmentQueryDto {
-  @IsOptional()
-  @Type(() => Number)
-  page = 1;
-
-  @IsOptional()
-  @Type(() => Number)
-  pageSize = 20;
-
+export class ConsignmentQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
   search?: string;

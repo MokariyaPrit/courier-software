@@ -350,6 +350,35 @@ a {
   align-items: center;
 }
 
+.list-toolbar .list-search {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+
+.list-toolbar .list-search .p-inputtext {
+  width: 100%;
+}
+
+.list-toolbar .list-sort {
+  min-width: 200px;
+}
+
+.list-paginator {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--main-border);
+}
+
+.list-count {
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
 .timeline {
   list-style: none;
   margin: 0;

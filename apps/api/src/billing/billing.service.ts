@@ -7,11 +7,22 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { InvoiceStatus } from '@courier/shared';
 import { In, Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
-import { paginateMeta, PaginationDto } from '../common/dto/pagination.dto';
+import {
+  paginateMeta,
+  PaginationDto,
+  resolveOrder,
+} from '../common/dto/pagination.dto';
 import { Consignment } from '../entities/consignment.entity';
 import { Customer } from '../entities/customer.entity';
 import { Invoice } from '../entities/invoice.entity';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+
+const INVOICE_SORT = [
+  'invoiceNumber',
+  'totalAmount',
+  'status',
+  'createdAt',
+] as const;
 
 @Injectable()
 export class BillingService {
@@ -68,7 +79,10 @@ export class BillingService {
   async findAll(query: PaginationDto) {
     const [items, total] = await this.invoicesRepo.findAndCount({
       relations: ['customer'],
-      order: { createdAt: 'DESC' },
+      order: resolveOrder(query, INVOICE_SORT, {
+        sortBy: 'createdAt',
+        sortOrder: 'DESC',
+      }),
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
     });

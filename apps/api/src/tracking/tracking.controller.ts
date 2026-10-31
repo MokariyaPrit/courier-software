@@ -4,12 +4,14 @@ import {
   Get,
   Param,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@courier/shared';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UpdateStatusDto } from './dto/update-status.dto';
@@ -36,7 +38,7 @@ export class TrackingController {
   }
 
   @Get('delivery/ofd')
-  ofdList() {
-    return this.trackingService.ofdList();
+  ofdList(@Query() query: PaginationDto) {
+    return this.trackingService.ofdList(query);
   }
 }

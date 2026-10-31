@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -14,41 +15,47 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { CreatePincodeDto, UpdatePincodeDto } from './dto/pincode.dto';
-import { PincodesService } from './pincodes.service';
+import { CreateStateDto, UpdateStateDto } from './dto/state.dto';
+import { StatesService } from './states.service';
 
-class PincodeQueryDto extends PaginationDto {
+class StateQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
   search?: string;
 }
 
-@Controller('pincodes')
+@Controller('states')
 @UseGuards(JwtAuthGuard, RolesGuard)
-export class PincodesController {
-  constructor(private readonly pincodesService: PincodesService) {}
+export class StatesController {
+  constructor(private readonly statesService: StatesService) {}
 
   @Post()
   @Roles(Role.ADMIN)
-  create(@Body() dto: CreatePincodeDto) {
-    return this.pincodesService.create(dto);
+  create(@Body() dto: CreateStateDto) {
+    return this.statesService.create(dto);
   }
 
   @Get()
   @Roles(Role.ADMIN, Role.BRANCH_MANAGER)
-  findAll(@Query() query: PincodeQueryDto) {
-    return this.pincodesService.findAll(query);
+  findAll(@Query() query: StateQueryDto) {
+    return this.statesService.findAll(query);
   }
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.BRANCH_MANAGER)
   findOne(@Param('id') id: string) {
-    return this.pincodesService.findOne(id);
+    return this.statesService.findOne(id);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() dto: UpdatePincodeDto) {
-    return this.pincodesService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateStateDto) {
+    return this.statesService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  remove(@Param('id') id: string) {
+    return this.statesService.remove(id);
   }
 }

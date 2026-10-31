@@ -10,7 +10,7 @@ import {
 } from '@courier/shared';
 import { Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
-import { paginateMeta } from '../common/dto/pagination.dto';
+import { paginateMeta, resolveSortPair } from '../common/dto/pagination.dto';
 import { ConsignmentCharge } from '../entities/consignment-charge.entity';
 import { Consignment } from '../entities/consignment.entity';
 import { TrackingEvent } from '../entities/tracking-event.entity';
@@ -18,6 +18,13 @@ import {
   ConsignmentQueryDto,
   CreateConsignmentDto,
 } from './dto/consignment.dto';
+
+const CONSIGNMENT_SORT = [
+  'awb',
+  'receiverName',
+  'status',
+  'createdAt',
+] as const;
 
 @Injectable()
 export class ConsignmentsService {
@@ -105,12 +112,16 @@ export class ConsignmentsService {
   }
 
   async findAll(query: ConsignmentQueryDto) {
+    const { sortBy, sortOrder } = resolveSortPair(query, CONSIGNMENT_SORT, {
+      sortBy: 'createdAt',
+      sortOrder: 'DESC',
+    });
     const qb = this.consignmentsRepo
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.customer', 'customer')
       .leftJoinAndSelect('c.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
-      .orderBy('c.createdAt', 'DESC')
+      .orderBy(`c.${sortBy}`, sortOrder)
       .skip((query.page - 1) * query.pageSize)
       .take(query.pageSize);
 

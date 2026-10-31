@@ -7,7 +7,9 @@ import { DataTable } from 'primereact/datatable';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { useState } from 'react';
+import { ListPaginator, ListToolbar } from '@/components/ListControls';
 import { api } from '@/lib/api';
+import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
 
 interface Customer {
   id: string;
@@ -19,9 +21,17 @@ interface Customer {
   gstin: string | null;
 }
 
+const SORT_OPTIONS: SortOption[] = [
+  { label: 'Name Asc', sortBy: 'name', sortOrder: 'ASC' },
+  { label: 'Name Desc', sortBy: 'name', sortOrder: 'DESC' },
+  { label: 'City Asc', sortBy: 'city', sortOrder: 'ASC' },
+  { label: 'City Desc', sortBy: 'city', sortOrder: 'DESC' },
+  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC' },
+];
+
 export default function CustomersPage() {
   const qc = useQueryClient();
-  const [search, setSearch] = useState('');
+  const list = useListParams({ defaultSort: SORT_OPTIONS[0] });
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -34,13 +44,8 @@ export default function CustomersPage() {
   });
 
   const listQuery = useQuery({
-    queryKey: ['customers', search],
-    queryFn: async () => {
-      const res = await api.get('/customers', {
-        params: { search: search || undefined, pageSize: 100 },
-      });
-      return (res.data as { data: Customer[] }).data;
-    },
+    queryKey: ['customers', list.queryParams],
+    queryFn: () => fetchPaginated<Customer>('/customers', list.queryParams),
   });
 
   const createMutation = useMutation({
@@ -65,21 +70,28 @@ export default function CustomersPage() {
     },
   });
 
+  const meta = listQuery.data?.meta ?? {
+    page: list.page,
+    pageSize: list.pageSize,
+    total: 0,
+  };
+
   return (
     <div>
       <div className="page-header">
         <h1>Customers</h1>
         <Button label="Add customer" icon="pi pi-plus" onClick={() => setOpen(true)} />
       </div>
-      <div className="toolbar">
-        <InputText
-          placeholder="Search name / phone"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      <ListToolbar
+        search={list.search}
+        onSearchChange={list.setSearch}
+        searchPlaceholder="Search name / phone"
+        sortKey={list.sortKey}
+        onSortChange={list.setSortKey}
+        sortOptions={SORT_OPTIONS}
+      />
       <div className="panel">
-        <DataTable value={listQuery.data ?? []} loading={listQuery.isLoading}>
+        <DataTable value={listQuery.data?.data ?? []} loading={listQuery.isLoading}>
           <Column field="name" header="Name" />
           <Column field="phone" header="Phone" />
           <Column field="email" header="Email" />
@@ -87,6 +99,11 @@ export default function CustomersPage() {
           <Column field="pincode" header="Pincode" />
           <Column field="gstin" header="GSTIN" />
         </DataTable>
+        <ListPaginator
+          meta={meta}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
       </div>
 
       <Dialog header="New customer" visible={open} onHide={() => setOpen(false)} style={{ width: 520 }}>

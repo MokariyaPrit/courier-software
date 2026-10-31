@@ -2,26 +2,25 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { City } from './city.entity';
 
-@Entity('pincodes')
-export class Pincode {
+@Entity('states')
+export class State {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', unique: true, length: 10 })
-  code: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  city: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  state: string | null;
+  @Column({ type: 'varchar', unique: true, length: 120 })
+  name: string;
 
   @Column({ type: 'boolean', default: true })
-  isServiceable: boolean;
+  isActive: boolean;
+
+  @OneToMany(() => City, (city) => city.state)
+  cities: City[];
 
   @CreateDateColumn()
   createdAt: Date;

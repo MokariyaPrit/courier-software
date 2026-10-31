@@ -9,7 +9,9 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
 import { MultiSelect } from 'primereact/multiselect';
 import { useState } from 'react';
+import { ListPaginator, ListToolbar } from '@/components/ListControls';
 import { api } from '@/lib/api';
+import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
 
 interface Invoice {
   id: string;
@@ -20,35 +22,53 @@ interface Invoice {
   customer?: { name: string };
 }
 
+const SORT_OPTIONS: SortOption[] = [
+  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC' },
+  { label: 'Oldest first', sortBy: 'createdAt', sortOrder: 'ASC' },
+  { label: 'Invoice # Asc', sortBy: 'invoiceNumber', sortOrder: 'ASC' },
+  { label: 'Invoice # Desc', sortBy: 'invoiceNumber', sortOrder: 'DESC' },
+  { label: 'Amount Asc', sortBy: 'totalAmount', sortOrder: 'ASC' },
+  { label: 'Amount Desc', sortBy: 'totalAmount', sortOrder: 'DESC' },
+  { label: 'Status Asc', sortBy: 'status', sortOrder: 'ASC' },
+];
+
 export default function BillingPage() {
   const qc = useQueryClient();
+  const list = useListParams({ defaultSort: SORT_OPTIONS[0] });
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState('');
   const [consignmentIds, setConsignmentIds] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
 
   const invoicesQuery = useQuery({
-    queryKey: ['invoices'],
-    queryFn: async () => {
-      const res = await api.get('/billing/invoices', { params: { pageSize: 50 } });
-      return (res.data as { data: Invoice[] }).data;
-    },
+    queryKey: ['invoices', list.queryParams],
+    queryFn: () =>
+      fetchPaginated<Invoice>('/billing/invoices', {
+        page: list.page,
+        pageSize: list.pageSize,
+        sortBy: list.sort.sortBy,
+        sortOrder: list.sort.sortOrder,
+      }),
   });
 
   const customersQuery = useQuery({
     queryKey: ['customers-billing'],
-    queryFn: async () => {
-      const res = await api.get('/customers', { params: { pageSize: 100 } });
-      return (res.data as { data: { id: string; name: string }[] }).data;
-    },
+    queryFn: () =>
+      fetchPaginated<{ id: string; name: string }>('/customers', {
+        page: 1,
+        pageSize: 200,
+        sortBy: 'name',
+        sortOrder: 'ASC',
+      }),
   });
 
   const consignmentsQuery = useQuery({
     queryKey: ['consignments-billing'],
-    queryFn: async () => {
-      const res = await api.get('/consignments', { params: { pageSize: 100 } });
-      return (res.data as { data: { id: string; awb: string; customerId: string | null }[] }).data;
-    },
+    queryFn: () =>
+      fetchPaginated<{ id: string; awb: string; customerId: string | null }>(
+        '/consignments',
+        { page: 1, pageSize: 200, sortBy: 'createdAt', sortOrder: 'DESC' },
+      ),
   });
 
   const createMutation = useMutation({
@@ -68,14 +88,28 @@ export default function BillingPage() {
     },
   });
 
+  const meta = invoicesQuery.data?.meta ?? {
+    page: list.page,
+    pageSize: list.pageSize,
+    total: 0,
+  };
+
   return (
     <div>
       <div className="page-header">
         <h1>Billing</h1>
         <Button label="Create invoice" icon="pi pi-plus" onClick={() => setOpen(true)} />
       </div>
+      <ListToolbar
+        sortKey={list.sortKey}
+        onSortChange={list.setSortKey}
+        sortOptions={SORT_OPTIONS}
+      />
       <div className="panel">
-        <DataTable value={invoicesQuery.data ?? []} loading={invoicesQuery.isLoading}>
+        <DataTable
+          value={invoicesQuery.data?.data ?? []}
+          loading={invoicesQuery.isLoading}
+        >
           <Column field="invoiceNumber" header="Invoice #" />
           <Column
             header="Customer"
@@ -88,6 +122,11 @@ export default function BillingPage() {
             body={(row: Invoice) => new Date(row.createdAt).toLocaleString()}
           />
         </DataTable>
+        <ListPaginator
+          meta={meta}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+        />
       </div>
 
       <Dialog header="New invoice" visible={open} onHide={() => setOpen(false)} style={{ width: 560 }}>
@@ -96,7 +135,7 @@ export default function BillingPage() {
             <label>Customer</label>
             <Dropdown
               value={customerId}
-              options={(customersQuery.data ?? []).map((c) => ({
+              options={(customersQuery.data?.data ?? []).map((c) => ({
                 label: c.name,
                 value: c.id,
               }))}
@@ -109,7 +148,7 @@ export default function BillingPage() {
             <label>Consignments</label>
             <MultiSelect
               value={consignmentIds}
-              options={(consignmentsQuery.data ?? []).map((c) => ({
+              options={(consignmentsQuery.data?.data ?? []).map((c) => ({
                 label: c.awb,
                 value: c.id,
               }))}

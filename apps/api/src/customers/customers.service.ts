@@ -1,9 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
-import { paginateMeta, PaginationDto } from '../common/dto/pagination.dto';
+import {
+  paginateMeta,
+  PaginationDto,
+  resolveOrder,
+} from '../common/dto/pagination.dto';
 import { Customer } from '../entities/customer.entity';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
+
+const CUSTOMER_SORT = ['name', 'city', 'phone', 'createdAt'] as const;
 
 @Injectable()
 export class CustomersService {
@@ -21,7 +27,10 @@ export class CustomersService {
       : undefined;
     const [items, total] = await this.repo.findAndCount({
       where,
-      order: { name: 'ASC' },
+      order: resolveOrder(query, CUSTOMER_SORT, {
+        sortBy: 'name',
+        sortOrder: 'ASC',
+      }),
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
     });
