@@ -11,8 +11,15 @@ import { InputSwitch } from 'primereact/inputswitch';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Tag } from 'primereact/tag';
-import { useState } from 'react';
+import { Dispatch, SetStateAction, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
+import {
+  FieldErrors,
+  firstError,
+  validateEmail,
+  validateFullName,
+  validatePassword,
+} from '@/lib/form-validation';
 import { trimFormData } from '@/lib/trim';
 
 interface UserInfoFields {
@@ -51,6 +58,8 @@ interface UserFormState {
   notes: string;
   isActive: boolean;
 }
+
+type UserFieldKey = 'fullName' | 'email' | 'password';
 
 const EMPTY_USER_FORM: UserFormState = {
   fullName: '',
@@ -91,6 +100,228 @@ function toFormFromUser(user: UserRow): UserFormState {
   };
 }
 
+function validateUserForm(
+  state: UserFormState,
+  options?: { passwordOptional?: boolean },
+): FieldErrors {
+  return {
+    fullName: validateFullName(state.fullName),
+    email: validateEmail(state.email),
+    password: validatePassword(state.password, {
+      optional: options?.passwordOptional,
+    }),
+  };
+}
+
+function fieldClass(errors: FieldErrors, key: UserFieldKey) {
+  return `field${errors[key] ? ' has-error' : ''}`;
+}
+
+function UserFormFields({
+  state,
+  setState,
+  errors,
+  setErrors,
+  onBlurField,
+  passwordOptional,
+}: {
+  state: UserFormState;
+  setState: Dispatch<SetStateAction<UserFormState>>;
+  errors: FieldErrors;
+  setErrors: Dispatch<SetStateAction<FieldErrors>>;
+  onBlurField: (key: UserFieldKey) => void;
+  passwordOptional?: boolean;
+}) {
+  const clearOrUpdate = (key: UserFieldKey, msg: string) => {
+    if (!errors[key] && !msg) return;
+    setErrors((prev) => ({ ...prev, [key]: msg }));
+  };
+
+  return (
+    <div className="form-grid">
+      <div className={fieldClass(errors, 'fullName')}>
+        <label>Full name</label>
+        <InputText
+          value={state.fullName}
+          className={errors.fullName ? 'p-invalid' : undefined}
+          onChange={(e) => {
+            const value = e.target.value;
+            setState((prev) => ({ ...prev, fullName: value }));
+            if (errors.fullName) clearOrUpdate('fullName', validateFullName(value));
+          }}
+          onBlur={() => onBlurField('fullName')}
+          style={{ width: '100%' }}
+        />
+        {errors.fullName ? (
+          <small className="field-error">{errors.fullName}</small>
+        ) : null}
+      </div>
+
+      <div className={fieldClass(errors, 'email')}>
+        <label>Email</label>
+        <InputText
+          value={state.email}
+          className={errors.email ? 'p-invalid' : undefined}
+          onChange={(e) => {
+            const value = e.target.value;
+            setState((prev) => ({ ...prev, email: value }));
+            if (errors.email) clearOrUpdate('email', validateEmail(value));
+          }}
+          onBlur={() => onBlurField('email')}
+          style={{ width: '100%' }}
+        />
+        {errors.email ? (
+          <small className="field-error">{errors.email}</small>
+        ) : null}
+      </div>
+
+      <div className={fieldClass(errors, 'password')}>
+        <label>
+          Password
+        </label>
+        <Password
+          feedback={false}
+          toggleMask
+          value={state.password}
+          className={errors.password ? 'p-invalid' : undefined}
+          inputClassName={errors.password ? 'p-invalid' : undefined}
+          onChange={(e) => {
+            const value = e.target.value;
+            setState((prev) => ({ ...prev, password: value }));
+            if (errors.password) {
+              clearOrUpdate(
+                'password',
+                validatePassword(value, { optional: passwordOptional }),
+              );
+            }
+          }}
+          onBlur={() => onBlurField('password')}
+          inputStyle={{ width: '100%' }}
+          style={{ width: '100%' }}
+        />
+        {errors.password ? (
+          <small className="field-error">{errors.password}</small>
+        ) : null}
+      </div>
+
+      <div className="field">
+        <label>User role</label>
+        <Dropdown
+          value={state.userRole}
+          options={ROLE_OPTIONS}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, userRole: e.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>Phone</label>
+        <InputText
+          value={state.phone}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, phone: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>Company name</label>
+        <InputText
+          value={state.companyName}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, companyName: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>GSTIN</label>
+        <InputText
+          value={state.gstin}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, gstin: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>City</label>
+        <InputText
+          value={state.city}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, city: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field full">
+        <label>Address</label>
+        <InputText
+          value={state.address}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, address: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>State</label>
+        <InputText
+          value={state.state}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, state: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>Pincode</label>
+        <InputText
+          value={state.pincode}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, pincode: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field full">
+        <label>Notes</label>
+        <InputText
+          value={state.notes}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, notes: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field full account-status-row">
+        <div>
+          <label>Account status</label>
+          <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+            {state.isActive ? 'Active' : 'Inactive'}
+          </p>
+        </div>
+        <InputSwitch
+          checked={state.isActive}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, isActive: Boolean(e.value) }))
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function UsersPage() {
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
@@ -98,6 +329,8 @@ export default function UsersPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [form, setForm] = useState<UserFormState>(EMPTY_USER_FORM);
   const [editForm, setEditForm] = useState<UserFormState>(EMPTY_USER_FORM);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [editFieldErrors, setEditFieldErrors] = useState<FieldErrors>({});
   const [error, setError] = useState('');
   const [editError, setEditError] = useState('');
   const [editLoading, setEditLoading] = useState(false);
@@ -132,6 +365,7 @@ export default function UsersPage() {
     onSuccess: async () => {
       setCreateOpen(false);
       setError('');
+      setFieldErrors({});
       setForm(EMPTY_USER_FORM);
       await qc.invalidateQueries({ queryKey: ['users'] });
     },
@@ -161,7 +395,6 @@ export default function UsersPage() {
         pincode: cleaned.pincode || null,
         notes: cleaned.notes || null,
       };
-      // Blank password = keep existing password on server
       if (cleaned.password) {
         payload.password = cleaned.password;
       }
@@ -171,6 +404,7 @@ export default function UsersPage() {
       setEditOpen(false);
       setEditingUserId(null);
       setEditError('');
+      setEditFieldErrors({});
       setEditForm(EMPTY_USER_FORM);
       await qc.invalidateQueries({ queryKey: ['users'] });
     },
@@ -191,8 +425,41 @@ export default function UsersPage() {
     },
   });
 
+  const blurCreateField = (key: UserFieldKey) => {
+    const next = validateUserForm(form);
+    setFieldErrors((prev) => ({ ...prev, [key]: next[key] || '' }));
+  };
+
+  const blurEditField = (key: UserFieldKey) => {
+    const next = validateUserForm(editForm, { passwordOptional: true });
+    setEditFieldErrors((prev) => ({ ...prev, [key]: next[key] || '' }));
+  };
+
+  const submitCreate = () => {
+    const errors = validateUserForm(form);
+    setFieldErrors(errors);
+    if (firstError(errors)) {
+      setError('Please fix the highlighted fields.');
+      return;
+    }
+    setError('');
+    createMutation.mutate();
+  };
+
+  const submitEdit = () => {
+    const errors = validateUserForm(editForm, { passwordOptional: true });
+    setEditFieldErrors(errors);
+    if (firstError(errors)) {
+      setEditError('Please fix the highlighted fields.');
+      return;
+    }
+    setEditError('');
+    updateMutation.mutate();
+  };
+
   const openEdit = async (row: UserRow) => {
     setEditError('');
+    setEditFieldErrors({});
     setEditLoading(true);
     setEditOpen(true);
     setEditingUserId(row.id);
@@ -208,134 +475,6 @@ export default function UsersPage() {
     }
   };
 
-  const renderUserFields = (
-    state: UserFormState,
-    setState: (next: UserFormState) => void,
-    options?: { includePassword?: boolean; passwordOptional?: boolean },
-  ) => (
-    <div className="form-grid">
-      <div className="field">
-        <label>Full name</label>
-        <InputText
-          value={state.fullName}
-          onChange={(e) => setState({ ...state, fullName: e.target.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      <div className="field">
-        <label>Email</label>
-        <InputText
-          value={state.email}
-          onChange={(e) => setState({ ...state, email: e.target.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      {options?.includePassword !== false ? (
-        <div className="field">
-          <label>
-            Password
-            {options?.passwordOptional ? ' (leave blank to keep current)' : ''}
-          </label>
-          <Password
-            feedback={false}
-            toggleMask
-            value={state.password}
-            onChange={(e) => setState({ ...state, password: e.target.value })}
-            inputStyle={{ width: '100%' }}
-            style={{ width: '100%' }}
-          />
-        </div>
-      ) : null}
-      <div className="field">
-        <label>User role</label>
-        <Dropdown
-          value={state.userRole}
-          options={ROLE_OPTIONS}
-          onChange={(e) => setState({ ...state, userRole: e.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      <div className="field">
-        <label>Phone</label>
-        <InputText
-          value={state.phone}
-          onChange={(e) => setState({ ...state, phone: e.target.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      <div className="field">
-        <label>Company name</label>
-        <InputText
-          value={state.companyName}
-          onChange={(e) => setState({ ...state, companyName: e.target.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      <div className="field">
-        <label>GSTIN</label>
-        <InputText
-          value={state.gstin}
-          onChange={(e) => setState({ ...state, gstin: e.target.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      <div className="field">
-        <label>City</label>
-        <InputText
-          value={state.city}
-          onChange={(e) => setState({ ...state, city: e.target.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      <div className="field full">
-        <label>Address</label>
-        <InputText
-          value={state.address}
-          onChange={(e) => setState({ ...state, address: e.target.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      <div className="field">
-        <label>State</label>
-        <InputText
-          value={state.state}
-          onChange={(e) => setState({ ...state, state: e.target.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      <div className="field">
-        <label>Pincode</label>
-        <InputText
-          value={state.pincode}
-          onChange={(e) => setState({ ...state, pincode: e.target.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      <div className="field full">
-        <label>Notes</label>
-        <InputText
-          value={state.notes}
-          onChange={(e) => setState({ ...state, notes: e.target.value })}
-          style={{ width: '100%' }}
-        />
-      </div>
-      <div className="field full account-status-row">
-        <div>
-          <label>Account status</label>
-          <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-            {state.isActive ? 'Active' : 'Inactive'}
-          </p>
-        </div>
-        <InputSwitch
-          checked={state.isActive}
-          onChange={(e) =>
-            setState({ ...state, isActive: Boolean(e.value) })
-          }
-        />
-      </div>
-    </div>
-  );
-
   return (
     <div>
       <div className="page-header">
@@ -345,6 +484,7 @@ export default function UsersPage() {
           icon="pi pi-plus"
           onClick={() => {
             setError('');
+            setFieldErrors({});
             setForm(EMPTY_USER_FORM);
             setCreateOpen(true);
           }}
@@ -400,16 +540,19 @@ export default function UsersPage() {
         onHide={() => setCreateOpen(false)}
         style={{ width: 'min(560px, 95vw)' }}
       >
-        {renderUserFields(form, setForm, { includePassword: true })}
+        <UserFormFields
+          state={form}
+          setState={setForm}
+          errors={fieldErrors}
+          setErrors={setFieldErrors}
+          onBlurField={blurCreateField}
+        />
         {error ? <p className="error-text">{error}</p> : null}
         <div style={{ marginTop: '1rem', textAlign: 'right' }}>
           <Button
             label="Create"
             loading={createMutation.isPending}
-            onClick={() => {
-              setError('');
-              createMutation.mutate();
-            }}
+            onClick={submitCreate}
           />
         </div>
       </Dialog>
@@ -426,10 +569,14 @@ export default function UsersPage() {
         {editLoading ? (
           <p className="muted">Loading user…</p>
         ) : (
-          renderUserFields(editForm, setEditForm, {
-            includePassword: true,
-            passwordOptional: true,
-          })
+          <UserFormFields
+            state={editForm}
+            setState={setEditForm}
+            errors={editFieldErrors}
+            setErrors={setEditFieldErrors}
+            onBlurField={blurEditField}
+            passwordOptional
+          />
         )}
         {editError ? <p className="error-text">{editError}</p> : null}
         <div
@@ -453,10 +600,7 @@ export default function UsersPage() {
             label="Save changes"
             loading={updateMutation.isPending}
             disabled={editLoading}
-            onClick={() => {
-              setEditError('');
-              updateMutation.mutate();
-            }}
+            onClick={submitEdit}
           />
         </div>
       </Dialog>

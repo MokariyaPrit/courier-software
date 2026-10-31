@@ -7,6 +7,12 @@ import { Tag } from 'primereact/tag';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import {
+  FieldErrors,
+  firstError,
+  validateEmail,
+  validateFullName,
+} from '@/lib/form-validation';
 import { trimFormData } from '@/lib/trim';
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
@@ -31,12 +37,42 @@ interface ProfileFormState {
   notes: string;
 }
 
+type ProfileFieldKey = keyof ProfileFormState;
+
+const OPTIONAL_FIELDS = new Set<ProfileFieldKey>([
+  'phone',
+  'companyName',
+  'gstin',
+  'address',
+  'city',
+  'state',
+  'pincode',
+  'notes',
+]);
+
+function validateProfileField(
+  key: ProfileFieldKey,
+  value: string,
+): string {
+  if (key === 'fullName') return validateFullName(value);
+  if (key === 'email') return validateEmail(value);
+  return '';
+}
+
+function validateProfileForm(form: ProfileFormState): FieldErrors {
+  return {
+    fullName: validateFullName(form.fullName),
+    email: validateEmail(form.email),
+  };
+}
+
 export default function ProfilePage() {
   const { user, refreshMe } = useAuth();
   const info = user?.userInfo;
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [form, setForm] = useState<ProfileFormState>({
     fullName: '',
     email: '',
@@ -72,10 +108,24 @@ export default function ProfilePage() {
 
   const openEdit = () => {
     setErrorMessage('');
+    setFieldErrors({});
     setEditOpen(true);
   };
 
+  const blurField = (key: ProfileFieldKey) => {
+    if (OPTIONAL_FIELDS.has(key)) return;
+    const msg = validateProfileField(key, form[key]);
+    setFieldErrors((prev) => ({ ...prev, [key]: msg }));
+  };
+
   const saveProfile = async () => {
+    const errors = validateProfileForm(form);
+    setFieldErrors(errors);
+    if (firstError(errors)) {
+      setErrorMessage('Please fix the highlighted fields.');
+      return;
+    }
+
     setSaving(true);
     setErrorMessage('');
     try {
@@ -103,6 +153,19 @@ export default function ProfilePage() {
       setSaving(false);
     }
   };
+
+  const fields = [
+    ['fullName', 'Full name'],
+    ['email', 'Email'],
+    ['phone', 'Phone'],
+    ['companyName', 'Company name'],
+    ['gstin', 'GSTIN'],
+    ['address', 'Address'],
+    ['city', 'City'],
+    ['state', 'State'],
+    ['pincode', 'Pincode'],
+    ['notes', 'Notes'],
+  ] as const;
 
   return (
     <div>
@@ -157,35 +220,36 @@ export default function ProfilePage() {
         onHide={() => setEditOpen(false)}
       >
         <div className="form-grid">
-          {(
-            [
-              ['fullName', 'Full name'],
-              ['email', 'Email'],
-              ['phone', 'Phone'],
-              ['companyName', 'Company name'],
-              ['gstin', 'GSTIN'],
-              ['address', 'Address'],
-              ['city', 'City'],
-              ['state', 'State'],
-              ['pincode', 'Pincode'],
-              ['notes', 'Notes'],
-            ] as const
-          ).map(([key, label]) => (
-            <div
-              className={`field ${key === 'address' || key === 'notes' ? 'full' : ''}`}
-              key={key}
-            >
-              <label htmlFor={key}>{label}</label>
-              <InputText
-                id={key}
-                value={form[key]}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, [key]: e.target.value }))
-                }
-                style={{ width: '100%' }}
-              />
-            </div>
-          ))}
+          {fields.map(([key, label]) => {
+            const err = fieldErrors[key];
+            const isWide = key === 'address' || key === 'notes';
+            return (
+              <div
+                className={`field${isWide ? ' full' : ''}${err ? ' has-error' : ''}`}
+                key={key}
+              >
+                <label htmlFor={key}>{label}</label>
+                <InputText
+                  id={key}
+                  value={form[key]}
+                  className={err ? 'p-invalid' : undefined}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setForm((prev) => ({ ...prev, [key]: value }));
+                    if (err) {
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        [key]: validateProfileField(key, value),
+                      }));
+                    }
+                  }}
+                  onBlur={() => blurField(key)}
+                  style={{ width: '100%' }}
+                />
+                {err ? <small className="field-error">{err}</small> : null}
+              </div>
+            );
+          })}
         </div>
         {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
