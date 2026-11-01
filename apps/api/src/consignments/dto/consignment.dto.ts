@@ -44,6 +44,10 @@ export class CreateConsignmentDto {
 
   @IsOptional()
   @IsUUID()
+  courierCompanyId?: string;
+
+  @IsOptional()
+  @IsUUID()
   quotationId?: string;
 
   @IsOptional()
@@ -198,6 +202,10 @@ export class UpdateConsignmentDto {
   @IsOptional()
   @IsUUID()
   customerId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  courierCompanyId?: string | null;
 
   @IsOptional()
   @IsUUID()

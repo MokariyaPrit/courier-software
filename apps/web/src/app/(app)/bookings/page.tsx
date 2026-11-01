@@ -49,6 +49,8 @@ interface ConsignmentDetail {
   bookingDate?: string | null;
   customerId?: string | null;
   customer?: { id?: string; name?: string } | null;
+  courierCompanyId?: string | null;
+  courierCompany?: { id?: string; name?: string } | null;
   quotationId?: string | null;
   senderLocationId?: string | null;
   receiverId?: string | null;
@@ -112,6 +114,15 @@ interface SenderLocOpt {
   stateName?: string | null;
 }
 
+interface CourierCompanyOpt {
+  id: string;
+  name: string;
+  companyLink?: string | null;
+  isActive: boolean;
+  isDefaultForMe?: boolean;
+  isHiddenForMe?: boolean;
+}
+
 interface RateSource {
   id?: string;
   columns?: Array<{ id: string; label: string; sortOrder: number }>;
@@ -136,6 +147,8 @@ const emptyForm = {
   bookingDate: todayIso(),
   customerId: '',
   customerLabel: '',
+  courierCompanyId: '',
+  courierCompanyLabel: '',
   quotationId: '',
   senderLocationId: '',
   receiverId: '',
@@ -186,21 +199,6 @@ export default function BookingsPage() {
   const [priceManual, setPriceManual] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAwb, setEditingAwb] = useState('');
-
-  const resetForm = () => {
-    setForm({ ...emptyForm, bookingType: mode, bookingDate: todayIso() });
-    setRateSource(null);
-    setRateHint('');
-    setError('');
-    setPriceManual(false);
-    setEditingId(null);
-    setEditingAwb('');
-  };
-
-  useEffect(() => {
-    resetForm();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset on booking mode change only
-  }, [mode]);
 
   const setMode = (next: BookingType) => {
     router.replace(`/bookings?type=${next}`);
@@ -256,6 +254,63 @@ export default function BookingsPage() {
       return [];
     },
   });
+
+  const courierCompaniesQuery = useQuery({
+    queryKey: ['courier-companies-booking'],
+    queryFn: () =>
+      fetchPaginated<CourierCompanyOpt>('/courier-companies', {
+        page: 1,
+        pageSize: 500,
+        sortBy: 'name',
+        sortOrder: 'ASC',
+        activeOnly: true,
+      }),
+  });
+
+  const defaultCourierCompany = useMemo(() => {
+    const preferred = (courierCompaniesQuery.data?.data ?? []).find(
+      (c) => c.isDefaultForMe,
+    );
+    if (!preferred) return { courierCompanyId: '', courierCompanyLabel: '' };
+    return {
+      courierCompanyId: preferred.id,
+      courierCompanyLabel: preferred.name,
+    };
+  }, [courierCompaniesQuery.data]);
+
+  const resetForm = () => {
+    setForm({
+      ...emptyForm,
+      bookingType: mode,
+      bookingDate: todayIso(),
+      courierCompanyId: defaultCourierCompany.courierCompanyId,
+      courierCompanyLabel: defaultCourierCompany.courierCompanyLabel,
+    });
+    setRateSource(null);
+    setRateHint('');
+    setError('');
+    setPriceManual(false);
+    setEditingId(null);
+    setEditingAwb('');
+  };
+
+  useEffect(() => {
+    resetForm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset on booking mode change only
+  }, [mode]);
+
+  useEffect(() => {
+    if (editingId) return;
+    if (!defaultCourierCompany.courierCompanyId) return;
+    setForm((p) => {
+      if (p.courierCompanyId) return p;
+      return {
+        ...p,
+        courierCompanyId: defaultCourierCompany.courierCompanyId,
+        courierCompanyLabel: defaultCourierCompany.courierCompanyLabel,
+      };
+    });
+  }, [defaultCourierCompany, editingId]);
 
   const cashRatesQuery = useQuery({
     queryKey: ['cash-rates-booking'],
@@ -420,6 +475,15 @@ export default function BookingsPage() {
     [centersQuery.data],
   );
 
+  const courierCompanyOptions: SearchSelectOption[] = useMemo(
+    () =>
+      (courierCompaniesQuery.data?.data ?? []).map((c) => ({
+        value: c.id,
+        label: c.name,
+      })),
+    [courierCompaniesQuery.data],
+  );
+
   const sectionOptions: SearchSelectOption[] = useMemo(
     () =>
       (matrix?.sections ?? []).map((s) => ({
@@ -507,6 +571,22 @@ export default function BookingsPage() {
     }));
   };
 
+  const applyCourierCompany = (opt: SearchSelectOption | null) => {
+    if (!opt) {
+      setForm((p) => ({
+        ...p,
+        courierCompanyId: '',
+        courierCompanyLabel: p.courierCompanyLabel,
+      }));
+      return;
+    }
+    setForm((p) => ({
+      ...p,
+      courierCompanyId: opt.value,
+      courierCompanyLabel: opt.label,
+    }));
+  };
+
   const buildPayload = async () => {
     const cleaned = trimFormData(form);
     if (cleaned.bookingType === BookingType.ACCOUNT && !cleaned.customerId) {
@@ -523,6 +603,9 @@ export default function BookingsPage() {
     }
     if (!cleaned.rateSectionId) {
       throw new Error('Select a service type');
+    }
+    if (!cleaned.courierCompanyId) {
+      throw new Error('Select a courier company');
     }
     if (!cleaned.documentNumber?.trim()) {
       throw new Error('Document number is required');
@@ -617,6 +700,7 @@ export default function BookingsPage() {
           cleaned.bookingType === BookingType.ACCOUNT
             ? cleaned.customerId || undefined
             : undefined,
+        courierCompanyId: cleaned.courierCompanyId || undefined,
         quotationId: cleaned.quotationId || undefined,
         senderLocationId,
         receiverId: receiver.id,
@@ -748,6 +832,9 @@ export default function BookingsPage() {
         documentNumber: detail.awb || '',
         customerId: detail.customerId || detail.customer?.id || '',
         customerLabel: detail.customer?.name || '',
+        courierCompanyId:
+          detail.courierCompanyId || detail.courierCompany?.id || '',
+        courierCompanyLabel: detail.courierCompany?.name || '',
         quotationId: detail.quotationId || '',
         senderLocationId: detail.senderLocationId || '',
         receiverId: detail.receiverId || '',
@@ -848,17 +935,6 @@ export default function BookingsPage() {
                 style={{ width: '100%' }}
               />
             </div>
-            <div className="field">
-              <label>Document Number</label>
-              <InputText
-                value={form.documentNumber}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, documentNumber: e.target.value }))
-                }
-                placeholder="Enter document number"
-                style={{ width: '100%' }}
-              />
-            </div>
 
             {mode === BookingType.ACCOUNT ? (
               <div className="field">
@@ -880,17 +956,70 @@ export default function BookingsPage() {
                 />
               </div>
             ) : (
+              <div className="field">
+                <label>Party name</label>
+                <InputText
+                  value={form.partyName}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, partyName: e.target.value }))
+                  }
+                  style={{ width: '100%' }}
+                />
+              </div>
+            )}
+
+            <div className="field">
+              <label>Courier company</label>
+              <SearchSelect
+                value={form.courierCompanyLabel}
+                options={courierCompanyOptions}
+                placeholder="Type courier company…"
+                allowFreeText={false}
+                emptyHint="No active courier companies"
+                onChange={(text) =>
+                  setForm((p) => ({
+                    ...p,
+                    courierCompanyLabel: text,
+                    courierCompanyId: '',
+                  }))
+                }
+                onSelect={applyCourierCompany}
+              />
+            </div>
+
+            <div className="field">
+              <label>Document Number</label>
+              <InputText
+                value={form.documentNumber}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, documentNumber: e.target.value }))
+                }
+                placeholder="Enter document number"
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            <div className="field">
+              <label>Destination</label>
+              <SearchSelect
+                value={form.destLabel}
+                options={destOptions}
+                placeholder="Type destination from Centers…"
+                allowFreeText={false}
+                emptyHint="Configure Centers first"
+                onChange={(text) =>
+                  setForm((p) => ({
+                    ...p,
+                    destLabel: text,
+                    receiverCityId: '',
+                  }))
+                }
+                onSelect={applyDestination}
+              />
+            </div>
+
+            {mode === BookingType.CASH ? (
               <>
-                <div className="field">
-                  <label>Party name</label>
-                  <InputText
-                    value={form.partyName}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, partyName: e.target.value }))
-                    }
-                    style={{ width: '100%' }}
-                  />
-                </div>
                 <div className="field">
                   <label>Party phone</label>
                   <InputText
@@ -932,26 +1061,7 @@ export default function BookingsPage() {
                   />
                 </div>
               </>
-            )}
-
-            <div className="field">
-              <label>Destination</label>
-              <SearchSelect
-                value={form.destLabel}
-                options={destOptions}
-                placeholder="Type destination from Centers…"
-                allowFreeText={false}
-                emptyHint="Configure Centers first"
-                onChange={(text) =>
-                  setForm((p) => ({
-                    ...p,
-                    destLabel: text,
-                    receiverCityId: '',
-                  }))
-                }
-                onSelect={applyDestination}
-              />
-            </div>
+            ) : null}
 
             <div className="field">
               <label>Receiver Name</label>

@@ -14,6 +14,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { CourierCompany } from './courier-company.entity';
 import { Customer } from './customer.entity';
 import { Quotation } from './quotation.entity';
 import { Receiver } from './receiver.entity';
@@ -94,6 +95,13 @@ export class Consignment {
   @ManyToOne(() => Customer, { nullable: true })
   @JoinColumn({ name: 'customerId' })
   customer: Customer | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  courierCompanyId: string | null;
+
+  @ManyToOne(() => CourierCompany, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'courierCompanyId' })
+  courierCompany: CourierCompany | null;
 
   @Column({ type: 'uuid', nullable: true })
   quotationId: string | null;

@@ -70,6 +70,7 @@ export class ConsignmentsService {
       serviceType: dto.serviceType ?? ServiceType.STANDARD,
       customerId:
         bookingType === BookingType.ACCOUNT ? (dto.customerId ?? null) : null,
+      courierCompanyId: dto.courierCompanyId ?? null,
       quotationId: dto.quotationId ?? null,
       senderLocationId: dto.senderLocationId ?? null,
       receiverId: dto.receiverId ?? null,
@@ -185,6 +186,7 @@ export class ConsignmentsService {
     const qb = this.consignmentsRepo
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.customer', 'customer')
+      .leftJoinAndSelect('c.courierCompany', 'courierCompany')
       .leftJoinAndSelect('c.receiver', 'receiver')
       .leftJoinAndSelect('c.senderLocation', 'senderLocation')
       .leftJoinAndSelect('c.createdBy', 'createdBy')
@@ -241,6 +243,7 @@ export class ConsignmentsService {
       where: { id },
       relations: {
         customer: true,
+        courierCompany: true,
         receiver: true,
         senderLocation: true,
         quotation: true,
@@ -370,6 +373,9 @@ export class ConsignmentsService {
       consignment.awb = awb;
     }
     if (dto.customerId !== undefined) consignment.customerId = dto.customerId;
+    if (dto.courierCompanyId !== undefined) {
+      consignment.courierCompanyId = dto.courierCompanyId;
+    }
     if (dto.quotationId !== undefined) {
       consignment.quotationId = dto.quotationId;
     }

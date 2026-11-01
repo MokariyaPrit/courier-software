@@ -19,6 +19,7 @@ const NAV = [
   { href: '/quotations', label: 'Quotations', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/quotations/templates', label: 'Rate templates', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/cash-rates', label: 'Cash rates', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
+  { href: '/courier-companies', label: 'Courier companies', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/masters/states', label: 'States', roles: [Role.ADMIN] },
   { href: '/masters/cities', label: 'Cities', roles: [Role.ADMIN] },
   { href: '/billing', label: 'Billing', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },

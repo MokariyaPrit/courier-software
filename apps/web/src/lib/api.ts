@@ -82,6 +82,9 @@ function resolveResource(path: string): ResourceInfo {
   if (p.includes('/rate-columns')) {
     return { noun: 'Rate columns', createVerb: 'saved' };
   }
+  if (p.includes('/courier-companies')) {
+    return { noun: 'Courier company', createVerb: 'saved' };
+  }
   if (p.includes('/states')) {
     return { noun: 'State', createVerb: 'saved' };
   }

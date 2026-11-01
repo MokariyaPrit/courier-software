@@ -9,11 +9,13 @@ import { CitiesModule } from './cities/cities.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { ConsignmentsModule } from './consignments/consignments.module';
+import { CourierCompaniesModule } from './courier-companies/courier-companies.module';
 import { CustomersModule } from './customers/customers.module';
 import {
   City,
   Consignment,
   ConsignmentCharge,
+  CourierCompany,
   Customer,
   Invoice,
   Quotation,
@@ -24,6 +26,7 @@ import {
   State,
   TrackingEvent,
   User,
+  UserCourierCompanyPref,
   UserInfo,
   UserRateCity,
 } from './entities';
@@ -65,6 +68,8 @@ import { UsersModule } from './users/users.module';
           Receiver,
           SenderLocation,
           UserRateCity,
+          CourierCompany,
+          UserCourierCompanyPref,
         ],
         synchronize: config.get<string>('NODE_ENV') !== 'production',
       }),
@@ -81,6 +86,7 @@ import { UsersModule } from './users/users.module';
     RateColumnsModule,
     ReceiversModule,
     SenderLocationsModule,
+    CourierCompaniesModule,
   ],
   controllers: [HealthController],
   providers: [
