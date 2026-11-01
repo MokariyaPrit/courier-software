@@ -189,6 +189,7 @@ export class ConsignmentsService {
       .leftJoinAndSelect('c.courierCompany', 'courierCompany')
       .leftJoinAndSelect('c.receiver', 'receiver')
       .leftJoinAndSelect('c.senderLocation', 'senderLocation')
+      .leftJoinAndSelect('c.charges', 'charges')
       .leftJoinAndSelect('c.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
       .where('c.deletedAt IS NULL')

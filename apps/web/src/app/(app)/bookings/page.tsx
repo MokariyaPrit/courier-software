@@ -1,18 +1,30 @@
 'use client';
 
-import { BOOKING_TYPE_LABELS, BookingType } from '@courier/shared';
+import {
+  BOOKING_TYPE_LABELS,
+  BookingType,
+  ChargeType,
+  ConsignmentStatus,
+} from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Button,
   ConfirmDialog,
   confirmDialog,
+  Dialog,
+  Tag,
 } from '@/components/ui';
 import { BookingFormPanel } from '@/components/bookings/BookingFormPanel';
 import { Suspense, useEffect, useState } from 'react';
-import { api } from '@/lib/api';
+import { api, unwrap } from '@/lib/api';
 import { fetchPaginated } from '@/lib/list';
+import { serviceTypeLabel } from '@/lib/quotations';
+
+interface ChargeRow {
+  type: ChargeType | string;
+  amount: string | number;
+}
 
 interface ConsignmentRow {
   id: string;
@@ -20,10 +32,76 @@ interface ConsignmentRow {
   status: string;
   bookingType?: BookingType;
   receiverName: string;
+  receiverCity?: string | null;
   bookingDate?: string | null;
   createdAt: string;
   customer?: { name: string } | null;
   partyName?: string | null;
+  weightKg?: string | number | null;
+  rateSectionId?: string | null;
+  charges?: ChargeRow[];
+}
+
+interface ConsignmentDetail {
+  id: string;
+  awb: string;
+  status: ConsignmentStatus;
+  bookingType?: BookingType;
+  bookingDate?: string | null;
+  receiverName: string;
+  receiverPhone?: string | null;
+  receiverAddress?: string | null;
+  receiverCity?: string | null;
+  receiverState?: string | null;
+  rateSectionId?: string | null;
+  weightKg?: string | number | null;
+  cgst?: string | number | null;
+  sgst?: string | number | null;
+  igst?: string | number | null;
+  remarks?: string | null;
+  customer?: { name?: string } | null;
+  partyName?: string | null;
+  charges?: ChargeRow[];
+}
+
+function money(value: string | number | null | undefined) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n.toFixed(2) : '0.00';
+}
+
+function freightOf(charges?: ChargeRow[]) {
+  const row = (charges ?? []).find((c) => c.type === ChargeType.FREIGHT);
+  return row ? money(row.amount) : '0.00';
+}
+
+function chargeAmount(charges: ChargeRow[] | undefined, type: ChargeType) {
+  const row = (charges ?? []).find((c) => c.type === type);
+  return row ? money(row.amount) : null;
+}
+
+function weightGrams(value: string | number | null | undefined) {
+  const kg = Number(value ?? 0);
+  if (!Number.isFinite(kg)) return '—';
+  return String(Math.round(kg * 1000));
+}
+
+function statusSeverity(
+  status: string,
+): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+  switch (status) {
+    case ConsignmentStatus.DELIVERED:
+      return 'success';
+    case ConsignmentStatus.CANCELLED:
+    case ConsignmentStatus.RTO:
+    case ConsignmentStatus.FAILED_ATTEMPT:
+      return 'danger';
+    case ConsignmentStatus.OUT_FOR_DELIVERY:
+      return 'warn';
+    case ConsignmentStatus.BOOKED:
+      return 'info';
+    default:
+      return 'secondary';
+  }
 }
 
 function BookingsPageInner() {
@@ -35,6 +113,7 @@ function BookingsPageInner() {
     typeParam === BookingType.CASH ? BookingType.CASH : BookingType.ACCOUNT;
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewId, setViewId] = useState<string | null>(null);
 
   useEffect(() => {
     const editId = searchParams.get('edit')?.trim();
@@ -45,6 +124,7 @@ function BookingsPageInner() {
 
   const setMode = (next: BookingType) => {
     setEditingId(null);
+    setViewId(null);
     router.replace(`/bookings?type=${next}`);
   };
 
@@ -53,12 +133,21 @@ function BookingsPageInner() {
     queryFn: () =>
       fetchPaginated<ConsignmentRow>('/consignments', {
         page: 1,
-        pageSize: 20,
+        pageSize: 10,
         sortBy: 'createdAt',
         sortOrder: 'DESC',
         mine: true,
         bookingType: mode,
       }),
+  });
+
+  const viewQuery = useQuery({
+    queryKey: ['booking-detail', viewId],
+    enabled: Boolean(viewId),
+    queryFn: async () => {
+      const res = await api.get(`/consignments/${viewId}`);
+      return unwrap<ConsignmentDetail>(res.data);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -67,6 +156,7 @@ function BookingsPageInner() {
     },
     onSuccess: async (_data, id) => {
       if (editingId === id) setEditingId(null);
+      if (viewId === id) setViewId(null);
       await qc.invalidateQueries({ queryKey: ['consignments-recent'] });
       await qc.invalidateQueries({ queryKey: ['consignments'] });
       await qc.invalidateQueries({ queryKey: ['dashboard-counts'] });
@@ -84,6 +174,9 @@ function BookingsPageInner() {
       accept: () => deleteMutation.mutate(row.id),
     });
   };
+
+  const detail = viewQuery.data;
+  const freight = chargeAmount(detail?.charges, ChargeType.FREIGHT) ?? '0.00';
 
   return (
     <div>
@@ -122,18 +215,17 @@ function BookingsPageInner() {
           <div className="booking-recent-list">
             {(recentQuery.data?.data ?? []).map((row) => (
               <div key={row.id} className="booking-recent-card">
-                <div className="booking-recent-awb">
-                  <Link href={`/tracking?awb=${encodeURIComponent(row.awb)}`}>
+                <div className="booking-recent-top">
+                  <button
+                    type="button"
+                    className="booking-recent-awb"
+                    onClick={() => setViewId(row.id)}
+                  >
                     {row.awb}
-                  </Link>
-                </div>
-                <div className="booking-recent-meta">
-                  <span>
-                    {row.bookingType
-                      ? BOOKING_TYPE_LABELS[row.bookingType]
-                      : '—'}
-                  </span>
-                  <span>{row.status}</span>
+                  </button>
+                  <div className="booking-recent-rate">
+                    ₹{freightOf(row.charges)}
+                  </div>
                 </div>
                 <div className="booking-recent-receiver">
                   {row.receiverName}
@@ -143,18 +235,27 @@ function BookingsPageInner() {
                       ? ` · ${row.partyName}`
                       : ''}
                 </div>
-                <div className="muted" style={{ fontSize: '0.8rem' }}>
-                  {row.bookingDate ||
-                    new Date(row.createdAt).toLocaleDateString()}
+                <div className="booking-recent-meta">
+                  <span>
+                    {row.bookingDate ||
+                      new Date(row.createdAt).toLocaleDateString()}
+                  </span>
+                  {row.receiverCity ? <span>{row.receiverCity}</span> : null}
+                  {row.rateSectionId ? (
+                    <span>{serviceTypeLabel(row.rateSectionId)}</span>
+                  ) : null}
+                  {row.weightKg != null ? (
+                    <span>{weightGrams(row.weightKg)} g</span>
+                  ) : null}
                 </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '0.35rem',
-                    marginTop: '0.5rem',
-                    flexWrap: 'wrap',
-                  }}
-                >
+                <div className="booking-recent-actions">
+                  <Button
+                    size="small"
+                    text
+                    icon="pi pi-eye"
+                    label="View"
+                    onClick={() => setViewId(row.id)}
+                  />
                   <Button
                     size="small"
                     text
@@ -177,6 +278,119 @@ function BookingsPageInner() {
           </div>
         </aside>
       </div>
+
+      <Dialog
+        header={
+          detail
+            ? `Booking · ${detail.awb}`
+            : viewQuery.isFetching
+              ? 'Loading booking…'
+              : 'Booking details'
+        }
+        visible={Boolean(viewId)}
+        onHide={() => setViewId(null)}
+        style={{ width: 'min(720px, 96vw)' }}
+      >
+        {viewQuery.isFetching && !detail ? (
+          <p className="muted">Loading…</p>
+        ) : null}
+        {viewQuery.isError ? (
+          <p className="error-text">Booking not found</p>
+        ) : null}
+        {detail ? (
+          <div className="form-grid">
+            <div className="field">
+              <label>Booking Date</label>
+              <div>{detail.bookingDate || '—'}</div>
+            </div>
+            <div className="field">
+              <label>Document Number</label>
+              <div>{detail.awb || '—'}</div>
+            </div>
+            <div className="field">
+              <label>Booking Type</label>
+              <div>
+                {detail.bookingType
+                  ? BOOKING_TYPE_LABELS[detail.bookingType]
+                  : '—'}
+              </div>
+            </div>
+            <div className="field">
+              <label>Status</label>
+              <div>
+                <Tag severity={statusSeverity(detail.status)}>
+                  {detail.status}
+                </Tag>
+              </div>
+            </div>
+            <div className="field">
+              <label>Customer / Party</label>
+              <div>{detail.customer?.name || detail.partyName || '—'}</div>
+            </div>
+            <div className="field">
+              <label>Destination</label>
+              <div>
+                {[detail.receiverCity, detail.receiverState]
+                  .filter(Boolean)
+                  .join(', ') || '—'}
+              </div>
+            </div>
+            <div className="field">
+              <label>Receiver Name</label>
+              <div>{detail.receiverName}</div>
+            </div>
+            <div className="field">
+              <label>Receiver Phone</label>
+              <div>{detail.receiverPhone || '—'}</div>
+            </div>
+            <div className="field full">
+              <label>Receiver Address</label>
+              <div>{detail.receiverAddress || '—'}</div>
+            </div>
+            <div className="field">
+              <label>Service Type</label>
+              <div>
+                {detail.rateSectionId
+                  ? serviceTypeLabel(detail.rateSectionId)
+                  : '—'}
+              </div>
+            </div>
+            <div className="field">
+              <label>Weight (g)</label>
+              <div>{weightGrams(detail.weightKg)}</div>
+            </div>
+            <div className="field">
+              <label>Price</label>
+              <div>{freight}</div>
+            </div>
+            <div className="field">
+              <label>CGST</label>
+              <div>
+                {chargeAmount(detail.charges, ChargeType.CGST) ??
+                  money(detail.cgst)}
+              </div>
+            </div>
+            <div className="field">
+              <label>SGST</label>
+              <div>
+                {chargeAmount(detail.charges, ChargeType.SGST) ??
+                  money(detail.sgst)}
+              </div>
+            </div>
+            <div className="field">
+              <label>IGST</label>
+              <div>
+                {chargeAmount(detail.charges, ChargeType.IGST) ??
+                  money(detail.igst)}
+              </div>
+            </div>
+            <div className="field full">
+              <label>Remarks</label>
+              <div>{detail.remarks || '—'}</div>
+            </div>
+          </div>
+        ) : null}
+      </Dialog>
     </div>
   );
 }

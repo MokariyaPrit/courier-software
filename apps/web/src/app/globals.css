@@ -384,20 +384,30 @@ a {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 1rem;
-  align-items: start;
+  align-items: stretch;
+}
+
+.bookings-split-form,
+.bookings-split-recent {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
 }
 
 .bookings-split-form h2,
 .bookings-split-recent h2 {
   margin: 0 0 1rem;
   font-size: 1.05rem;
+  flex-shrink: 0;
 }
 
 .booking-recent-list {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  max-height: calc(100vh - 12rem);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -416,14 +426,39 @@ a {
   border-color: var(--main-primary);
 }
 
+.booking-recent-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .booking-recent-awb {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
   font-weight: 600;
   color: var(--main-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.booking-recent-awb:hover {
+  text-decoration: underline;
+}
+
+.booking-recent-rate {
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .booking-recent-meta {
   display: flex;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
   font-size: 0.85rem;
   color: var(--main-text-muted);
   margin: 0.25rem 0;
@@ -433,13 +468,25 @@ a {
   font-size: 0.92rem;
 }
 
+.booking-recent-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 960px) {
   .bookings-split {
     grid-template-columns: 1fr;
   }
 
+  .bookings-split-form,
+  .bookings-split-recent {
+    height: auto;
+  }
+
   .booking-recent-list {
-    max-height: none;
+    max-height: 20rem;
   }
 }
 
