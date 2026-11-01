@@ -353,6 +353,25 @@ export class ConsignmentQueryDto extends PaginationDto {
   @IsUUID()
   receiverId?: string;
 
+  @IsOptional()
+  @IsUUID()
+  customerId?: string;
+
+  /** Exact/partial party name filter for cash bookings */
+  @IsOptional()
+  @IsString()
+  partyName?: string;
+
+  /** Inclusive booking date range start (YYYY-MM-DD) */
+  @IsOptional()
+  @IsString()
+  dateFrom?: string;
+
+  /** Inclusive booking date range end (YYYY-MM-DD) */
+  @IsOptional()
+  @IsString()
+  dateTo?: string;
+
   /** When true, only consignments created by the current user */
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true' || value === '1')

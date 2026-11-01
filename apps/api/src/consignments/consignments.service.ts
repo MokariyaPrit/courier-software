@@ -209,6 +209,28 @@ export class ConsignmentsService {
         receiverId: query.receiverId,
       });
     }
+    if (query.customerId) {
+      qb.andWhere('c.customerId = :customerId', {
+        customerId: query.customerId,
+      });
+    }
+    if (query.partyName?.trim()) {
+      qb.andWhere('c.partyName ILIKE :partyName', {
+        partyName: `%${query.partyName.trim()}%`,
+      });
+    }
+    if (query.dateFrom?.trim()) {
+      qb.andWhere(
+        'COALESCE(c.bookingDate, CAST(c.createdAt AS date)) >= :dateFrom',
+        { dateFrom: query.dateFrom.trim() },
+      );
+    }
+    if (query.dateTo?.trim()) {
+      qb.andWhere(
+        'COALESCE(c.bookingDate, CAST(c.createdAt AS date)) <= :dateTo',
+        { dateTo: query.dateTo.trim() },
+      );
+    }
 
     const mine =
       query.mine === true ||
@@ -221,7 +243,7 @@ export class ConsignmentsService {
 
     if (query.search) {
       qb.andWhere(
-        '(c.awb ILIKE :q OR c.receiverName ILIKE :q OR c.receiverPhone ILIKE :q OR c.partyName ILIKE :q)',
+        '(c.awb ILIKE :q OR c.receiverName ILIKE :q OR c.receiverPhone ILIKE :q OR c.partyName ILIKE :q OR customer.name ILIKE :q)',
         { q: `%${query.search}%` },
       );
     }

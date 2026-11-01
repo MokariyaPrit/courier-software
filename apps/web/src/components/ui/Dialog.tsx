@@ -8,6 +8,7 @@ interface AppDialogProps {
   visible: boolean;
   onHide: () => void;
   style?: CSSProperties;
+  contentStyle?: CSSProperties;
   children?: ReactNode;
   footer?: ReactNode;
 }
@@ -17,6 +18,7 @@ export function Dialog({
   visible,
   onHide,
   style,
+  contentStyle,
   children,
   footer,
 }: AppDialogProps) {
@@ -25,7 +27,15 @@ export function Dialog({
       header={header}
       visible={visible}
       onHide={onHide}
-      style={style}
+      modal
+      blockScroll
+      draggable={false}
+      style={{ width: 'min(720px, 96vw)', ...style }}
+      contentStyle={{
+        maxHeight: 'min(70vh, 720px)',
+        overflowY: 'auto',
+        ...contentStyle,
+      }}
       footer={footer}
     >
       {children}

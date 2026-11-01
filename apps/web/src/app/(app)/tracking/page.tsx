@@ -12,10 +12,14 @@ import {
   Button,
   DataTable,
   Dialog,
+  InputText,
+  SearchSelect,
   Select,
   Tag,
   type AppColumn,
+  type SearchSelectOption,
 } from '@/components/ui';
+import { BookingFormPanel } from '@/components/bookings/BookingFormPanel';
 import { ListFilterChrome, ListSearch } from '@/components/ListControls';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
@@ -65,6 +69,17 @@ interface ConsignmentDetail {
   partyName?: string | null;
   charges?: ChargeRow[];
 }
+
+type DialogMode = 'view' | 'edit';
+
+interface CustomerOpt {
+  id: string;
+  name: string;
+  city?: string | null;
+  primaryPhone?: string | null;
+}
+
+type ViewMode = 'all' | 'customer' | 'party';
 
 const SORT_OPTIONS: SortOption[] = [
   { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC', isDefault: true },
@@ -126,36 +141,138 @@ function statusSeverity(
 function BookingListInner() {
   const params = useSearchParams();
   const list = useListParams({ sortOptions: SORT_OPTIONS });
+  const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [bookingType, setBookingType] = useState('');
   const [status, setStatus] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [customerLabel, setCustomerLabel] = useState('');
+  const [partyLabel, setPartyLabel] = useState('');
+  const [partyName, setPartyName] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailAwb, setDetailAwb] = useState('');
+  const goAllBookings = () => {
+    setViewMode('all');
+    setCustomerId('');
+    setCustomerLabel('');
+    setPartyLabel('');
+    setPartyName('');
+    list.setPage(1);
+  };
 
   useEffect(() => {
     const awb = params.get('awb')?.trim();
     if (!awb) return;
     setDetailAwb(awb);
     setDetailId(null);
+    setDialogMode('view');
   }, [params]);
+
+  const closeDialog = () => {
+    setDialogMode(null);
+    setDetailId(null);
+    setDetailAwb('');
+  };
+
+  const openView = (row: BookingRow) => {
+    setDialogMode('view');
+    setDetailId(row.id);
+    setDetailAwb(row.awb);
+  };
+
+  const openEdit = (row: BookingRow) => {
+    setDialogMode('edit');
+    setDetailId(row.id);
+    setDetailAwb(row.awb);
+  };
+
+  const customersQuery = useQuery({
+    queryKey: ['customers-booking-list'],
+    queryFn: () =>
+      fetchPaginated<CustomerOpt>('/customers', {
+        page: 1,
+        pageSize: 500,
+        sortBy: 'name',
+        sortOrder: 'ASC',
+      }),
+    enabled: viewMode === 'customer',
+  });
+
+  const partyOptionsQuery = useQuery({
+    queryKey: ['party-options-booking-list'],
+    queryFn: () =>
+      fetchPaginated<BookingRow>('/consignments', {
+        page: 1,
+        pageSize: 200,
+        sortBy: 'createdAt',
+        sortOrder: 'DESC',
+        bookingType: BookingType.CASH,
+      }),
+    enabled: viewMode === 'party',
+  });
+
+  const customerOptions: SearchSelectOption[] = useMemo(
+    () =>
+      (customersQuery.data?.data ?? []).map((c) => ({
+        value: c.id,
+        label: c.name,
+        subLabel: c.city || c.primaryPhone || undefined,
+      })),
+    [customersQuery.data],
+  );
+
+  const partyOptions: SearchSelectOption[] = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const row of partyOptionsQuery.data?.data ?? []) {
+      const name = row.partyName?.trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (!names.has(key)) names.set(key, name);
+    }
+    return Array.from(names.values())
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ value: name, label: name }));
+  }, [partyOptionsQuery.data]);
 
   const listQuery = useQuery({
     queryKey: [
       'booking-list',
       list.queryParams,
+      viewMode,
       bookingType,
       status,
+      customerId,
+      partyName,
+      dateFrom,
+      dateTo,
     ],
     queryFn: () =>
       fetchPaginated<BookingRow>('/consignments', {
         ...list.queryParams,
-        bookingType: bookingType || undefined,
+        bookingType:
+          viewMode === 'customer'
+            ? BookingType.ACCOUNT
+            : viewMode === 'party'
+              ? BookingType.CASH
+              : bookingType || undefined,
         status: status || undefined,
+        customerId:
+          viewMode === 'customer' && customerId ? customerId : undefined,
+        partyName: viewMode === 'party' && partyName ? partyName : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
       }),
+    enabled:
+      viewMode === 'all' ||
+      (viewMode === 'customer' && Boolean(customerId)) ||
+      (viewMode === 'party' && Boolean(partyName)),
   });
 
   const detailQuery = useQuery({
     queryKey: ['booking-detail', detailId, detailAwb],
-    enabled: Boolean(detailId || detailAwb),
+    enabled: Boolean(dialogMode && (detailId || detailAwb)),
     queryFn: async () => {
       if (detailId) {
         const res = await api.get(`/consignments/${detailId}`);
@@ -170,10 +287,20 @@ function BookingListInner() {
     list.clearFilters();
     setBookingType('');
     setStatus('');
+    setDateFrom('');
+    setDateTo('');
+    goAllBookings();
   };
 
   const hasFilters =
-    list.hasActiveFilters || Boolean(bookingType) || Boolean(status);
+    list.hasActiveFilters ||
+    Boolean(bookingType) ||
+    Boolean(status) ||
+    viewMode !== 'all' ||
+    Boolean(customerId) ||
+    Boolean(partyName) ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo);
 
   const meta = listQuery.data?.meta ?? {
     page: list.page,
@@ -225,16 +352,22 @@ function BookingListInner() {
       {
         header: 'Actions',
         body: (row) => (
-          <Button
-            size="small"
-            text
-            icon="pi pi-eye"
-            label="View"
-            onClick={() => {
-              setDetailId(row.id);
-              setDetailAwb(row.awb);
-            }}
-          />
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            <Button
+              size="small"
+              text
+              icon="pi pi-eye"
+              label="View"
+              onClick={() => openView(row)}
+            />
+            <Button
+              size="small"
+              text
+              icon="pi pi-pencil"
+              label="Edit"
+              onClick={() => openEdit(row)}
+            />
+          </div>
         ),
       },
     ];
@@ -242,30 +375,122 @@ function BookingListInner() {
 
   const detail = detailQuery.data;
   const freight = chargeAmount(detail?.charges, ChargeType.FREIGHT) ?? '0.00';
-  const detailOpen = Boolean(detailId || detailAwb);
+  const detailOpen = Boolean(dialogMode && (detailId || detailAwb));
+
+  const emptyMessage =
+    viewMode === 'customer' && !customerId
+      ? 'Select a customer to see their bookings'
+      : viewMode === 'party' && !partyName
+        ? 'Select a party to see their bookings'
+        : 'No bookings found';
 
   return (
     <div>
       <div className="page-header">
         <h1>Booking list</h1>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Button
+            label="All bookings"
+            outlined={viewMode !== 'all'}
+            onClick={goAllBookings}
+          />
+          <Button
+            label="Customer wise"
+            outlined={viewMode !== 'customer'}
+            onClick={() => {
+              setViewMode('customer');
+              setPartyLabel('');
+              setPartyName('');
+              setBookingType('');
+              list.setPage(1);
+            }}
+          />
+          <Button
+            label="Party wise"
+            outlined={viewMode !== 'party'}
+            onClick={() => {
+              setViewMode('party');
+              setCustomerId('');
+              setCustomerLabel('');
+              setBookingType('');
+              list.setPage(1);
+            }}
+          />
+        </div>
       </div>
+      <p className="muted" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
+        Switch to Customer wise or Party wise to list bookings for one account
+        customer or cash party.
+      </p>
 
       <ListSearch
         search={list.search}
         onSearchChange={list.setSearch}
-        searchPlaceholder="Search document no. / receiver / party…"
+        searchPlaceholder="Search document no. / receiver / party / customer…"
         extra={
           <>
-            <Select
-              value={bookingType}
-              options={BOOKING_TYPE_FILTER}
-              onChange={(e) => {
-                setBookingType(String(e.value || ''));
-                list.setPage(1);
-              }}
-              placeholder="Booking type"
-              style={{ minWidth: '10rem' }}
-            />
+            {viewMode === 'customer' ? (
+              <div style={{ minWidth: '16rem', flex: '1 1 16rem' }}>
+                <SearchSelect
+                  value={customerLabel}
+                  options={customerOptions}
+                  placeholder="Type customer name…"
+                  allowFreeText={false}
+                  emptyHint="No customers match"
+                  onChange={(text) => {
+                    setCustomerLabel(text);
+                    setCustomerId('');
+                  }}
+                  onSelect={(opt) => {
+                    if (!opt) {
+                      setCustomerId('');
+                      return;
+                    }
+                    setCustomerId(opt.value);
+                    setCustomerLabel(opt.label);
+                    list.setPage(1);
+                  }}
+                />
+              </div>
+            ) : null}
+            {viewMode === 'party' ? (
+              <div style={{ minWidth: '16rem', flex: '1 1 16rem' }}>
+                <SearchSelect
+                  value={partyLabel}
+                  options={partyOptions}
+                  placeholder="Type party name…"
+                  allowFreeText
+                  emptyHint="No parties yet — type a name"
+                  onChange={(text) => {
+                    setPartyLabel(text);
+                    setPartyName('');
+                  }}
+                  onSelect={(opt) => {
+                    if (!opt) {
+                      const typed = partyLabel.trim();
+                      setPartyName(typed);
+                      list.setPage(1);
+                      return;
+                    }
+                    setPartyName(opt.value);
+                    setPartyLabel(opt.label);
+                    list.setPage(1);
+                  }}
+                />
+              </div>
+            ) : null}
+            {viewMode === 'all' ? (
+              <Select
+                value={bookingType}
+                options={BOOKING_TYPE_FILTER}
+                onChange={(e) => {
+                  setBookingType(String(e.value || ''));
+                  list.setPage(1);
+                }}
+                placeholder="Booking type"
+                style={{ minWidth: '10rem' }}
+              />
+            ) : null}
             <Select
               value={status}
               options={STATUS_FILTER}
@@ -276,6 +501,48 @@ function BookingListInner() {
               placeholder="Status"
               style={{ minWidth: '12rem' }}
             />
+            <label
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <span className="muted" style={{ whiteSpace: 'nowrap' }}>
+                From
+              </span>
+              <InputText
+                type="date"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  list.setPage(1);
+                }}
+                style={{ width: '10.5rem' }}
+              />
+            </label>
+            <label
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <span className="muted" style={{ whiteSpace: 'nowrap' }}>
+                To
+              </span>
+              <InputText
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  list.setPage(1);
+                }}
+                style={{ width: '10.5rem' }}
+              />
+            </label>
           </>
         }
       />
@@ -294,8 +561,8 @@ function BookingListInner() {
         >
           <DataTable
             value={listQuery.data?.data ?? []}
-            loading={listQuery.isLoading}
-            emptyMessage="No bookings found"
+            loading={listQuery.isFetching}
+            emptyMessage={emptyMessage}
             columns={columns}
           />
         </ListFilterChrome>
@@ -304,17 +571,16 @@ function BookingListInner() {
       <Dialog
         header={
           detail
-            ? `Booking · ${detail.awb}`
+            ? `${dialogMode === 'edit' ? 'Edit booking' : 'Booking'} · ${detail.awb}`
             : detailQuery.isFetching
               ? 'Loading booking…'
-              : 'Booking details'
+              : dialogMode === 'edit'
+                ? 'Edit booking'
+                : 'Booking details'
         }
         visible={detailOpen}
-        onHide={() => {
-          setDetailId(null);
-          setDetailAwb('');
-        }}
-        style={{ width: 'min(720px, 96vw)' }}
+        onHide={closeDialog}
+        style={{ width: 'min(920px, 96vw)' }}
       >
         {detailQuery.isFetching && !detail ? (
           <p className="muted">Loading…</p>
@@ -322,7 +588,7 @@ function BookingListInner() {
         {detailQuery.isError ? (
           <p className="error-text">Booking not found</p>
         ) : null}
-        {detail ? (
+        {detail && dialogMode === 'view' ? (
           <div className="form-grid">
             <div className="field">
               <label>Booking Date</label>
@@ -414,6 +680,20 @@ function BookingListInner() {
               <div>{detail.remarks || '—'}</div>
             </div>
           </div>
+        ) : null}
+        {detail && dialogMode === 'edit' ? (
+          <BookingFormPanel
+            mode={
+              detail.bookingType === BookingType.CASH
+                ? BookingType.CASH
+                : BookingType.ACCOUNT
+            }
+            editingId={detail.id}
+            variant="dialog"
+            showRemember={false}
+            onCancel={closeDialog}
+            onSaved={() => closeDialog()}
+          />
         ) : null}
       </Dialog>
     </div>
