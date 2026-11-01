@@ -66,6 +66,11 @@ export class CreateConsignmentDto {
   @IsDateString()
   bookingDate?: string;
 
+  /** Document number — stored as AWB (unique) */
+  @IsString()
+  @MinLength(1)
+  awb: string;
+
   /** Cash walk-in party (not a Customer record) */
   @ValidateIf((o: CreateConsignmentDto) => o.bookingType === BookingType.CASH)
   @IsString()
@@ -151,16 +156,6 @@ export class CreateConsignmentDto {
 
   @IsOptional()
   @IsNumber()
-  @Min(1)
-  pieces?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  codAmount?: number;
-
-  @IsOptional()
-  @IsNumber()
   @Min(0)
   cgst?: number;
 
@@ -181,6 +176,150 @@ export class CreateConsignmentDto {
   @IsOptional()
   @IsString()
   remarks?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ChargeDto)
+  charges?: ChargeDto[];
+}
+
+export class UpdateConsignmentDto {
+  @IsOptional()
+  @IsDateString()
+  bookingDate?: string;
+
+  /** Document number — stored as AWB (unique) */
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  awb?: string;
+
+  @IsOptional()
+  @IsUUID()
+  customerId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  quotationId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  senderLocationId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  receiverId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  rateSectionId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  rateColumnId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  partyName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  partyPhone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  partyAddress?: string | null;
+
+  @IsOptional()
+  @IsString()
+  partyCity?: string | null;
+
+  @IsOptional()
+  @IsString()
+  partyState?: string | null;
+
+  @IsOptional()
+  @IsString()
+  partyPincode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  partyGstin?: string | null;
+
+  @IsOptional()
+  @IsString()
+  partyEmail?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  senderName?: string;
+
+  @IsOptional()
+  @IsString()
+  senderPhone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  senderAddress?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  receiverName?: string;
+
+  @IsOptional()
+  @IsString()
+  receiverPhone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  receiverAddress?: string | null;
+
+  @IsOptional()
+  @IsString()
+  receiverCity?: string | null;
+
+  @IsOptional()
+  @IsString()
+  receiverState?: string | null;
+
+  @IsOptional()
+  @IsString()
+  receiverPincode?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  receiverCityId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  receiverStateId?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  weightKg?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cgst?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  sgst?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  igst?: number;
+
+  @IsOptional()
+  @IsString()
+  remarks?: string | null;
 
   @IsOptional()
   @IsArray()

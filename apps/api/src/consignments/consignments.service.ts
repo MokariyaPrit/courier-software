@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import { TrackingEvent } from '../entities/tracking-event.entity';
 import {
   ConsignmentQueryDto,
   CreateConsignmentDto,
+  UpdateConsignmentDto,
 } from './dto/consignment.dto';
 
 const CONSIGNMENT_SORT = [
@@ -46,13 +48,6 @@ export class ConsignmentsService {
     return new Date().toISOString().slice(0, 10);
   }
 
-  private async nextAwb() {
-    const year = new Date().getFullYear().toString().slice(-2);
-    const count = await this.consignmentsRepo.count();
-    const seq = String(count + 1).padStart(7, '0');
-    return `CN${year}${seq}`;
-  }
-
   async create(dto: CreateConsignmentDto, user: AuthUser) {
     const bookingType = dto.bookingType ?? BookingType.CASH;
 
@@ -63,7 +58,11 @@ export class ConsignmentsService {
       throw new BadRequestException('Party name is required for cash booking');
     }
 
-    const awb = await this.nextAwb();
+    const awb = dto.awb.trim();
+    if (!awb) {
+      throw new BadRequestException('Document number is required');
+    }
+
     const consignment = this.consignmentsRepo.create({
       awb,
       status: ConsignmentStatus.BOOKED,
@@ -107,8 +106,6 @@ export class ConsignmentsService {
       receiverCityId: dto.receiverCityId ?? null,
       receiverStateId: dto.receiverStateId ?? null,
       weightKg: String(dto.weightKg ?? 0),
-      pieces: dto.pieces ?? 1,
-      codAmount: String(dto.codAmount ?? 0),
       cgst: String(dto.cgst ?? 0),
       sgst: String(dto.sgst ?? 0),
       igst: String(dto.igst ?? 0),
@@ -128,14 +125,6 @@ export class ConsignmentsService {
               description: 'Freight',
             },
           ];
-
-    if ((dto.codAmount ?? 0) > 0) {
-      chargeInputs.push({
-        type: ChargeType.COD,
-        amount: dto.codAmount ?? 0,
-        description: 'COD amount',
-      });
-    }
 
     const taxCharges: Array<{
       type: ChargeType;
@@ -294,6 +283,198 @@ export class ConsignmentsService {
       throw new NotFoundException('Consignment not found');
     }
     return this.findOne(consignment.id);
+  }
+
+  private assertOwner(consignment: Consignment, user: AuthUser) {
+    if (user.role !== Role.ADMIN && consignment.createdById !== user.id) {
+      throw new ForbiddenException('You can only manage your own bookings');
+    }
+  }
+
+  private async replaceCharges(
+    consignmentId: string,
+    dto: {
+      charges?: CreateConsignmentDto['charges'];
+      cgst?: number;
+      sgst?: number;
+      igst?: number;
+      freightAmount?: number;
+    },
+  ) {
+    await this.chargesRepo.softDelete({ consignmentId });
+
+    const chargeInputs =
+      dto.charges?.length
+        ? [...dto.charges]
+        : [
+            {
+              type: ChargeType.FREIGHT,
+              amount: dto.freightAmount ?? 0,
+              description: 'Freight',
+            },
+          ];
+
+    const taxCharges: Array<{
+      type: ChargeType;
+      amount: number;
+      description: string;
+    }> = [
+      {
+        type: ChargeType.CGST,
+        amount: Number(dto.cgst ?? 0),
+        description: 'CGST',
+      },
+      {
+        type: ChargeType.SGST,
+        amount: Number(dto.sgst ?? 0),
+        description: 'SGST',
+      },
+      {
+        type: ChargeType.IGST,
+        amount: Number(dto.igst ?? 0),
+        description: 'IGST',
+      },
+    ];
+    for (const tax of taxCharges) {
+      if (tax.amount <= 0) continue;
+      if (chargeInputs.some((c) => c.type === tax.type)) continue;
+      chargeInputs.push(tax);
+    }
+
+    if (chargeInputs.length) {
+      await this.chargesRepo.save(
+        chargeInputs.map((c) =>
+          this.chargesRepo.create({
+            consignmentId,
+            type: c.type,
+            amount: String(c.amount),
+            description: c.description ?? null,
+          }),
+        ),
+      );
+    }
+  }
+
+  async update(id: string, dto: UpdateConsignmentDto, user: AuthUser) {
+    const consignment = await this.findOne(id);
+    this.assertOwner(consignment, user);
+
+    if (dto.bookingDate !== undefined) {
+      consignment.bookingDate = dto.bookingDate || this.todayIsoDate();
+    }
+    if (dto.awb !== undefined) {
+      const awb = dto.awb.trim();
+      if (!awb) {
+        throw new BadRequestException('Document number is required');
+      }
+      consignment.awb = awb;
+    }
+    if (dto.customerId !== undefined) consignment.customerId = dto.customerId;
+    if (dto.quotationId !== undefined) {
+      consignment.quotationId = dto.quotationId;
+    }
+    if (dto.senderLocationId !== undefined) {
+      consignment.senderLocationId = dto.senderLocationId;
+    }
+    if (dto.receiverId !== undefined) consignment.receiverId = dto.receiverId;
+    if (dto.rateSectionId !== undefined) {
+      consignment.rateSectionId = dto.rateSectionId;
+    }
+    if (dto.rateColumnId !== undefined) {
+      consignment.rateColumnId = dto.rateColumnId;
+    }
+
+    if (consignment.bookingType === BookingType.CASH) {
+      if (dto.partyName !== undefined) {
+        const name = dto.partyName?.trim() || '';
+        if (!name) {
+          throw new BadRequestException('Party name is required for cash booking');
+        }
+        consignment.partyName = name;
+      }
+      if (dto.partyPhone !== undefined) {
+        consignment.partyPhone = dto.partyPhone;
+      }
+      if (dto.partyAddress !== undefined) {
+        consignment.partyAddress = dto.partyAddress;
+      }
+      if (dto.partyCity !== undefined) consignment.partyCity = dto.partyCity;
+      if (dto.partyState !== undefined) consignment.partyState = dto.partyState;
+      if (dto.partyPincode !== undefined) {
+        consignment.partyPincode = dto.partyPincode;
+      }
+      if (dto.partyGstin !== undefined) consignment.partyGstin = dto.partyGstin;
+      if (dto.partyEmail !== undefined) consignment.partyEmail = dto.partyEmail;
+    }
+
+    if (dto.senderName !== undefined) consignment.senderName = dto.senderName;
+    if (dto.senderPhone !== undefined) consignment.senderPhone = dto.senderPhone;
+    if (dto.senderAddress !== undefined) {
+      consignment.senderAddress = dto.senderAddress;
+    }
+    if (dto.receiverName !== undefined) {
+      consignment.receiverName = dto.receiverName;
+    }
+    if (dto.receiverPhone !== undefined) {
+      consignment.receiverPhone = dto.receiverPhone;
+    }
+    if (dto.receiverAddress !== undefined) {
+      consignment.receiverAddress = dto.receiverAddress;
+    }
+    if (dto.receiverCity !== undefined) {
+      consignment.receiverCity = dto.receiverCity;
+    }
+    if (dto.receiverState !== undefined) {
+      consignment.receiverState = dto.receiverState;
+    }
+    if (dto.receiverPincode !== undefined) {
+      consignment.receiverPincode = dto.receiverPincode;
+    }
+    if (dto.receiverCityId !== undefined) {
+      consignment.receiverCityId = dto.receiverCityId;
+    }
+    if (dto.receiverStateId !== undefined) {
+      consignment.receiverStateId = dto.receiverStateId;
+    }
+    if (dto.weightKg !== undefined) {
+      consignment.weightKg = String(dto.weightKg);
+    }
+    if (dto.cgst !== undefined) consignment.cgst = String(dto.cgst);
+    if (dto.sgst !== undefined) consignment.sgst = String(dto.sgst);
+    if (dto.igst !== undefined) consignment.igst = String(dto.igst);
+    if (dto.remarks !== undefined) {
+      consignment.remarks = dto.remarks?.trim() || null;
+    }
+
+    await this.consignmentsRepo.save(consignment);
+
+    if (
+      dto.charges !== undefined ||
+      dto.cgst !== undefined ||
+      dto.sgst !== undefined ||
+      dto.igst !== undefined
+    ) {
+      const freightFromCharges = dto.charges?.find(
+        (c) => c.type === ChargeType.FREIGHT,
+      )?.amount;
+      await this.replaceCharges(id, {
+        charges: dto.charges,
+        cgst: dto.cgst !== undefined ? dto.cgst : Number(consignment.cgst),
+        sgst: dto.sgst !== undefined ? dto.sgst : Number(consignment.sgst),
+        igst: dto.igst !== undefined ? dto.igst : Number(consignment.igst),
+        freightAmount: freightFromCharges,
+      });
+    }
+
+    return this.findOne(id);
+  }
+
+  async remove(id: string, user: AuthUser) {
+    const consignment = await this.findOne(id);
+    this.assertOwner(consignment, user);
+    await this.chargesRepo.softDelete({ consignmentId: id });
+    await this.consignmentsRepo.softDelete(id);
+    return { deleted: true };
   }
 
   async dashboardCounts() {

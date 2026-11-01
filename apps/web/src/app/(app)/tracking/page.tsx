@@ -4,29 +4,43 @@ import {
   BOOKING_TYPE_LABELS,
   BookingType,
   ChargeType,
-  CONSIGNMENT_STATUS_FLOW,
   ConsignmentStatus,
 } from '@courier/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
-import { Button, InputText, Select } from '@/components/ui';
+import {
+  Button,
+  DataTable,
+  Dialog,
+  Select,
+  Tag,
+  type AppColumn,
+} from '@/components/ui';
+import { ListFilterChrome, ListSearch } from '@/components/ListControls';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
+import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
 import { serviceTypeLabel } from '@/lib/quotations';
 
-interface TrackingEvent {
+interface BookingRow {
   id: string;
-  status: string;
-  remarks: string | null;
-  locationLabel: string | null;
+  awb: string;
+  status: ConsignmentStatus;
+  bookingType?: BookingType;
+  bookingDate?: string | null;
+  receiverName: string;
+  receiverPhone?: string | null;
+  receiverCity?: string | null;
   createdAt: string;
-  createdBy?: { userInfo?: { fullName?: string } | null };
+  customer?: { name?: string } | null;
+  partyName?: string | null;
+  rateSectionId?: string | null;
+  weightKg?: string | number | null;
 }
 
 interface ChargeRow {
   type: ChargeType | string;
   amount: string | number;
-  description?: string | null;
 }
 
 interface ConsignmentDetail {
@@ -50,8 +64,29 @@ interface ConsignmentDetail {
   customer?: { name?: string } | null;
   partyName?: string | null;
   charges?: ChargeRow[];
-  trackingEvents?: TrackingEvent[];
 }
+
+const SORT_OPTIONS: SortOption[] = [
+  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC', isDefault: true },
+  { label: 'Oldest first', sortBy: 'createdAt', sortOrder: 'ASC' },
+  { label: 'Date Asc', sortBy: 'bookingDate', sortOrder: 'ASC' },
+  { label: 'Date Desc', sortBy: 'bookingDate', sortOrder: 'DESC' },
+  { label: 'Document Asc', sortBy: 'awb', sortOrder: 'ASC' },
+  { label: 'Document Desc', sortBy: 'awb', sortOrder: 'DESC' },
+  { label: 'Receiver Asc', sortBy: 'receiverName', sortOrder: 'ASC' },
+  { label: 'Status Asc', sortBy: 'status', sortOrder: 'ASC' },
+];
+
+const BOOKING_TYPE_FILTER = [
+  { label: 'All types', value: '' },
+  { label: BOOKING_TYPE_LABELS[BookingType.ACCOUNT], value: BookingType.ACCOUNT },
+  { label: BOOKING_TYPE_LABELS[BookingType.CASH], value: BookingType.CASH },
+];
+
+const STATUS_FILTER = [
+  { label: 'All statuses', value: '' },
+  ...Object.values(ConsignmentStatus).map((s) => ({ label: s, value: s })),
+];
 
 function money(value: string | number | null | undefined) {
   const n = Number(value ?? 0);
@@ -69,88 +104,233 @@ function chargeAmount(charges: ChargeRow[] | undefined, type: ChargeType) {
   return row ? money(row.amount) : null;
 }
 
-function TrackingInner() {
+function statusSeverity(
+  status: ConsignmentStatus,
+): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+  switch (status) {
+    case ConsignmentStatus.DELIVERED:
+      return 'success';
+    case ConsignmentStatus.CANCELLED:
+    case ConsignmentStatus.RTO:
+    case ConsignmentStatus.FAILED_ATTEMPT:
+      return 'danger';
+    case ConsignmentStatus.OUT_FOR_DELIVERY:
+      return 'warn';
+    case ConsignmentStatus.BOOKED:
+      return 'info';
+    default:
+      return 'secondary';
+  }
+}
+
+function BookingListInner() {
   const params = useSearchParams();
-  const qc = useQueryClient();
-  const [awb, setAwb] = useState(params.get('awb') || '');
-  const [queryAwb, setQueryAwb] = useState(params.get('awb') || '');
-  const [nextStatus, setNextStatus] = useState<ConsignmentStatus | null>(null);
-  const [remarks, setRemarks] = useState('');
+  const list = useListParams({ sortOptions: SORT_OPTIONS });
+  const [bookingType, setBookingType] = useState('');
+  const [status, setStatus] = useState('');
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailAwb, setDetailAwb] = useState('');
 
   useEffect(() => {
-    const initial = params.get('awb');
-    if (initial) {
-      setAwb(initial);
-      setQueryAwb(initial);
-    }
+    const awb = params.get('awb')?.trim();
+    if (!awb) return;
+    setDetailAwb(awb);
+    setDetailId(null);
   }, [params]);
 
+  const listQuery = useQuery({
+    queryKey: [
+      'booking-list',
+      list.queryParams,
+      bookingType,
+      status,
+    ],
+    queryFn: () =>
+      fetchPaginated<BookingRow>('/consignments', {
+        ...list.queryParams,
+        bookingType: bookingType || undefined,
+        status: status || undefined,
+      }),
+  });
+
   const detailQuery = useQuery({
-    queryKey: ['tracking', queryAwb],
-    enabled: Boolean(queryAwb),
+    queryKey: ['booking-detail', detailId, detailAwb],
+    enabled: Boolean(detailId || detailAwb),
     queryFn: async () => {
-      const res = await api.get(`/consignments/awb/${queryAwb}`);
+      if (detailId) {
+        const res = await api.get(`/consignments/${detailId}`);
+        return unwrap<ConsignmentDetail>(res.data);
+      }
+      const res = await api.get(`/consignments/awb/${detailAwb}`);
       return unwrap<ConsignmentDetail>(res.data);
     },
   });
 
-  const allowed = useMemo(() => {
-    if (!detailQuery.data) return [];
-    return CONSIGNMENT_STATUS_FLOW[detailQuery.data.status] ?? [];
-  }, [detailQuery.data]);
+  const clearAllFilters = () => {
+    list.clearFilters();
+    setBookingType('');
+    setStatus('');
+  };
 
-  const updateMutation = useMutation({
-    mutationFn: async () => {
-      if (!detailQuery.data || !nextStatus) return;
-      await api.patch(`/consignments/${detailQuery.data.id}/status`, {
-        status: nextStatus,
-        remarks: remarks || undefined,
-      });
-    },
-    onSuccess: async () => {
-      setRemarks('');
-      setNextStatus(null);
-      await qc.invalidateQueries({ queryKey: ['tracking', queryAwb] });
-      await qc.invalidateQueries({ queryKey: ['dashboard-counts'] });
-      await qc.invalidateQueries({ queryKey: ['ofd'] });
-    },
-  });
+  const hasFilters =
+    list.hasActiveFilters || Boolean(bookingType) || Boolean(status);
+
+  const meta = listQuery.data?.meta ?? {
+    page: list.page,
+    pageSize: list.pageSize,
+    total: 0,
+  };
+
+  const columns = useMemo((): AppColumn<BookingRow>[] => {
+    return [
+      {
+        header: 'Document No.',
+        body: (row) => row.awb || '—',
+      },
+      {
+        header: 'Type',
+        body: (row) =>
+          row.bookingType ? BOOKING_TYPE_LABELS[row.bookingType] : '—',
+      },
+      {
+        header: 'Customer / Party',
+        body: (row) => row.customer?.name || row.partyName || '—',
+      },
+      { field: 'receiverName', header: 'Receiver' },
+      {
+        header: 'Destination',
+        body: (row) => row.receiverCity || '—',
+      },
+      {
+        header: 'Service',
+        body: (row) =>
+          row.rateSectionId ? serviceTypeLabel(row.rateSectionId) : '—',
+      },
+      {
+        header: 'Weight (g)',
+        body: (row) => weightGrams(row.weightKg),
+      },
+      {
+        header: 'Date',
+        body: (row) =>
+          row.bookingDate ||
+          new Date(row.createdAt).toLocaleDateString(),
+      },
+      {
+        header: 'Status',
+        body: (row) => (
+          <Tag severity={statusSeverity(row.status)}>{row.status}</Tag>
+        ),
+      },
+      {
+        header: 'Actions',
+        body: (row) => (
+          <Button
+            size="small"
+            text
+            icon="pi pi-eye"
+            label="View"
+            onClick={() => {
+              setDetailId(row.id);
+              setDetailAwb(row.awb);
+            }}
+          />
+        ),
+      },
+    ];
+  }, []);
 
   const detail = detailQuery.data;
   const freight = chargeAmount(detail?.charges, ChargeType.FREIGHT) ?? '0.00';
+  const detailOpen = Boolean(detailId || detailAwb);
 
   return (
     <div>
       <div className="page-header">
-        <h1>Tracking</h1>
-      </div>
-      <div className="toolbar">
-        <InputText
-          placeholder="Enter AWB"
-          value={awb}
-          onChange={(e) => setAwb(e.target.value)}
-        />
-        <Button label="Search" onClick={() => setQueryAwb(awb.trim())} />
+        <h1>Booking list</h1>
       </div>
 
-      {detailQuery.isFetching ? <p className="muted">Loading…</p> : null}
-      {detailQuery.isError ? (
-        <p className="error-text">Consignment not found</p>
-      ) : null}
+      <ListSearch
+        search={list.search}
+        onSearchChange={list.setSearch}
+        searchPlaceholder="Search document no. / receiver / party…"
+        extra={
+          <>
+            <Select
+              value={bookingType}
+              options={BOOKING_TYPE_FILTER}
+              onChange={(e) => {
+                setBookingType(String(e.value || ''));
+                list.setPage(1);
+              }}
+              placeholder="Booking type"
+              style={{ minWidth: '10rem' }}
+            />
+            <Select
+              value={status}
+              options={STATUS_FILTER}
+              onChange={(e) => {
+                setStatus(String(e.value || ''));
+                list.setPage(1);
+              }}
+              placeholder="Status"
+              style={{ minWidth: '12rem' }}
+            />
+          </>
+        }
+      />
 
-      {detail ? (
-        <div className="panel" style={{ display: 'grid', gap: '1.25rem' }}>
-          <div>
-            <h2 style={{ margin: '0 0 0.5rem' }}>{detail.awb}</h2>
-            <p className="muted" style={{ margin: 0 }}>
-              {detail.senderName} → {detail.receiverName} · {detail.status}
-            </p>
-          </div>
+      <div className="panel">
+        <ListFilterChrome
+          meta={meta}
+          sortOptions={SORT_OPTIONS}
+          sortKey={list.sortKey}
+          onSortChange={list.setSortKey}
+          onPageChange={list.setPage}
+          onPageSizeChange={list.setPageSize}
+          showClearFilters
+          onClearFilters={clearAllFilters}
+          clearFiltersDisabled={!hasFilters}
+        >
+          <DataTable
+            value={listQuery.data?.data ?? []}
+            loading={listQuery.isLoading}
+            emptyMessage="No bookings found"
+            columns={columns}
+          />
+        </ListFilterChrome>
+      </div>
 
+      <Dialog
+        header={
+          detail
+            ? `Booking · ${detail.awb}`
+            : detailQuery.isFetching
+              ? 'Loading booking…'
+              : 'Booking details'
+        }
+        visible={detailOpen}
+        onHide={() => {
+          setDetailId(null);
+          setDetailAwb('');
+        }}
+        style={{ width: 'min(720px, 96vw)' }}
+      >
+        {detailQuery.isFetching && !detail ? (
+          <p className="muted">Loading…</p>
+        ) : null}
+        {detailQuery.isError ? (
+          <p className="error-text">Booking not found</p>
+        ) : null}
+        {detail ? (
           <div className="form-grid">
             <div className="field">
               <label>Booking Date</label>
               <div>{detail.bookingDate || '—'}</div>
+            </div>
+            <div className="field">
+              <label>Document Number</label>
+              <div>{detail.awb || '—'}</div>
             </div>
             <div className="field">
               <label>Booking Type</label>
@@ -161,10 +341,16 @@ function TrackingInner() {
               </div>
             </div>
             <div className="field">
-              <label>Customer / Party</label>
+              <label>Status</label>
               <div>
-                {detail.customer?.name || detail.partyName || '—'}
+                <Tag severity={statusSeverity(detail.status)}>
+                  {detail.status}
+                </Tag>
               </div>
+            </div>
+            <div className="field">
+              <label>Customer / Party</label>
+              <div>{detail.customer?.name || detail.partyName || '—'}</div>
             </div>
             <div className="field">
               <label>Destination</label>
@@ -228,63 +414,16 @@ function TrackingInner() {
               <div>{detail.remarks || '—'}</div>
             </div>
           </div>
-
-          <div>
-            <h3>Update status</h3>
-            {allowed.length === 0 ? (
-              <p className="muted">Terminal status — no further transitions.</p>
-            ) : (
-              <div className="toolbar">
-                <Select
-                  value={nextStatus}
-                  options={allowed.map((s) => ({ label: s, value: s }))}
-                  onChange={(e) => setNextStatus(e.value)}
-                  placeholder="Next status"
-                  style={{ minWidth: 220 }}
-                />
-                <InputText
-                  placeholder="Remarks"
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                />
-                <Button
-                  label="Update"
-                  disabled={!nextStatus}
-                  loading={updateMutation.isPending}
-                  onClick={() => updateMutation.mutate()}
-                />
-              </div>
-            )}
-          </div>
-
-          <div>
-            <h3>Timeline</h3>
-            <ul className="timeline">
-              {(detail.trackingEvents ?? []).map((ev) => (
-                <li key={ev.id}>
-                  <strong>{ev.status}</strong>
-                  <div className="muted">
-                    {new Date(ev.createdAt).toLocaleString()}
-                    {ev.locationLabel ? ` · ${ev.locationLabel}` : ''}
-                    {ev.createdBy?.userInfo?.fullName
-                      ? ` · ${ev.createdBy.userInfo.fullName}`
-                      : ''}
-                  </div>
-                  {ev.remarks ? <div>{ev.remarks}</div> : null}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      ) : null}
+        ) : null}
+      </Dialog>
     </div>
   );
 }
 
-export default function TrackingPage() {
+export default function BookingListPage() {
   return (
     <Suspense fallback={<p className="muted">Loading…</p>}>
-      <TrackingInner />
+      <BookingListInner />
     </Suspense>
   );
 }

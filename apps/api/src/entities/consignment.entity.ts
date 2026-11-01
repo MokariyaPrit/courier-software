@@ -27,7 +27,7 @@ export class Consignment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', unique: true })
+  @Column({ type: 'varchar' })
   awb: string;
 
   @Column({
@@ -151,12 +151,6 @@ export class Consignment {
 
   @Column({ type: 'decimal', precision: 10, scale: 3, default: 0 })
   weightKg: string;
-
-  @Column({ type: 'int', default: 1 })
-  pieces: number;
-
-  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
-  codAmount: string;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   cgst: string;

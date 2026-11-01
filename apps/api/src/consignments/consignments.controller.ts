@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -17,6 +19,7 @@ import { ConsignmentsService } from './consignments.service';
 import {
   ConsignmentQueryDto,
   CreateConsignmentDto,
+  UpdateConsignmentDto,
 } from './dto/consignment.dto';
 
 @Controller('consignments')
@@ -51,5 +54,19 @@ export class ConsignmentsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.consignmentsService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateConsignmentDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.consignmentsService.update(id, dto, user);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.consignmentsService.remove(id, user);
   }
 }

@@ -11,6 +11,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Button,
+  ConfirmDialog,
+  confirmDialog,
   InputNumber,
   InputText,
   SearchSelect,
@@ -22,6 +24,7 @@ import { api, unwrap } from '@/lib/api';
 import { fetchPaginated } from '@/lib/list';
 import {
   resolveRate,
+  serviceTypeLabel,
   toMatrixForm,
   weightLabelForGrams,
 } from '@/lib/quotations';
@@ -37,6 +40,44 @@ interface ConsignmentRow {
   createdAt: string;
   customer?: { name: string } | null;
   partyName?: string | null;
+}
+
+interface ConsignmentDetail {
+  id: string;
+  awb: string;
+  bookingType: BookingType;
+  bookingDate?: string | null;
+  customerId?: string | null;
+  customer?: { id?: string; name?: string } | null;
+  quotationId?: string | null;
+  senderLocationId?: string | null;
+  receiverId?: string | null;
+  rateSectionId?: string | null;
+  rateColumnId?: string | null;
+  partyName?: string | null;
+  partyPhone?: string | null;
+  partyAddress?: string | null;
+  partyCity?: string | null;
+  partyState?: string | null;
+  partyPincode?: string | null;
+  partyGstin?: string | null;
+  partyEmail?: string | null;
+  senderName?: string;
+  senderPhone?: string | null;
+  senderAddress?: string | null;
+  receiverName: string;
+  receiverPhone?: string | null;
+  receiverAddress?: string | null;
+  receiverCity?: string | null;
+  receiverState?: string | null;
+  receiverCityId?: string | null;
+  receiverStateId?: string | null;
+  weightKg?: string | number | null;
+  cgst?: string | number | null;
+  sgst?: string | number | null;
+  igst?: string | number | null;
+  remarks?: string | null;
+  charges?: Array<{ type: string; amount: string | number }>;
 }
 
 interface CustomerOpt {
@@ -120,6 +161,7 @@ const emptyForm = {
   receiverCityId: '',
   receiverStateId: '',
   destLabel: '',
+  documentNumber: '',
   weightGrams: 100,
   freight: 0,
   cgst: 0,
@@ -142,13 +184,22 @@ export default function BookingsPage() {
   const [rateHint, setRateHint] = useState('');
   /** false = follow slab auto price; true = user override */
   const [priceManual, setPriceManual] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingAwb, setEditingAwb] = useState('');
 
-  useEffect(() => {
+  const resetForm = () => {
     setForm({ ...emptyForm, bookingType: mode, bookingDate: todayIso() });
     setRateSource(null);
     setRateHint('');
     setError('');
     setPriceManual(false);
+    setEditingId(null);
+    setEditingAwb('');
+  };
+
+  useEffect(() => {
+    resetForm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset on booking mode change only
   }, [mode]);
 
   const setMode = (next: BookingType) => {
@@ -456,184 +507,194 @@ export default function BookingsPage() {
     }));
   };
 
-  const createMutation = useMutation({
+  const buildPayload = async () => {
+    const cleaned = trimFormData(form);
+    if (cleaned.bookingType === BookingType.ACCOUNT && !cleaned.customerId) {
+      throw new Error('Select a customer');
+    }
+    if (cleaned.bookingType === BookingType.CASH && !cleaned.partyName) {
+      throw new Error('Party name is required for cash booking');
+    }
+    if (!cleaned.receiverName.trim()) {
+      throw new Error('Receiver name is required');
+    }
+    if (!cleaned.receiverCityId) {
+      throw new Error('Select a destination from Centers');
+    }
+    if (!cleaned.rateSectionId) {
+      throw new Error('Select a service type');
+    }
+    if (!cleaned.documentNumber?.trim()) {
+      throw new Error('Document number is required');
+    }
+
+    const weightKg = Math.max(0, Number(cleaned.weightGrams || 0) / 1000);
+    const freight = Number(cleaned.freight);
+
+    const receiverRes = await api.post(
+      '/receivers/find-or-create',
+      {
+        name: cleaned.receiverName,
+        phone: cleaned.receiverPhone || undefined,
+        address: cleaned.receiverAddress || undefined,
+        city: cleaned.receiverCity || undefined,
+        state: cleaned.receiverState || undefined,
+        cityId: cleaned.receiverCityId || undefined,
+        stateId: cleaned.receiverStateId || undefined,
+      },
+      { skipToast: true },
+    );
+    const receiver = unwrap<ReceiverOpt>(receiverRes.data);
+
+    let senderLocationId = cleaned.senderLocationId || undefined;
+    let senderName = cleaned.senderName;
+    let senderPhone = cleaned.senderPhone || undefined;
+    let senderAddress = cleaned.senderAddress || undefined;
+
+    if (cleaned.bookingType === BookingType.ACCOUNT && cleaned.customerId) {
+      const c = (customersQuery.data?.data ?? []).find(
+        (x) => x.id === cleaned.customerId,
+      );
+      const center = (centersQuery.data ?? []).find(
+        (l) => l.cityId && l.cityId === c?.cityId,
+      );
+      senderLocationId = center?.id || senderLocationId;
+      senderName = c?.name || senderName || 'Sender';
+      senderPhone = c?.primaryPhone || senderPhone;
+      senderAddress =
+        [c?.address, c?.city, c?.state, c?.pincode].filter(Boolean).join(', ') ||
+        senderAddress;
+    } else if (cleaned.bookingType === BookingType.CASH) {
+      senderName = cleaned.partyName || senderName || 'Cash party';
+      senderPhone = cleaned.partyPhone || senderPhone;
+      senderAddress =
+        [
+          cleaned.partyAddress,
+          cleaned.partyCity,
+          cleaned.partyState,
+          cleaned.partyPincode,
+        ]
+          .filter(Boolean)
+          .join(', ') || senderAddress;
+    }
+
+    const charges = [
+      {
+        type: ChargeType.FREIGHT,
+        amount: freight,
+        description: 'Freight',
+      },
+    ];
+    if (Number(cleaned.cgst) > 0) {
+      charges.push({
+        type: ChargeType.CGST,
+        amount: Number(cleaned.cgst),
+        description: 'CGST',
+      });
+    }
+    if (Number(cleaned.sgst) > 0) {
+      charges.push({
+        type: ChargeType.SGST,
+        amount: Number(cleaned.sgst),
+        description: 'SGST',
+      });
+    }
+    if (Number(cleaned.igst) > 0) {
+      charges.push({
+        type: ChargeType.IGST,
+        amount: Number(cleaned.igst),
+        description: 'IGST',
+      });
+    }
+
+    return {
+      cleaned,
+      payload: {
+        bookingType: cleaned.bookingType,
+        bookingDate: cleaned.bookingDate || todayIso(),
+        awb: cleaned.documentNumber.trim(),
+        customerId:
+          cleaned.bookingType === BookingType.ACCOUNT
+            ? cleaned.customerId || undefined
+            : undefined,
+        quotationId: cleaned.quotationId || undefined,
+        senderLocationId,
+        receiverId: receiver.id,
+        rateSectionId: cleaned.rateSectionId || undefined,
+        rateColumnId: resolvedPrice.columnId || cleaned.rateColumnId || undefined,
+        partyName:
+          cleaned.bookingType === BookingType.CASH
+            ? cleaned.partyName
+            : undefined,
+        partyPhone:
+          cleaned.bookingType === BookingType.CASH
+            ? cleaned.partyPhone || undefined
+            : undefined,
+        partyAddress:
+          cleaned.bookingType === BookingType.CASH
+            ? cleaned.partyAddress || undefined
+            : undefined,
+        partyCity:
+          cleaned.bookingType === BookingType.CASH
+            ? cleaned.partyCity || undefined
+            : undefined,
+        partyState:
+          cleaned.bookingType === BookingType.CASH
+            ? cleaned.partyState || undefined
+            : undefined,
+        partyPincode:
+          cleaned.bookingType === BookingType.CASH
+            ? cleaned.partyPincode || undefined
+            : undefined,
+        partyGstin:
+          cleaned.bookingType === BookingType.CASH
+            ? cleaned.partyGstin || undefined
+            : undefined,
+        partyEmail:
+          cleaned.bookingType === BookingType.CASH
+            ? cleaned.partyEmail || undefined
+            : undefined,
+        senderName: senderName || 'Sender',
+        senderPhone,
+        senderAddress,
+        receiverName: cleaned.receiverName,
+        receiverPhone: cleaned.receiverPhone || undefined,
+        receiverAddress: cleaned.receiverAddress || undefined,
+        receiverCity: cleaned.receiverCity || undefined,
+        receiverState: cleaned.receiverState || undefined,
+        receiverCityId: cleaned.receiverCityId || undefined,
+        receiverStateId: cleaned.receiverStateId || undefined,
+        weightKg,
+        cgst: Number(cleaned.cgst) || 0,
+        sgst: Number(cleaned.sgst) || 0,
+        igst: Number(cleaned.igst) || 0,
+        serviceType: ServiceType.STANDARD,
+        remarks: cleaned.remarks || undefined,
+        charges,
+      },
+    };
+  };
+
+  const saveMutation = useMutation({
     mutationFn: async () => {
-      const cleaned = trimFormData(form);
-      if (cleaned.bookingType === BookingType.ACCOUNT && !cleaned.customerId) {
-        throw new Error('Select a customer');
-      }
-      if (cleaned.bookingType === BookingType.CASH && !cleaned.partyName) {
-        throw new Error('Party name is required for cash booking');
-      }
-      if (!cleaned.receiverName.trim()) {
-        throw new Error('Receiver name is required');
-      }
-      if (!cleaned.receiverCityId) {
-        throw new Error('Select a destination from Centers');
-      }
-      if (!cleaned.rateSectionId) {
-        throw new Error('Select a service type');
-      }
-
-      const weightKg = Math.max(0, Number(cleaned.weightGrams || 0) / 1000);
-      const freight = Number(cleaned.freight);
-
-      const receiverRes = await api.post(
-        '/receivers/find-or-create',
-        {
-          name: cleaned.receiverName,
-          phone: cleaned.receiverPhone || undefined,
-          address: cleaned.receiverAddress || undefined,
-          city: cleaned.receiverCity || undefined,
-          state: cleaned.receiverState || undefined,
-          cityId: cleaned.receiverCityId || undefined,
-          stateId: cleaned.receiverStateId || undefined,
-        },
-        { skipToast: true },
-      );
-      const receiver = unwrap<ReceiverOpt>(receiverRes.data);
-
-      let senderLocationId = cleaned.senderLocationId || undefined;
-      let senderName = cleaned.senderName;
-      let senderPhone = cleaned.senderPhone || undefined;
-      let senderAddress = cleaned.senderAddress || undefined;
-
-      if (cleaned.bookingType === BookingType.ACCOUNT && cleaned.customerId) {
-        const c = (customersQuery.data?.data ?? []).find(
-          (x) => x.id === cleaned.customerId,
-        );
-        const center = (centersQuery.data ?? []).find(
-          (l) => l.cityId && l.cityId === c?.cityId,
-        );
-        senderLocationId = center?.id || senderLocationId;
-        senderName = c?.name || senderName || 'Sender';
-        senderPhone = c?.primaryPhone || senderPhone;
-        senderAddress =
-          [c?.address, c?.city, c?.state, c?.pincode]
-            .filter(Boolean)
-            .join(', ') || senderAddress;
-      } else if (cleaned.bookingType === BookingType.CASH) {
-        senderName = cleaned.partyName || senderName || 'Cash party';
-        senderPhone = cleaned.partyPhone || senderPhone;
-        senderAddress =
-          [
-            cleaned.partyAddress,
-            cleaned.partyCity,
-            cleaned.partyState,
-            cleaned.partyPincode,
-          ]
-            .filter(Boolean)
-            .join(', ') || senderAddress;
-      }
-
-      const charges = [
-        {
-          type: ChargeType.FREIGHT,
-          amount: freight,
-          description: 'Freight',
-        },
-      ];
-      if (Number(cleaned.cgst) > 0) {
-        charges.push({
-          type: ChargeType.CGST,
-          amount: Number(cleaned.cgst),
-          description: 'CGST',
-        });
-      }
-      if (Number(cleaned.sgst) > 0) {
-        charges.push({
-          type: ChargeType.SGST,
-          amount: Number(cleaned.sgst),
-          description: 'SGST',
-        });
-      }
-      if (Number(cleaned.igst) > 0) {
-        charges.push({
-          type: ChargeType.IGST,
-          amount: Number(cleaned.igst),
-          description: 'IGST',
-        });
-      }
-
-      await api.post(
-        '/consignments',
-        {
-          bookingType: cleaned.bookingType,
-          bookingDate: cleaned.bookingDate || todayIso(),
-          customerId:
-            cleaned.bookingType === BookingType.ACCOUNT
-              ? cleaned.customerId || undefined
-              : undefined,
-          quotationId: cleaned.quotationId || undefined,
-          senderLocationId,
-          receiverId: receiver.id,
-          rateSectionId: cleaned.rateSectionId || undefined,
-          rateColumnId: resolvedPrice.columnId || undefined,
-          partyName:
-            cleaned.bookingType === BookingType.CASH
-              ? cleaned.partyName
-              : undefined,
-          partyPhone:
-            cleaned.bookingType === BookingType.CASH
-              ? cleaned.partyPhone || undefined
-              : undefined,
-          partyAddress:
-            cleaned.bookingType === BookingType.CASH
-              ? cleaned.partyAddress || undefined
-              : undefined,
-          partyCity:
-            cleaned.bookingType === BookingType.CASH
-              ? cleaned.partyCity || undefined
-              : undefined,
-          partyState:
-            cleaned.bookingType === BookingType.CASH
-              ? cleaned.partyState || undefined
-              : undefined,
-          partyPincode:
-            cleaned.bookingType === BookingType.CASH
-              ? cleaned.partyPincode || undefined
-              : undefined,
-          partyGstin:
-            cleaned.bookingType === BookingType.CASH
-              ? cleaned.partyGstin || undefined
-              : undefined,
-          partyEmail:
-            cleaned.bookingType === BookingType.CASH
-              ? cleaned.partyEmail || undefined
-              : undefined,
-          senderName: senderName || 'Sender',
-          senderPhone,
-          senderAddress,
-          receiverName: cleaned.receiverName,
-          receiverPhone: cleaned.receiverPhone || undefined,
-          receiverAddress: cleaned.receiverAddress || undefined,
-          receiverCity: cleaned.receiverCity || undefined,
-          receiverState: cleaned.receiverState || undefined,
-          receiverCityId: cleaned.receiverCityId || undefined,
-          receiverStateId: cleaned.receiverStateId || undefined,
-          weightKg,
-          pieces: 1,
-          codAmount: 0,
-          cgst: Number(cleaned.cgst) || 0,
-          sgst: Number(cleaned.sgst) || 0,
-          igst: Number(cleaned.igst) || 0,
-          serviceType: ServiceType.STANDARD,
-          remarks: cleaned.remarks || undefined,
-          charges,
-        },
-        {
+      const { cleaned, payload } = await buildPayload();
+      if (editingId) {
+        await api.patch(`/consignments/${editingId}`, payload, {
           toastSummary: 'Success',
-          toastDetail:
-            cleaned.bookingType === BookingType.ACCOUNT
-              ? 'Account booking created successfully.'
-              : 'Cash booking created successfully.',
-        },
-      );
+          toastDetail: `Booking ${editingAwb || ''} updated successfully.`.trim(),
+        });
+        return;
+      }
+      await api.post('/consignments', payload, {
+        toastSummary: 'Success',
+        toastDetail:
+          cleaned.bookingType === BookingType.ACCOUNT
+            ? 'Account booking created successfully.'
+            : 'Cash booking created successfully.',
+      });
     },
     onSuccess: async () => {
-      setForm({ ...emptyForm, bookingType: mode, bookingDate: todayIso() });
-      setPriceManual(false);
-      setError('');
+      resetForm();
       await qc.invalidateQueries({ queryKey: ['consignments-recent'] });
       await qc.invalidateQueries({ queryKey: ['consignments'] });
       await qc.invalidateQueries({ queryKey: ['receivers'] });
@@ -645,13 +706,107 @@ export default function BookingsPage() {
         err instanceof Error && !('response' in err)
           ? err.message
           : (err as { response?: { data?: { error?: { message?: string } } } })
-              ?.response?.data?.error?.message || 'Failed to create booking';
+              ?.response?.data?.error?.message || 'Failed to save booking';
       setError(message);
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/consignments/${id}`);
+    },
+    onSuccess: async (_data, id) => {
+      if (editingId === id) resetForm();
+      await qc.invalidateQueries({ queryKey: ['consignments-recent'] });
+      await qc.invalidateQueries({ queryKey: ['consignments'] });
+      await qc.invalidateQueries({ queryKey: ['dashboard-counts'] });
+    },
+  });
+
+  const loadForEdit = async (row: ConsignmentRow) => {
+    setError('');
+    try {
+      const res = await api.get(`/consignments/${row.id}`);
+      const detail = unwrap<ConsignmentDetail>(res.data);
+      if (detail.bookingType && detail.bookingType !== mode) {
+        router.replace(`/bookings?type=${detail.bookingType}`);
+      }
+
+      const freightCharge = (detail.charges ?? []).find(
+        (c) => c.type === ChargeType.FREIGHT,
+      );
+      const freight = Number(freightCharge?.amount ?? 0);
+      const weightGrams = Math.round(Number(detail.weightKg ?? 0) * 1000) || 100;
+
+      setEditingId(detail.id);
+      setEditingAwb(detail.awb);
+      setPriceManual(true);
+      setForm({
+        ...emptyForm,
+        bookingType: detail.bookingType || mode,
+        bookingDate: (detail.bookingDate || todayIso()).slice(0, 10),
+        documentNumber: detail.awb || '',
+        customerId: detail.customerId || detail.customer?.id || '',
+        customerLabel: detail.customer?.name || '',
+        quotationId: detail.quotationId || '',
+        senderLocationId: detail.senderLocationId || '',
+        receiverId: detail.receiverId || '',
+        rateSectionId: detail.rateSectionId || '',
+        rateSectionLabel: detail.rateSectionId
+          ? serviceTypeLabel(detail.rateSectionId)
+          : '',
+        rateColumnId: detail.rateColumnId || '',
+        partyName: detail.partyName || '',
+        partyPhone: detail.partyPhone || '',
+        partyAddress: detail.partyAddress || '',
+        partyCity: detail.partyCity || '',
+        partyState: detail.partyState || '',
+        partyPincode: detail.partyPincode || '',
+        partyGstin: detail.partyGstin || '',
+        partyEmail: detail.partyEmail || '',
+        senderName: detail.senderName || '',
+        senderPhone: detail.senderPhone || '',
+        senderAddress: detail.senderAddress || '',
+        receiverName: detail.receiverName || '',
+        receiverPhone: detail.receiverPhone || '',
+        receiverAddress: detail.receiverAddress || '',
+        receiverCity: detail.receiverCity || '',
+        receiverState: detail.receiverState || '',
+        receiverCityId: detail.receiverCityId || '',
+        receiverStateId: detail.receiverStateId || '',
+        destLabel: detail.receiverCity || '',
+        weightGrams,
+        freight,
+        cgst: Number(detail.cgst ?? 0),
+        sgst: Number(detail.sgst ?? 0),
+        igst: Number(detail.igst ?? 0),
+        remarks: detail.remarks || '',
+      });
+
+      if (detail.bookingType === BookingType.CASH && cashRatesQuery.data) {
+        setRateSource(cashRatesQuery.data);
+        setRateHint('Rates from your cash template');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      setError('Failed to load booking for edit');
+    }
+  };
+
+  const askDelete = (row: ConsignmentRow) => {
+    confirmDialog({
+      header: 'Delete booking',
+      message: `Delete booking ${row.awb}? It will be hidden from lists (soft delete).`,
+      acceptClassName: 'p-button-danger',
+      acceptLabel: 'Delete',
+      rejectLabel: 'Cancel',
+      accept: () => deleteMutation.mutate(row.id),
+    });
+  };
+
   return (
     <div>
+      <ConfirmDialog />
       <div className="page-header">
         <h1>Bookings</h1>
         <div className="booking-mode-tabs">
@@ -671,9 +826,11 @@ export default function BookingsPage() {
       <div className="bookings-split">
         <div className="bookings-split-form panel">
           <h2>
-            {mode === BookingType.ACCOUNT
-              ? 'New account booking'
-              : 'New cash booking'}
+            {editingId
+              ? `Edit booking ${editingAwb}`
+              : mode === BookingType.ACCOUNT
+                ? 'New account booking'
+                : 'New cash booking'}
           </h2>
           <p className="muted" style={{ marginTop: 0 }}>
             Type to search — Tab or Enter selects the first result.
@@ -688,6 +845,17 @@ export default function BookingsPage() {
                 onChange={(e) =>
                   setForm((p) => ({ ...p, bookingDate: e.target.value }))
                 }
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div className="field">
+              <label>Document Number</label>
+              <InputText
+                value={form.documentNumber}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, documentNumber: e.target.value }))
+                }
+                placeholder="Enter document number"
                 style={{ width: '100%' }}
               />
             </div>
@@ -975,13 +1143,28 @@ export default function BookingsPage() {
           ) : null}
           {error ? <p className="error-text">{error}</p> : null}
 
-          <div style={{ marginTop: '1rem' }}>
+          <div
+            style={{
+              marginTop: '1rem',
+              display: 'flex',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+            }}
+          >
             <Button
-              label="Create booking"
+              label={editingId ? 'Update booking' : 'Create booking'}
               icon="pi pi-check"
-              loading={createMutation.isPending}
-              onClick={() => createMutation.mutate()}
+              loading={saveMutation.isPending}
+              onClick={() => saveMutation.mutate()}
             />
+            {editingId ? (
+              <Button
+                label="Cancel edit"
+                severity="secondary"
+                outlined
+                onClick={() => resetForm()}
+              />
+            ) : null}
           </div>
         </div>
 
@@ -992,12 +1175,12 @@ export default function BookingsPage() {
           </p>
           <div className="booking-recent-list">
             {(recentQuery.data?.data ?? []).map((row) => (
-              <Link
-                key={row.id}
-                href={`/tracking?awb=${row.awb}`}
-                className="booking-recent-card"
-              >
-                <div className="booking-recent-awb">{row.awb}</div>
+              <div key={row.id} className="booking-recent-card">
+                <div className="booking-recent-awb">
+                  <Link href={`/tracking?awb=${encodeURIComponent(row.awb)}`}>
+                    {row.awb}
+                  </Link>
+                </div>
                 <div className="booking-recent-meta">
                   <span>
                     {row.bookingType
@@ -1018,7 +1201,32 @@ export default function BookingsPage() {
                   {row.bookingDate ||
                     new Date(row.createdAt).toLocaleDateString()}
                 </div>
-              </Link>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '0.35rem',
+                    marginTop: '0.5rem',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <Button
+                    size="small"
+                    text
+                    icon="pi pi-pencil"
+                    label="Edit"
+                    onClick={() => loadForEdit(row)}
+                  />
+                  <Button
+                    size="small"
+                    text
+                    severity="danger"
+                    icon="pi pi-trash"
+                    label="Delete"
+                    loading={deleteMutation.isPending}
+                    onClick={() => askDelete(row)}
+                  />
+                </div>
+              </div>
             ))}
             {!recentQuery.isLoading &&
             !(recentQuery.data?.data ?? []).length ? (
