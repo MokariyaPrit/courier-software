@@ -23,7 +23,7 @@ interface QuotationRow {
   quotationCode: string | null;
   quotationDate: string;
   status: QuotationStatus;
-  customer?: { name: string } | null;
+  customer?: { id?: string; name: string } | null;
   template?: { name: string } | null;
 }
 
@@ -69,6 +69,24 @@ export default function QuotationsPage() {
       ),
   });
 
+  const quotedCustomersQuery = useQuery({
+    queryKey: ['quotation-customer-ids'],
+    enabled: open,
+    queryFn: async () => {
+      const res = await fetchPaginated<QuotationRow>('/quotations', {
+        page: 1,
+        pageSize: 500,
+        sortBy: 'createdAt',
+        sortOrder: 'DESC',
+      });
+      const ids = new Set<string>();
+      for (const row of res.data) {
+        if (row.customer?.id) ids.add(row.customer.id);
+      }
+      return ids;
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async () => {
       const res = await api.post('/quotations', {
@@ -83,6 +101,7 @@ export default function QuotationsPage() {
       setTemplateId('');
       setError('');
       await qc.invalidateQueries({ queryKey: ['quotations'] });
+      await qc.invalidateQueries({ queryKey: ['quotation-customer-ids'] });
       window.location.href = `/quotations/${created.id}`;
     },
     onError: (err: unknown) => {
@@ -169,6 +188,11 @@ export default function QuotationsPage() {
     .filter((t) => t.isActive)
     .map((t) => ({ label: t.name, value: t.id }));
 
+  const quotedCustomerIds = quotedCustomersQuery.data ?? new Set<string>();
+  const customerOptions = (customersQuery.data?.data ?? [])
+    .filter((c) => !quotedCustomerIds.has(c.id))
+    .map((c) => ({ label: c.name, value: c.id }));
+
   return (
     <div>
       <ConfirmDialog />
@@ -224,14 +248,20 @@ export default function QuotationsPage() {
             <label>Customer</label>
             <Select
               value={customerId || null}
-              options={(customersQuery.data?.data ?? []).map((c) => ({
-                label: c.name,
-                value: c.id,
-              }))}
+              options={customerOptions}
               onChange={(e) => setCustomerId(String(e.value || ''))}
-              placeholder="Select customer"
+              placeholder={
+                customerOptions.length
+                  ? 'Select customer'
+                  : 'All customers already have a quotation'
+              }
+              disabled={!customerOptions.length}
               style={{ width: '100%' }}
             />
+            <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.85rem' }}>
+              One quotation per customer. Customers who already have one are
+              hidden.
+            </p>
           </div>
           <div className="field full">
             <label>Rate template</label>

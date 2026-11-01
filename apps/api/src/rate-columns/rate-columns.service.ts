@@ -12,7 +12,6 @@ import { SyncRateColumnSelectionDto } from './dto/rate-column.dto';
 import {
   cityRateColumnId,
   ROI_RATE_COLUMN_ID,
-  stateRateColumnId,
 } from './rate-column-ids';
 
 @Injectable()
@@ -142,9 +141,11 @@ export class RateColumnsService {
 
   /**
    * Matrix columns from Rate columns selection:
-   * - one column per selected city
-   * - one "Within {state}" column per distinct parent state (for city→state→ROI)
+   * - one column per selected city (exactly what the user picked)
    * - ROI always
+   *
+   * Booking still resolves city → same-named state city → ROI without
+   * inventing extra "Within {state}" columns.
    */
   async rateGeographyForUser(userId: string) {
     const selected = await this.repo.find({
@@ -161,48 +162,20 @@ export class RateColumnsService {
       stateId: s.stateId,
     }));
 
-    const stateMap = new Map<
-      string,
-      {
-        id: string;
-        label: string;
-        sortOrder: number;
-        kind: 'state';
-        stateId: string;
-      }
-    >();
-    for (const s of selected) {
-      if (!s.stateId || !s.state?.name) continue;
-      if (stateMap.has(s.stateId)) continue;
-      const stateName = s.state.name.trim();
-      stateMap.set(s.stateId, {
-        id: stateRateColumnId(s.stateId),
-        label: `Within ${stateName}`,
-        sortOrder: 0,
-        kind: 'state',
-        stateId: s.stateId,
-      });
-    }
-    const stateCols = Array.from(stateMap.values());
-
     cityCols.sort((a, b) => a.label.localeCompare(b.label));
-    stateCols.sort((a, b) => a.label.localeCompare(b.label));
     cityCols.forEach((c, i) => {
       c.sortOrder = i;
-    });
-    stateCols.forEach((c, i) => {
-      c.sortOrder = cityCols.length + i;
     });
 
     const roi = {
       id: ROI_RATE_COLUMN_ID,
       label: 'ROI (Rest of India)',
-      sortOrder: cityCols.length + stateCols.length,
+      sortOrder: cityCols.length,
       kind: 'roi' as const,
     };
 
     return {
-      columns: [...cityCols, ...stateCols, roi],
+      columns: [...cityCols, roi],
       selected,
     };
   }

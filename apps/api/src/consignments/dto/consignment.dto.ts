@@ -160,6 +160,21 @@ export class CreateConsignmentDto {
   codAmount?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cgst?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  sgst?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  igst?: number;
+
+  @IsOptional()
   @IsEnum(ServiceType)
   serviceType?: ServiceType;
 

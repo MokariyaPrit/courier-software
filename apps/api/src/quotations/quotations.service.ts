@@ -28,7 +28,10 @@ import {
   UpdateQuotationDto,
 } from './dto/quotation.dto';
 import { RateRowDto } from './dto/quotation-template.dto';
-import { syncMatrixToGeography } from './default-rate-bands';
+import {
+  syncMatrixToGeography,
+  weightLabelForGrams,
+} from './default-rate-bands';
 import type {
   RateColumnDef,
   RateRowData,
@@ -83,12 +86,17 @@ export class QuotationsService {
   }
 
   private rowToData(row: QuotationRateRow | RateRowDto): RateRowData {
+    const sectionId = row.sectionId;
+    const weightGrams = row.weightGrams ?? null;
     return {
       id: 'id' in row ? row.id : undefined,
-      sectionId: row.sectionId,
-      weightLabel: row.weightLabel,
-      weightGrams: row.weightGrams ?? null,
-      isAdditional: row.isAdditional ?? false,
+      sectionId,
+      weightLabel:
+        weightGrams != null
+          ? weightLabelForGrams(sectionId, weightGrams)
+          : row.weightLabel,
+      weightGrams,
+      isAdditional: false,
       sortOrder: row.sortOrder ?? 0,
       rates: this.normalizeRowRates(row.rates),
     };
@@ -112,7 +120,16 @@ export class QuotationsService {
       customerEmail: customer.primaryEmail,
       columns,
       sections,
-      rows,
+      rows: rows
+        .filter((r) => !r.isAdditional)
+        .map((r) => ({
+          ...r,
+          isAdditional: false,
+          weightLabel:
+            r.weightGrams != null
+              ? weightLabelForGrams(r.sectionId, r.weightGrams)
+              : r.weightLabel,
+        })),
     };
   }
 
@@ -177,6 +194,16 @@ export class QuotationsService {
 
   async create(dto: CreateQuotationDto, user: AuthUser) {
     const customer = await this.loadCustomer(dto.customerId, user);
+
+    const existingForCustomer = await this.quotationsRepo.findOne({
+      where: { customerId: customer.id },
+      select: { id: true },
+    });
+    if (existingForCustomer) {
+      throw new ConflictException(
+        'This customer already has a quotation. Open the existing one instead.',
+      );
+    }
 
     let columns: RateColumnDef[] = [];
     let sections: RateSectionDef[] = [];
@@ -426,8 +453,15 @@ export class QuotationsService {
         id: section.id,
         label: section.label,
         rows: (snapshot?.rows ?? [])
-          .filter((r) => r.sectionId === section.id)
-          .sort((a, b) => a.sortOrder - b.sortOrder),
+          .filter((r) => r.sectionId === section.id && !r.isAdditional)
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((r) => ({
+            ...r,
+            weightLabel:
+              r.weightGrams != null
+                ? weightLabelForGrams(section.id, r.weightGrams)
+                : r.weightLabel,
+          })),
       }));
 
     return {

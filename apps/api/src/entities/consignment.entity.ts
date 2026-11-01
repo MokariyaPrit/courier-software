@@ -158,6 +158,15 @@ export class Consignment {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   codAmount: string;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  cgst: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  sgst: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  igst: string;
+
   @Column({ type: 'uuid' })
   createdById: string;
 

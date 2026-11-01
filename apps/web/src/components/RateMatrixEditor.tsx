@@ -1,18 +1,23 @@
 'use client';
 
-import { Button, InputNumber, InputText } from '@/components/ui';
+import { Button, InputNumber, Select } from '@/components/ui';
 import {
   emptyRatesForColumns,
+  isParcelService,
   newId,
+  RATE_SERVICE_OPTIONS,
   RateMatrixForm,
   RateRowForm,
+  serviceTypeLabel,
+  weightLabelForGrams,
+  weightOptionsForSection,
 } from '@/lib/quotations';
 
 type Props = {
   value: RateMatrixForm;
   onChange: (next: RateMatrixForm) => void;
   readOnly?: boolean;
-  /** Geography columns from Centers — labels locked, no add/remove columns */
+  /** Geography columns from Rate columns — labels locked */
   lockColumns?: boolean;
 };
 
@@ -28,70 +33,66 @@ export function RateMatrixEditor({
     onChange({ ...value, ...patch });
   };
 
-  const renameColumn = (colId: string, label: string) => {
-    if (lockColumns) return;
-    setMatrix({
-      columns: columns.map((c) => (c.id === colId ? { ...c, label } : c)),
-    });
-  };
+  const usedSectionIds = new Set(sections.map((s) => s.id));
+  const availableServices = RATE_SERVICE_OPTIONS.filter(
+    (o) => !usedSectionIds.has(o.value),
+  );
 
-  const addColumn = () => {
-    if (lockColumns) return;
-    const id = newId('col');
-    const nextColumns = [
-      ...columns,
-      { id, label: `New column`, sortOrder: columns.length },
-    ];
-    setMatrix({
-      columns: nextColumns,
-      rows: rows.map((r) => ({
-        ...r,
-        rates: { ...r.rates, [id]: 0 },
-      })),
-    });
-  };
-
-  const removeColumn = (colId: string) => {
-    if (lockColumns) return;
-    setMatrix({
-      columns: columns
-        .filter((c) => c.id !== colId)
-        .map((c, i) => ({ ...c, sortOrder: i })),
-      rows: rows.map((r) => {
-        const rates = { ...r.rates };
-        delete rates[colId];
-        return { ...r, rates };
-      }),
-    });
-  };
-
-  const renameSection = (sectionId: string, label: string) => {
-    setMatrix({
-      sections: sections.map((s) =>
-        s.id === sectionId ? { ...s, label } : s,
-      ),
-    });
-  };
-
-  const addSection = () => {
-    const id = newId('sec');
+  const addSection = (serviceId: string) => {
+    if (!serviceId || usedSectionIds.has(serviceId)) return;
+    const weightOpts = weightOptionsForSection(serviceId);
+    const first = weightOpts[0];
     setMatrix({
       sections: [
         ...sections,
-        { id, label: 'New section', sortOrder: sections.length },
+        {
+          id: serviceId,
+          label: serviceTypeLabel(serviceId),
+          sortOrder: sections.length,
+        },
       ],
       rows: [
         ...rows,
         {
           id: newId('row'),
-          sectionId: id,
-          weightLabel: 'Up to 100 gms',
-          weightGrams: 100,
+          sectionId: serviceId,
+          weightLabel: first
+            ? weightLabelForGrams(serviceId, first.value)
+            : '100 g',
+          weightGrams: first?.value ?? 100,
           isAdditional: false,
           sortOrder: 1,
           rates: emptyRatesForColumns(columns),
         },
       ],
+    });
+  };
+
+  const changeSectionType = (oldId: string, newId: string) => {
+    if (!newId || oldId === newId) return;
+    if (usedSectionIds.has(newId)) return;
+    const opts = weightOptionsForSection(newId);
+    setMatrix({
+      sections: sections.map((s) =>
+        s.id === oldId
+          ? { ...s, id: newId, label: serviceTypeLabel(newId) }
+          : s,
+      ),
+      rows: rows.map((r) => {
+        if (r.sectionId !== oldId) return r;
+        const grams = Math.min(r.weightGrams ?? opts[0]?.value ?? 100, 1000);
+        const match =
+          opts.find((o) => o.value === grams) ||
+          opts.find((o) => o.value >= grams) ||
+          opts[opts.length - 1];
+        return {
+          ...r,
+          sectionId: newId,
+          weightGrams: match?.value ?? grams,
+          weightLabel: match?.label ?? weightLabelForGrams(newId, grams),
+          isAdditional: false,
+        };
+      }),
     });
   };
 
@@ -106,13 +107,20 @@ export function RateMatrixEditor({
 
   const addRow = (sectionId: string) => {
     const sectionRows = rows.filter((r) => r.sectionId === sectionId);
+    const usedWeights = new Set(
+      sectionRows.map((r) => r.weightGrams).filter((g) => g != null),
+    );
+    const nextWeight = weightOptionsForSection(sectionId).find(
+      (o) => !usedWeights.has(o.value),
+    );
+    if (!nextWeight) return;
     const nextSort =
       sectionRows.reduce((max, r) => Math.max(max, r.sortOrder), 0) + 1;
     const row: RateRowForm = {
       id: newId('row'),
       sectionId,
-      weightLabel: 'New weight',
-      weightGrams: null,
+      weightLabel: nextWeight.label,
+      weightGrams: nextWeight.value,
       isAdditional: false,
       sortOrder: nextSort,
       rates: emptyRatesForColumns(columns),
@@ -126,11 +134,17 @@ export function RateMatrixEditor({
     });
   };
 
-  const updateRowLabel = (rowKey: string, weightLabel: string) => {
+  const updateRowWeight = (rowKey: string, weightGrams: number) => {
     setMatrix({
-      rows: rows.map((r) =>
-        rowIdentity(r) === rowKey ? { ...r, weightLabel } : r,
-      ),
+      rows: rows.map((r) => {
+        if (rowIdentity(r) !== rowKey) return r;
+        return {
+          ...r,
+          weightGrams,
+          weightLabel: weightLabelForGrams(r.sectionId, weightGrams),
+          isAdditional: false,
+        };
+      }),
     });
   };
 
@@ -142,7 +156,10 @@ export function RateMatrixEditor({
               ...r,
               rates: {
                 ...r.rates,
-                [colId]: amount === null || Number.isNaN(amount) ? ('' as unknown as number) : amount,
+                [colId]:
+                  amount === null || Number.isNaN(amount)
+                    ? ('' as unknown as number)
+                    : amount,
               },
             }
           : r,
@@ -154,24 +171,27 @@ export function RateMatrixEditor({
     <div className="rate-matrix">
       {!readOnly ? (
         <div className="rate-matrix-toolbar">
-          {!lockColumns ? (
-            <Button
-              type="button"
-              size="small"
-              label="Add column"
-              icon="pi pi-plus"
-              outlined
-              onClick={addColumn}
+          <div style={{ minWidth: '16rem', maxWidth: '22rem' }}>
+            <Select
+              value={null}
+              options={availableServices}
+              placeholder={
+                availableServices.length
+                  ? 'Add section (DOX / PARCEL / …)'
+                  : 'All 5 sections added'
+              }
+              disabled={!availableServices.length}
+              onChange={(e) => {
+                if (e.value) addSection(String(e.value));
+              }}
+              style={{ width: '100%' }}
             />
-          ) : null}
-          <Button
-            type="button"
-            size="small"
-            label="Add section"
-            icon="pi pi-plus"
-            outlined
-            onClick={addSection}
-          />
+          </div>
+          <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+            Sections are fixed: DOX, PARCEL, DOX BY AIR, PARCEL BY AIR, TATKAL.
+            DOX-type weights are in g (max 1000 g); parcel weights are in kg
+            (max 1 kg).
+          </p>
         </div>
       ) : null}
 
@@ -184,20 +204,34 @@ export function RateMatrixEditor({
 
       {sections.map((section) => {
         const sectionRows = rows
-          .filter((r) => r.sectionId === section.id)
+          .filter((r) => r.sectionId === section.id && !r.isAdditional)
           .sort((a, b) => a.sortOrder - b.sortOrder);
+        const unit = isParcelService(section.id) ? 'kg' : 'g';
+        const weightOpts = weightOptionsForSection(section.id).map((o) => ({
+          label: o.label,
+          value: o.value,
+        }));
+        const usedInSection = new Set(
+          sectionRows.map((r) => r.weightGrams).filter((g) => g != null),
+        );
 
         return (
           <section key={section.id} className="rate-matrix-section">
             <div className="rate-matrix-section-head">
               {readOnly ? (
-                <h3>{section.label}</h3>
+                <h3>{serviceTypeLabel(section.id)}</h3>
               ) : (
-                <InputText
-                  value={section.label}
-                  onChange={(e) => renameSection(section.id, e.target.value)}
+                <Select
+                  value={section.id}
+                  options={RATE_SERVICE_OPTIONS.filter(
+                    (o) =>
+                      o.value === section.id || !usedSectionIds.has(o.value),
+                  )}
+                  onChange={(e) =>
+                    changeSectionType(section.id, String(e.value || ''))
+                  }
                   className="rate-matrix-section-title"
-                  aria-label="Section name"
+                  style={{ minWidth: '14rem' }}
                 />
               )}
               {!readOnly ? (
@@ -207,8 +241,9 @@ export function RateMatrixEditor({
                     size="small"
                     text
                     icon="pi pi-plus"
-                    label="Add row"
+                    label={`Add weight (${unit})`}
                     onClick={() => addRow(section.id)}
+                    disabled={usedInSection.size >= weightOpts.length}
                   />
                   <Button
                     type="button"
@@ -227,35 +262,13 @@ export function RateMatrixEditor({
               <table className="rate-matrix-table">
                 <thead>
                   <tr>
-                    <th>Weight</th>
+                    <th>Weight ({unit})</th>
                     {columns.map((col) => (
-                      <th key={col.id}>
-                        {readOnly || lockColumns ? (
-                          col.label
-                        ) : (
-                          <div className="rate-matrix-col-head">
-                            <InputText
-                              value={col.label}
-                              onChange={(e) =>
-                                renameColumn(col.id, e.target.value)
-                              }
-                              aria-label="Column name"
-                            />
-                            <Button
-                              type="button"
-                              size="small"
-                              text
-                              severity="danger"
-                              icon="pi pi-times"
-                              aria-label="Remove column"
-                              onClick={() => removeColumn(col.id)}
-                              disabled={columns.length <= 1}
-                            />
-                          </div>
-                        )}
-                      </th>
+                      <th key={col.id}>{col.label}</th>
                     ))}
-                    {!readOnly ? <th className="rate-matrix-actions-col" /> : null}
+                    {!readOnly ? (
+                      <th className="rate-matrix-actions-col" />
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -265,24 +278,30 @@ export function RateMatrixEditor({
                         colSpan={columns.length + (readOnly ? 1 : 2)}
                         className="muted"
                       >
-                        No rows in this section
+                        No weight rows — add a weight band
                       </td>
                     </tr>
                   ) : (
                     sectionRows.map((row) => {
                       const key = rowIdentity(row);
+                      const rowOpts = weightOpts.filter(
+                        (o) =>
+                          o.value === row.weightGrams ||
+                          !usedInSection.has(Number(o.value)),
+                      );
                       return (
                         <tr key={key}>
                           <td className="weight-cell">
                             {readOnly ? (
                               row.weightLabel
                             ) : (
-                              <InputText
-                                value={row.weightLabel}
+                              <Select
+                                value={row.weightGrams}
+                                options={rowOpts}
                                 onChange={(e) =>
-                                  updateRowLabel(key, e.target.value)
+                                  updateRowWeight(key, Number(e.value))
                                 }
-                                aria-label="Weight label"
+                                style={{ width: '8rem' }}
                               />
                             )}
                           </td>
@@ -296,9 +315,7 @@ export function RateMatrixEditor({
                               <td key={col.id}>
                                 {readOnly ? (
                                   <span>
-                                    {hasValue
-                                      ? Number(raw).toFixed(2)
-                                      : '—'}
+                                    {hasValue ? Number(raw).toFixed(2) : '—'}
                                   </span>
                                 ) : (
                                   <InputNumber
@@ -307,7 +324,8 @@ export function RateMatrixEditor({
                                       updateCell(
                                         key,
                                         col.id,
-                                        e.value === null || e.value === undefined
+                                        e.value === null ||
+                                          e.value === undefined
                                           ? null
                                           : Number(e.value),
                                       )
@@ -348,7 +366,7 @@ export function RateMatrixEditor({
 
       {!readOnly && sections.length === 0 ? (
         <p className="muted">
-          No sections yet. Click <strong>Add section</strong> to start.
+          No sections yet. Choose a service type above to start.
         </p>
       ) : null}
     </div>
@@ -356,5 +374,5 @@ export function RateMatrixEditor({
 }
 
 function rowIdentity(row: RateRowForm) {
-  return row.id || `${row.sectionId}:${row.sortOrder}:${row.weightLabel}`;
+  return row.id || `${row.sectionId}:${row.sortOrder}:${row.weightGrams}`;
 }

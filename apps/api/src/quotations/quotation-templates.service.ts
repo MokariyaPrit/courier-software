@@ -85,12 +85,13 @@ export class QuotationTemplatesService {
   }
 
   private mapRow(dto: RateRowDto, templateId: string, index: number) {
+    if (dto.isAdditional) return null;
     return this.rowsRepo.create({
       templateId,
       sectionId: dto.sectionId.trim(),
       weightLabel: dto.weightLabel.trim(),
       weightGrams: dto.weightGrams ?? null,
-      isAdditional: dto.isAdditional ?? false,
+      isAdditional: false,
       sortOrder: dto.sortOrder ?? index,
       rates: this.normalizeRates(dto.rates),
     });
@@ -187,9 +188,11 @@ export class QuotationTemplatesService {
       }),
     );
 
-    const rows = defaults
-      ? defaults.rows.map((row, i) => this.mapRow(row, template.id, i))
-      : (dto.rows ?? []).map((row, i) => this.mapRow(row, template.id, i));
+    const rows = (
+      defaults
+        ? defaults.rows.map((row, i) => this.mapRow(row, template.id, i))
+        : (dto.rows ?? []).map((row, i) => this.mapRow(row, template.id, i))
+    ).filter((r): r is NonNullable<typeof r> => r != null);
 
     if (rows.length) {
       await this.rowsRepo.save(rows);
@@ -265,10 +268,12 @@ export class QuotationTemplatesService {
     }
 
     if (template.rows?.length) {
-      template.rows.sort(
-        (a, b) =>
-          a.sectionId.localeCompare(b.sectionId) || a.sortOrder - b.sortOrder,
-      );
+      template.rows = template.rows
+        .filter((r) => !r.isAdditional)
+        .sort(
+          (a, b) =>
+            a.sectionId.localeCompare(b.sectionId) || a.sortOrder - b.sortOrder,
+        );
     }
     template.columns = [...(template.columns ?? [])].sort(
       (a, b) => a.sortOrder - b.sortOrder,
@@ -293,10 +298,11 @@ export class QuotationTemplatesService {
 
     if (dto.rows !== undefined) {
       await this.rowsRepo.softDelete({ templateId: id });
-      if (dto.rows.length) {
-        await this.rowsRepo.save(
-          dto.rows.map((row, i) => this.mapRow(row, id, i)),
-        );
+      const nextRows = dto.rows
+        .map((row, i) => this.mapRow(row, id, i))
+        .filter((r): r is NonNullable<typeof r> => r != null);
+      if (nextRows.length) {
+        await this.rowsRepo.save(nextRows);
       }
     }
 

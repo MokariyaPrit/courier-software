@@ -109,6 +109,9 @@ export class ConsignmentsService {
       weightKg: String(dto.weightKg ?? 0),
       pieces: dto.pieces ?? 1,
       codAmount: String(dto.codAmount ?? 0),
+      cgst: String(dto.cgst ?? 0),
+      sgst: String(dto.sgst ?? 0),
+      igst: String(dto.igst ?? 0),
       createdById: user.id,
       remarks: dto.remarks ?? null,
     });
@@ -117,7 +120,7 @@ export class ConsignmentsService {
 
     const chargeInputs =
       dto.charges?.length
-        ? dto.charges
+        ? [...dto.charges]
         : [
             {
               type: ChargeType.FREIGHT,
@@ -132,6 +135,33 @@ export class ConsignmentsService {
         amount: dto.codAmount ?? 0,
         description: 'COD amount',
       });
+    }
+
+    const taxCharges: Array<{
+      type: ChargeType;
+      amount: number;
+      description: string;
+    }> = [
+      {
+        type: ChargeType.CGST,
+        amount: Number(dto.cgst ?? 0),
+        description: 'CGST',
+      },
+      {
+        type: ChargeType.SGST,
+        amount: Number(dto.sgst ?? 0),
+        description: 'SGST',
+      },
+      {
+        type: ChargeType.IGST,
+        amount: Number(dto.igst ?? 0),
+        description: 'IGST',
+      },
+    ];
+    for (const tax of taxCharges) {
+      if (tax.amount <= 0) continue;
+      if (chargeInputs.some((c) => c.type === tax.type)) continue;
+      chargeInputs.push(tax);
     }
 
     await this.chargesRepo.save(

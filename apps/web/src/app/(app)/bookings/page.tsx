@@ -20,7 +20,11 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
 import { fetchPaginated } from '@/lib/list';
-import { resolveRate, toMatrixForm } from '@/lib/quotations';
+import {
+  resolveRate,
+  toMatrixForm,
+  weightLabelForGrams,
+} from '@/lib/quotations';
 import { trimFormData } from '@/lib/trim';
 
 interface ConsignmentRow {
@@ -59,20 +63,12 @@ interface ReceiverOpt {
   pincode: string | null;
 }
 
-interface DestCityOpt {
-  id: string;
-  cityId: string;
-  stateId: string | null;
-  label: string;
-  stateName: string | null;
-  rateColumnId: string;
-}
-
 interface SenderLocOpt {
   id: string;
   cityId: string;
   label: string;
   stateId: string | null;
+  stateName?: string | null;
 }
 
 interface RateSource {
@@ -121,14 +117,14 @@ const emptyForm = {
   receiverAddress: '',
   receiverCity: '',
   receiverState: '',
-  receiverPincode: '',
   receiverCityId: '',
   receiverStateId: '',
   destLabel: '',
-  weightKg: 0.1,
-  pieces: 1,
-  codAmount: 0,
+  weightGrams: 100,
   freight: 0,
+  cgst: 0,
+  sgst: 0,
+  igst: 0,
   remarks: '',
 };
 
@@ -144,14 +140,15 @@ export default function BookingsPage() {
   const [error, setError] = useState('');
   const [rateSource, setRateSource] = useState<RateSource | null>(null);
   const [rateHint, setRateHint] = useState('');
-  const [freightAuto, setFreightAuto] = useState(true);
+  /** false = follow slab auto price; true = user override */
+  const [priceManual, setPriceManual] = useState(false);
 
   useEffect(() => {
     setForm({ ...emptyForm, bookingType: mode, bookingDate: todayIso() });
     setRateSource(null);
     setRateHint('');
     setError('');
-    setFreightAuto(true);
+    setPriceManual(false);
   }, [mode]);
 
   const setMode = (next: BookingType) => {
@@ -192,19 +189,6 @@ export default function BookingsPage() {
         sortBy: 'name',
         sortOrder: 'ASC',
       }),
-  });
-
-  const destCitiesQuery = useQuery({
-    queryKey: ['rate-columns-booking'],
-    queryFn: async () => {
-      const res = await api.get('/rate-columns/booking-options');
-      const payload = unwrap<DestCityOpt[] | { data: DestCityOpt[] }>(res.data);
-      if (Array.isArray(payload)) return payload;
-      if (payload && typeof payload === 'object' && 'data' in payload) {
-        return payload.data;
-      }
-      return [];
-    },
   });
 
   const centersQuery = useQuery({
@@ -260,7 +244,6 @@ export default function BookingsPage() {
             ? q.snapshot
             : q;
         setRateSource(snap);
-        setFreightAuto(true);
         const status = (q as { status?: string }).status;
         setRateHint(
           status === 'ISSUED'
@@ -289,38 +272,72 @@ export default function BookingsPage() {
       sections: src.sections,
       rows: rows.map((r) => ({
         ...r,
-        weightLabel: r.weightLabel || `Up to ${r.weightGrams ?? 0} gms`,
+        weightLabel:
+          r.weightGrams != null
+            ? weightLabelForGrams(r.sectionId, r.weightGrams)
+            : r.weightLabel || `${r.weightGrams ?? 0} g`,
       })),
     });
   }, [rateSource]);
 
-  useEffect(() => {
-    if (!freightAuto || !matrix || !form.rateSectionId) return;
-    if (!form.receiverCityId && !form.receiverStateId) return;
-    const resolved = resolveRate(matrix, {
+  const resolvedPrice = useMemo(() => {
+    if (!matrix || !form.rateSectionId) {
+      return { amount: 0, columnId: '' };
+    }
+    if (!form.receiverCityId && !form.receiverStateId) {
+      return { amount: 0, columnId: '' };
+    }
+    return resolveRate(matrix, {
       sectionId: form.rateSectionId,
-      weightKg: form.weightKg,
+      weightKg: Math.max(0, Number(form.weightGrams || 0) / 1000),
       receiverCityId: form.receiverCityId || null,
       receiverStateId: form.receiverStateId || null,
       receiverCityName: form.receiverCity || form.destLabel || null,
       receiverStateName: form.receiverState || null,
     });
-    setForm((p) => ({
-      ...p,
-      freight: resolved.amount,
-      rateColumnId: resolved.columnId,
-    }));
   }, [
-    freightAuto,
     matrix,
     form.rateSectionId,
-    form.weightKg,
+    form.weightGrams,
     form.receiverCityId,
     form.receiverStateId,
     form.receiverCity,
     form.receiverState,
     form.destLabel,
   ]);
+
+  // If the typed price matches the slab rate again, treat as Auto
+  useEffect(() => {
+    if (!priceManual) return;
+    if (Number(form.freight) === Number(resolvedPrice.amount)) {
+      setPriceManual(false);
+    }
+  }, [priceManual, form.freight, resolvedPrice.amount]);
+
+  // Keep freight in sync with slab pricing while in Auto mode
+  useEffect(() => {
+    const nextAuto = Number(resolvedPrice.amount);
+    const nextColumnId = resolvedPrice.columnId || '';
+    if (priceManual) {
+      setForm((p) =>
+        p.rateColumnId === nextColumnId
+          ? p
+          : { ...p, rateColumnId: nextColumnId },
+      );
+      return;
+    }
+    setForm((p) => {
+      if (p.freight === nextAuto && p.rateColumnId === nextColumnId) return p;
+      return {
+        ...p,
+        freight: nextAuto,
+        rateColumnId: nextColumnId,
+      };
+    });
+  }, [resolvedPrice.amount, resolvedPrice.columnId, priceManual]);
+
+  const isPriceAuto =
+    !priceManual || Number(form.freight) === Number(resolvedPrice.amount);
 
   const customerOptions: SearchSelectOption[] = useMemo(
     () =>
@@ -344,12 +361,12 @@ export default function BookingsPage() {
 
   const destOptions: SearchSelectOption[] = useMemo(
     () =>
-      (destCitiesQuery.data ?? []).map((d) => ({
+      (centersQuery.data ?? []).map((d) => ({
         value: d.cityId,
         label: d.label,
         subLabel: d.stateName || undefined,
       })),
-    [destCitiesQuery.data],
+    [centersQuery.data],
   );
 
   const sectionOptions: SearchSelectOption[] = useMemo(
@@ -402,15 +419,12 @@ export default function BookingsPage() {
       return;
     }
     const r = (receiversQuery.data?.data ?? []).find((x) => x.id === opt.value);
-    setFreightAuto(true);
     setForm((p) => ({
       ...p,
       receiverId: opt.value,
       receiverName: r?.name || opt.label,
       receiverPhone: r?.phone || p.receiverPhone,
       receiverAddress: r?.address || p.receiverAddress,
-      receiverPincode: r?.pincode || p.receiverPincode,
-      // Keep destination from rate-columns pick if already set; else from receiver
       receiverCityId: p.receiverCityId || r?.cityId || '',
       receiverStateId: p.receiverStateId || r?.stateId || '',
       receiverCity: p.receiverCity || r?.city || '',
@@ -431,8 +445,7 @@ export default function BookingsPage() {
       }));
       return;
     }
-    const d = (destCitiesQuery.data ?? []).find((x) => x.cityId === opt.value);
-    setFreightAuto(true);
+    const d = (centersQuery.data ?? []).find((x) => x.cityId === opt.value);
     setForm((p) => ({
       ...p,
       destLabel: opt.label,
@@ -456,8 +469,14 @@ export default function BookingsPage() {
         throw new Error('Receiver name is required');
       }
       if (!cleaned.receiverCityId) {
-        throw new Error('Select a destination city from Rate columns');
+        throw new Error('Select a destination from Centers');
       }
+      if (!cleaned.rateSectionId) {
+        throw new Error('Select a service type');
+      }
+
+      const weightKg = Math.max(0, Number(cleaned.weightGrams || 0) / 1000);
+      const freight = Number(cleaned.freight);
 
       const receiverRes = await api.post(
         '/receivers/find-or-create',
@@ -469,7 +488,6 @@ export default function BookingsPage() {
           state: cleaned.receiverState || undefined,
           cityId: cleaned.receiverCityId || undefined,
           stateId: cleaned.receiverStateId || undefined,
-          pincode: cleaned.receiverPincode || undefined,
         },
         { skipToast: true },
       );
@@ -508,6 +526,35 @@ export default function BookingsPage() {
             .join(', ') || senderAddress;
       }
 
+      const charges = [
+        {
+          type: ChargeType.FREIGHT,
+          amount: freight,
+          description: 'Freight',
+        },
+      ];
+      if (Number(cleaned.cgst) > 0) {
+        charges.push({
+          type: ChargeType.CGST,
+          amount: Number(cleaned.cgst),
+          description: 'CGST',
+        });
+      }
+      if (Number(cleaned.sgst) > 0) {
+        charges.push({
+          type: ChargeType.SGST,
+          amount: Number(cleaned.sgst),
+          description: 'SGST',
+        });
+      }
+      if (Number(cleaned.igst) > 0) {
+        charges.push({
+          type: ChargeType.IGST,
+          amount: Number(cleaned.igst),
+          description: 'IGST',
+        });
+      }
+
       await api.post(
         '/consignments',
         {
@@ -521,7 +568,7 @@ export default function BookingsPage() {
           senderLocationId,
           receiverId: receiver.id,
           rateSectionId: cleaned.rateSectionId || undefined,
-          rateColumnId: cleaned.rateColumnId || undefined,
+          rateColumnId: resolvedPrice.columnId || undefined,
           partyName:
             cleaned.bookingType === BookingType.CASH
               ? cleaned.partyName
@@ -562,21 +609,17 @@ export default function BookingsPage() {
           receiverAddress: cleaned.receiverAddress || undefined,
           receiverCity: cleaned.receiverCity || undefined,
           receiverState: cleaned.receiverState || undefined,
-          receiverPincode: cleaned.receiverPincode || undefined,
           receiverCityId: cleaned.receiverCityId || undefined,
           receiverStateId: cleaned.receiverStateId || undefined,
-          weightKg: cleaned.weightKg,
-          pieces: cleaned.pieces,
-          codAmount: cleaned.codAmount,
+          weightKg,
+          pieces: 1,
+          codAmount: 0,
+          cgst: Number(cleaned.cgst) || 0,
+          sgst: Number(cleaned.sgst) || 0,
+          igst: Number(cleaned.igst) || 0,
           serviceType: ServiceType.STANDARD,
           remarks: cleaned.remarks || undefined,
-          charges: [
-            {
-              type: ChargeType.FREIGHT,
-              amount: cleaned.freight,
-              description: 'Freight',
-            },
-          ],
+          charges,
         },
         {
           toastSummary: 'Success',
@@ -589,7 +632,7 @@ export default function BookingsPage() {
     },
     onSuccess: async () => {
       setForm({ ...emptyForm, bookingType: mode, bookingDate: todayIso() });
-      setFreightAuto(true);
+      setPriceManual(false);
       setError('');
       await qc.invalidateQueries({ queryKey: ['consignments-recent'] });
       await qc.invalidateQueries({ queryKey: ['consignments'] });
@@ -638,7 +681,7 @@ export default function BookingsPage() {
 
           <div className="form-grid">
             <div className="field">
-              <label>Booking date</label>
+              <label>Booking Date</label>
               <InputText
                 type="date"
                 value={form.bookingDate}
@@ -724,7 +767,26 @@ export default function BookingsPage() {
             )}
 
             <div className="field">
-              <label>Receiver name</label>
+              <label>Destination</label>
+              <SearchSelect
+                value={form.destLabel}
+                options={destOptions}
+                placeholder="Type destination from Centers…"
+                allowFreeText={false}
+                emptyHint="Configure Centers first"
+                onChange={(text) =>
+                  setForm((p) => ({
+                    ...p,
+                    destLabel: text,
+                    receiverCityId: '',
+                  }))
+                }
+                onSelect={applyDestination}
+              />
+            </div>
+
+            <div className="field">
+              <label>Receiver Name</label>
               <SearchSelect
                 value={form.receiverName}
                 options={receiverNameOptions}
@@ -742,7 +804,7 @@ export default function BookingsPage() {
               />
             </div>
             <div className="field">
-              <label>Receiver phone</label>
+              <label>Receiver Phone</label>
               <InputText
                 value={form.receiverPhone}
                 onChange={(e) =>
@@ -752,7 +814,7 @@ export default function BookingsPage() {
               />
             </div>
             <div className="field full">
-              <label>Receiver address</label>
+              <label>Receiver Address</label>
               <InputText
                 value={form.receiverAddress}
                 onChange={(e) =>
@@ -763,36 +825,7 @@ export default function BookingsPage() {
             </div>
 
             <div className="field">
-              <label>Destination</label>
-              <SearchSelect
-                value={form.destLabel}
-                options={destOptions}
-                placeholder="Type destination from Rate columns…"
-                allowFreeText={false}
-                emptyHint="Configure Rate columns first"
-                onChange={(text) =>
-                  setForm((p) => ({
-                    ...p,
-                    destLabel: text,
-                    receiverCityId: '',
-                  }))
-                }
-                onSelect={applyDestination}
-              />
-            </div>
-            <div className="field">
-              <label>Pincode</label>
-              <InputText
-                value={form.receiverPincode}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, receiverPincode: e.target.value }))
-                }
-                style={{ width: '100%' }}
-              />
-            </div>
-
-            <div className="field">
-              <label>Service section</label>
+              <label>Service Type</label>
               <SearchSelect
                 value={form.rateSectionLabel}
                 options={sectionOptions}
@@ -809,7 +842,6 @@ export default function BookingsPage() {
                   }))
                 }
                 onSelect={(opt) => {
-                  setFreightAuto(true);
                   if (!opt) {
                     setForm((p) => ({
                       ...p,
@@ -822,50 +854,40 @@ export default function BookingsPage() {
                     ...p,
                     rateSectionId: opt.value,
                     rateSectionLabel: opt.label,
+                    weightGrams: p.weightGrams > 0 ? p.weightGrams : 100,
                   }));
                 }}
               />
             </div>
+
             <div className="field">
-              <label>Weight (kg)</label>
+              <label>Weight (g)</label>
               <InputNumber
-                value={form.weightKg}
-                onValueChange={(e) => {
-                  setFreightAuto(true);
+                value={form.weightGrams}
+                onValueChange={(e) =>
                   setForm((p) => ({
                     ...p,
-                    weightKg: Number(e.value ?? 0),
-                  }));
-                }}
+                    weightGrams: Math.max(Number(e.value ?? 0), 0),
+                  }))
+                }
                 min={0}
                 minFractionDigits={0}
-                maxFractionDigits={3}
+                maxFractionDigits={0}
+                useGrouping={false}
                 style={{ width: '100%' }}
                 inputStyle={{ width: '100%' }}
               />
             </div>
+
             <div className="field">
-              <label>Pieces</label>
-              <InputNumber
-                value={form.pieces}
-                onValueChange={(e) =>
-                  setForm((p) => ({ ...p, pieces: Number(e.value ?? 1) }))
-                }
-                min={1}
-                style={{ width: '100%' }}
-                inputStyle={{ width: '100%' }}
-              />
-            </div>
-            <div className="field">
-              <label>Price {freightAuto ? '(auto)' : '(manual)'}</label>
+              <label>{isPriceAuto ? 'Price (Auto)' : 'Price (Manual)'}</label>
               <InputNumber
                 value={form.freight}
                 onValueChange={(e) => {
-                  setFreightAuto(false);
-                  setForm((p) => ({
-                    ...p,
-                    freight: Number(e.value ?? 0),
-                  }));
+                  const next = Math.max(Number(e.value ?? 0), 0);
+                  const auto = Number(resolvedPrice.amount);
+                  setPriceManual(next !== auto);
+                  setForm((p) => ({ ...p, freight: next }));
                 }}
                 min={0}
                 minFractionDigits={0}
@@ -874,14 +896,15 @@ export default function BookingsPage() {
                 inputStyle={{ width: '100%' }}
               />
             </div>
+
             <div className="field">
-              <label>COD amount</label>
+              <label>CGST</label>
               <InputNumber
-                value={form.codAmount}
+                value={form.cgst}
                 onValueChange={(e) =>
                   setForm((p) => ({
                     ...p,
-                    codAmount: Number(e.value ?? 0),
+                    cgst: Math.max(Number(e.value ?? 0), 0),
                   }))
                 }
                 min={0}
@@ -891,6 +914,41 @@ export default function BookingsPage() {
                 inputStyle={{ width: '100%' }}
               />
             </div>
+            <div className="field">
+              <label>SGST</label>
+              <InputNumber
+                value={form.sgst}
+                onValueChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    sgst: Math.max(Number(e.value ?? 0), 0),
+                  }))
+                }
+                min={0}
+                minFractionDigits={0}
+                maxFractionDigits={2}
+                style={{ width: '100%' }}
+                inputStyle={{ width: '100%' }}
+              />
+            </div>
+            <div className="field">
+              <label>IGST</label>
+              <InputNumber
+                value={form.igst}
+                onValueChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    igst: Math.max(Number(e.value ?? 0), 0),
+                  }))
+                }
+                min={0}
+                minFractionDigits={0}
+                maxFractionDigits={2}
+                style={{ width: '100%' }}
+                inputStyle={{ width: '100%' }}
+              />
+            </div>
+
             <div className="field full">
               <label>Remarks</label>
               <Textarea
@@ -905,15 +963,14 @@ export default function BookingsPage() {
           </div>
 
           {rateHint ? <p className="muted">{rateHint}</p> : null}
-          {freightAuto &&
-          form.rateSectionId &&
+          {form.rateSectionId &&
           form.receiverCityId &&
           matrix &&
-          form.freight === 0 ? (
+          resolvedPrice.amount === 0 ? (
             <p className="muted" style={{ fontSize: '0.85rem' }}>
-              No rate found for this destination / section / weight on the
-              quotation (tried city → state → ROI). Check the issued quotation
-              matrix cells are filled for that weight band.
+              No rate found for this destination / service type / weight on the
+              quotation (tried city → state → ROI). Check the rate matrix cells
+              are filled for that weight band.
             </p>
           ) : null}
           {error ? <p className="error-text">{error}</p> : null}

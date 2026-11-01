@@ -17,6 +17,9 @@ export enum ConsignmentStatus {
 export enum ChargeType {
   FREIGHT = 'FREIGHT',
   COD = 'COD',
+  CGST = 'CGST',
+  SGST = 'SGST',
+  IGST = 'IGST',
   OTHER = 'OTHER',
 }
 

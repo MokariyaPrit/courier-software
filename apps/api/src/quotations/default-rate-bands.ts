@@ -10,27 +10,37 @@ import type {
   RateSectionDef,
 } from './rate-matrix.types';
 
-/** Default matrix always includes ROI; city/state columns come from Centers. */
+/** Default matrix always includes ROI; city/state columns come from Rate columns. */
 export const DEFAULT_ZONE_COLUMNS: RateColumnDef[] = [
   { id: ROI_RATE_COLUMN_ID, label: 'ROI (Rest of India)', sortOrder: 0 },
 ];
 
+/** DOX / DOX_BY_AIR / TATKAL — weight in grams (max 1000 g) */
 const DOX_BANDS = [
-  { weightLabel: 'Up to 100 gms', weightGrams: 100, isAdditional: false, sortOrder: 1 },
-  { weightLabel: 'Up to 250 gms', weightGrams: 250, isAdditional: false, sortOrder: 2 },
-  { weightLabel: 'Up to 500 gms', weightGrams: 500, isAdditional: false, sortOrder: 3 },
-  { weightLabel: 'Up to 1000 gms', weightGrams: 1000, isAdditional: false, sortOrder: 4 },
+  { weightGrams: 100, sortOrder: 1 },
+  { weightGrams: 200, sortOrder: 2 },
+  { weightGrams: 500, sortOrder: 3 },
+  { weightGrams: 750, sortOrder: 4 },
+  { weightGrams: 1000, sortOrder: 5 },
 ];
 
-const PARCEL_BANDS = [
-  { weightLabel: 'Up to 1 kg', weightGrams: 1000, isAdditional: false, sortOrder: 1 },
-  {
-    weightLabel: 'Additional Weight (500 gms)',
-    weightGrams: 500,
-    isAdditional: true,
-    sortOrder: 2,
-  },
-];
+/** PARCEL / PARCEL_BY_AIR — weight in kg (stored as grams; only 1 kg) */
+const PARCEL_BANDS = [{ weightGrams: 1000, sortOrder: 1 }];
+
+export function isParcelService(sectionId: string) {
+  return (
+    sectionId === QuotationServiceType.PARCEL ||
+    sectionId === QuotationServiceType.PARCEL_BY_AIR
+  );
+}
+
+export function weightLabelForGrams(sectionId: string, weightGrams: number) {
+  if (isParcelService(sectionId)) {
+    const kg = weightGrams / 1000;
+    return `${kg % 1 === 0 ? kg.toFixed(0) : kg} kg`;
+  }
+  return `${weightGrams} g`;
+}
 
 function emptyRates(columns: RateColumnDef[]): Record<string, string> {
   const rates: Record<string, string> = {};
@@ -59,9 +69,9 @@ export function defaultRateMatrix(
     for (const band of DOX_BANDS) {
       rows.push({
         sectionId: serviceType,
-        weightLabel: band.weightLabel,
+        weightLabel: weightLabelForGrams(serviceType, band.weightGrams),
         weightGrams: band.weightGrams,
-        isAdditional: band.isAdditional,
+        isAdditional: false,
         sortOrder: band.sortOrder,
         rates: emptyRates(cols),
       });
@@ -74,9 +84,9 @@ export function defaultRateMatrix(
     for (const band of PARCEL_BANDS) {
       rows.push({
         sectionId: serviceType,
-        weightLabel: band.weightLabel,
+        weightLabel: weightLabelForGrams(serviceType, band.weightGrams),
         weightGrams: band.weightGrams,
-        isAdditional: band.isAdditional,
+        isAdditional: false,
         sortOrder: band.sortOrder,
         rates: emptyRates(cols),
       });
@@ -96,6 +106,7 @@ export function syncMatrixToGeography(
     columns?: RateColumnDef[];
     rows?: Array<{
       rates: Record<string, string | number>;
+      isAdditional?: boolean;
       [key: string]: unknown;
     }>;
   },
@@ -111,7 +122,6 @@ export function syncMatrixToGeography(
     sortOrder: i,
   }));
 
-  // Keep only legacy non-geo extras (old Local/MAH/…), never stale city/state/roi
   let extraOrder = nextColumns.length;
   for (const col of prevCols) {
     if (geoIds.has(col.id)) continue;
@@ -121,16 +131,18 @@ export function syncMatrixToGeography(
   }
 
   const keepIds = new Set(nextColumns.map((c) => c.id));
-  const rows = (existing.rows ?? []).map((row) => {
-    const rates: Record<string, string | number> = { ...(row.rates ?? {}) };
-    for (const id of Object.keys(rates)) {
-      if (!keepIds.has(id)) delete rates[id];
-    }
-    for (const col of nextColumns) {
-      if (rates[col.id] === undefined) rates[col.id] = '';
-    }
-    return { ...row, rates };
-  });
+  const rows = (existing.rows ?? [])
+    .filter((row) => !row.isAdditional)
+    .map((row) => {
+      const rates: Record<string, string | number> = { ...(row.rates ?? {}) };
+      for (const id of Object.keys(rates)) {
+        if (!keepIds.has(id)) delete rates[id];
+      }
+      for (const col of nextColumns) {
+        if (rates[col.id] === undefined) rates[col.id] = '';
+      }
+      return { ...row, isAdditional: false, rates };
+    });
 
   return { columns: nextColumns, rows };
 }
