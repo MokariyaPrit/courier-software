@@ -129,7 +129,10 @@ export default function QuotationDetailPage() {
     mutationFn: async () => {
       setError('');
       setSavedHint('');
-      await api.patch(`/quotations/${id}`, savePayload());
+      // Save quietly; issue toast comes from the issue POST
+      await api.patch(`/quotations/${id}`, savePayload(), {
+        skipToast: true,
+      });
       const res = await api.post(`/quotations/${id}/issue`, {});
       return unwrap<QuotationDetail>(res.data);
     },

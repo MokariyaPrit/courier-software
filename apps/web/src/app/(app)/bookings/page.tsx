@@ -459,16 +459,20 @@ export default function BookingsPage() {
         throw new Error('Select a destination city from Rate columns');
       }
 
-      const receiverRes = await api.post('/receivers/find-or-create', {
-        name: cleaned.receiverName,
-        phone: cleaned.receiverPhone || undefined,
-        address: cleaned.receiverAddress || undefined,
-        city: cleaned.receiverCity || undefined,
-        state: cleaned.receiverState || undefined,
-        cityId: cleaned.receiverCityId || undefined,
-        stateId: cleaned.receiverStateId || undefined,
-        pincode: cleaned.receiverPincode || undefined,
-      });
+      const receiverRes = await api.post(
+        '/receivers/find-or-create',
+        {
+          name: cleaned.receiverName,
+          phone: cleaned.receiverPhone || undefined,
+          address: cleaned.receiverAddress || undefined,
+          city: cleaned.receiverCity || undefined,
+          state: cleaned.receiverState || undefined,
+          cityId: cleaned.receiverCityId || undefined,
+          stateId: cleaned.receiverStateId || undefined,
+          pincode: cleaned.receiverPincode || undefined,
+        },
+        { skipToast: true },
+      );
       const receiver = unwrap<ReceiverOpt>(receiverRes.data);
 
       let senderLocationId = cleaned.senderLocationId || undefined;
@@ -504,74 +508,84 @@ export default function BookingsPage() {
             .join(', ') || senderAddress;
       }
 
-      await api.post('/consignments', {
-        bookingType: cleaned.bookingType,
-        bookingDate: cleaned.bookingDate || todayIso(),
-        customerId:
-          cleaned.bookingType === BookingType.ACCOUNT
-            ? cleaned.customerId || undefined
-            : undefined,
-        quotationId: cleaned.quotationId || undefined,
-        senderLocationId,
-        receiverId: receiver.id,
-        rateSectionId: cleaned.rateSectionId || undefined,
-        rateColumnId: cleaned.rateColumnId || undefined,
-        partyName:
-          cleaned.bookingType === BookingType.CASH
-            ? cleaned.partyName
-            : undefined,
-        partyPhone:
-          cleaned.bookingType === BookingType.CASH
-            ? cleaned.partyPhone || undefined
-            : undefined,
-        partyAddress:
-          cleaned.bookingType === BookingType.CASH
-            ? cleaned.partyAddress || undefined
-            : undefined,
-        partyCity:
-          cleaned.bookingType === BookingType.CASH
-            ? cleaned.partyCity || undefined
-            : undefined,
-        partyState:
-          cleaned.bookingType === BookingType.CASH
-            ? cleaned.partyState || undefined
-            : undefined,
-        partyPincode:
-          cleaned.bookingType === BookingType.CASH
-            ? cleaned.partyPincode || undefined
-            : undefined,
-        partyGstin:
-          cleaned.bookingType === BookingType.CASH
-            ? cleaned.partyGstin || undefined
-            : undefined,
-        partyEmail:
-          cleaned.bookingType === BookingType.CASH
-            ? cleaned.partyEmail || undefined
-            : undefined,
-        senderName: senderName || 'Sender',
-        senderPhone,
-        senderAddress,
-        receiverName: cleaned.receiverName,
-        receiverPhone: cleaned.receiverPhone || undefined,
-        receiverAddress: cleaned.receiverAddress || undefined,
-        receiverCity: cleaned.receiverCity || undefined,
-        receiverState: cleaned.receiverState || undefined,
-        receiverPincode: cleaned.receiverPincode || undefined,
-        receiverCityId: cleaned.receiverCityId || undefined,
-        receiverStateId: cleaned.receiverStateId || undefined,
-        weightKg: cleaned.weightKg,
-        pieces: cleaned.pieces,
-        codAmount: cleaned.codAmount,
-        serviceType: ServiceType.STANDARD,
-        remarks: cleaned.remarks || undefined,
-        charges: [
-          {
-            type: ChargeType.FREIGHT,
-            amount: cleaned.freight,
-            description: 'Freight',
-          },
-        ],
-      });
+      await api.post(
+        '/consignments',
+        {
+          bookingType: cleaned.bookingType,
+          bookingDate: cleaned.bookingDate || todayIso(),
+          customerId:
+            cleaned.bookingType === BookingType.ACCOUNT
+              ? cleaned.customerId || undefined
+              : undefined,
+          quotationId: cleaned.quotationId || undefined,
+          senderLocationId,
+          receiverId: receiver.id,
+          rateSectionId: cleaned.rateSectionId || undefined,
+          rateColumnId: cleaned.rateColumnId || undefined,
+          partyName:
+            cleaned.bookingType === BookingType.CASH
+              ? cleaned.partyName
+              : undefined,
+          partyPhone:
+            cleaned.bookingType === BookingType.CASH
+              ? cleaned.partyPhone || undefined
+              : undefined,
+          partyAddress:
+            cleaned.bookingType === BookingType.CASH
+              ? cleaned.partyAddress || undefined
+              : undefined,
+          partyCity:
+            cleaned.bookingType === BookingType.CASH
+              ? cleaned.partyCity || undefined
+              : undefined,
+          partyState:
+            cleaned.bookingType === BookingType.CASH
+              ? cleaned.partyState || undefined
+              : undefined,
+          partyPincode:
+            cleaned.bookingType === BookingType.CASH
+              ? cleaned.partyPincode || undefined
+              : undefined,
+          partyGstin:
+            cleaned.bookingType === BookingType.CASH
+              ? cleaned.partyGstin || undefined
+              : undefined,
+          partyEmail:
+            cleaned.bookingType === BookingType.CASH
+              ? cleaned.partyEmail || undefined
+              : undefined,
+          senderName: senderName || 'Sender',
+          senderPhone,
+          senderAddress,
+          receiverName: cleaned.receiverName,
+          receiverPhone: cleaned.receiverPhone || undefined,
+          receiverAddress: cleaned.receiverAddress || undefined,
+          receiverCity: cleaned.receiverCity || undefined,
+          receiverState: cleaned.receiverState || undefined,
+          receiverPincode: cleaned.receiverPincode || undefined,
+          receiverCityId: cleaned.receiverCityId || undefined,
+          receiverStateId: cleaned.receiverStateId || undefined,
+          weightKg: cleaned.weightKg,
+          pieces: cleaned.pieces,
+          codAmount: cleaned.codAmount,
+          serviceType: ServiceType.STANDARD,
+          remarks: cleaned.remarks || undefined,
+          charges: [
+            {
+              type: ChargeType.FREIGHT,
+              amount: cleaned.freight,
+              description: 'Freight',
+            },
+          ],
+        },
+        {
+          toastSummary: 'Success',
+          toastDetail:
+            cleaned.bookingType === BookingType.ACCOUNT
+              ? 'Account booking created successfully.'
+              : 'Cash booking created successfully.',
+        },
+      );
     },
     onSuccess: async () => {
       setForm({ ...emptyForm, bookingType: mode, bookingDate: todayIso() });

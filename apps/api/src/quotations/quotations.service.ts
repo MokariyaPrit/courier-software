@@ -149,7 +149,7 @@ export class QuotationsService {
    */
   private async nextQuotationCode(_userId: string) {
     const rows = await this.quotationsRepo.find({
-      select: ['quotationCode'],
+      select: { quotationCode: true },
       withDeleted: true,
     });
     let max = 0;
