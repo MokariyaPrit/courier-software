@@ -19,8 +19,9 @@ import {
   Textarea,
   type SearchSelectOption,
 } from '@/components/ui';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { fetchPaginated } from '@/lib/list';
 import {
   resolveRate,
@@ -29,6 +30,257 @@ import {
   weightLabelForGrams,
 } from '@/lib/quotations';
 import { trimFormData } from '@/lib/trim';
+
+type RememberFlags = {
+  customer: boolean;
+  destination: boolean;
+  receiver: boolean;
+  courierCompany: boolean;
+  serviceType: boolean;
+  weight: boolean;
+};
+
+type RememberedValues = Partial<{
+  customerId: string;
+  customerLabel: string;
+  quotationId: string;
+  senderLocationId: string;
+  senderName: string;
+  senderPhone: string;
+  senderAddress: string;
+  partyName: string;
+  partyPhone: string;
+  partyAddress: string;
+  partyCity: string;
+  partyState: string;
+  partyPincode: string;
+  partyGstin: string;
+  partyEmail: string;
+  destLabel: string;
+  receiverCityId: string;
+  receiverStateId: string;
+  receiverCity: string;
+  receiverState: string;
+  receiverId: string;
+  receiverName: string;
+  receiverPhone: string;
+  receiverAddress: string;
+  courierCompanyId: string;
+  courierCompanyLabel: string;
+  rateSectionId: string;
+  rateSectionLabel: string;
+  rateColumnId: string;
+  weightGrams: number;
+}>;
+
+const DEFAULT_REMEMBER_FLAGS: RememberFlags = {
+  customer: false,
+  destination: false,
+  receiver: false,
+  courierCompany: false,
+  serviceType: false,
+  weight: false,
+};
+
+function rememberStorageKey(userId: string, mode: BookingType) {
+  return `booking-remember:${userId}:${mode}`;
+}
+
+function loadRememberState(userId: string, mode: BookingType): {
+  flags: RememberFlags;
+  values: RememberedValues;
+} {
+  if (typeof window === 'undefined') {
+    return { flags: { ...DEFAULT_REMEMBER_FLAGS }, values: {} };
+  }
+  try {
+    const raw = window.localStorage.getItem(rememberStorageKey(userId, mode));
+    if (!raw) return { flags: { ...DEFAULT_REMEMBER_FLAGS }, values: {} };
+    const parsed = JSON.parse(raw) as {
+      flags?: Partial<RememberFlags>;
+      values?: RememberedValues;
+    };
+    return {
+      flags: { ...DEFAULT_REMEMBER_FLAGS, ...(parsed.flags ?? {}) },
+      values: parsed.values ?? {},
+    };
+  } catch {
+    return { flags: { ...DEFAULT_REMEMBER_FLAGS }, values: {} };
+  }
+}
+
+function saveRememberState(
+  userId: string,
+  mode: BookingType,
+  flags: RememberFlags,
+  values: RememberedValues,
+) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(
+    rememberStorageKey(userId, mode),
+    JSON.stringify({ flags, values }),
+  );
+}
+
+type BookingFormState = {
+  bookingType: BookingType;
+  bookingDate: string;
+  customerId: string;
+  customerLabel: string;
+  courierCompanyId: string;
+  courierCompanyLabel: string;
+  quotationId: string;
+  senderLocationId: string;
+  receiverId: string;
+  rateSectionId: string;
+  rateSectionLabel: string;
+  rateColumnId: string;
+  partyName: string;
+  partyPhone: string;
+  partyAddress: string;
+  partyCity: string;
+  partyState: string;
+  partyPincode: string;
+  partyGstin: string;
+  partyEmail: string;
+  senderName: string;
+  senderPhone: string;
+  senderAddress: string;
+  receiverName: string;
+  receiverPhone: string;
+  receiverAddress: string;
+  receiverCity: string;
+  receiverState: string;
+  receiverCityId: string;
+  receiverStateId: string;
+  destLabel: string;
+  documentNumber: string;
+  weightGrams: number;
+  freight: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  remarks: string;
+};
+
+function snapshotRememberedValues(
+  flags: RememberFlags,
+  form: BookingFormState,
+): RememberedValues {
+  const values: RememberedValues = {};
+  if (flags.customer) {
+    values.customerId = form.customerId;
+    values.customerLabel = form.customerLabel;
+    values.quotationId = form.quotationId;
+    values.senderLocationId = form.senderLocationId;
+    values.senderName = form.senderName;
+    values.senderPhone = form.senderPhone;
+    values.senderAddress = form.senderAddress;
+    values.partyName = form.partyName;
+    values.partyPhone = form.partyPhone;
+    values.partyAddress = form.partyAddress;
+    values.partyCity = form.partyCity;
+    values.partyState = form.partyState;
+    values.partyPincode = form.partyPincode;
+    values.partyGstin = form.partyGstin;
+    values.partyEmail = form.partyEmail;
+  }
+  if (flags.destination) {
+    values.destLabel = form.destLabel;
+    values.receiverCityId = form.receiverCityId;
+    values.receiverStateId = form.receiverStateId;
+    values.receiverCity = form.receiverCity;
+    values.receiverState = form.receiverState;
+  }
+  if (flags.receiver) {
+    values.receiverId = form.receiverId;
+    values.receiverName = form.receiverName;
+    values.receiverPhone = form.receiverPhone;
+    values.receiverAddress = form.receiverAddress;
+  }
+  if (flags.courierCompany) {
+    values.courierCompanyId = form.courierCompanyId;
+    values.courierCompanyLabel = form.courierCompanyLabel;
+  }
+  if (flags.serviceType) {
+    values.rateSectionId = form.rateSectionId;
+    values.rateSectionLabel = form.rateSectionLabel;
+    values.rateColumnId = form.rateColumnId;
+  }
+  if (flags.weight) {
+    values.weightGrams = form.weightGrams;
+  }
+  return values;
+}
+
+function applyRememberedValues(
+  base: BookingFormState,
+  flags: RememberFlags,
+  values: RememberedValues,
+): BookingFormState {
+  let next = { ...base };
+  if (flags.customer) {
+    next = {
+      ...next,
+      customerId: values.customerId || '',
+      customerLabel: values.customerLabel || '',
+      quotationId: values.quotationId || '',
+      senderLocationId: values.senderLocationId || '',
+      senderName: values.senderName || '',
+      senderPhone: values.senderPhone || '',
+      senderAddress: values.senderAddress || '',
+      partyName: values.partyName || '',
+      partyPhone: values.partyPhone || '',
+      partyAddress: values.partyAddress || '',
+      partyCity: values.partyCity || '',
+      partyState: values.partyState || '',
+      partyPincode: values.partyPincode || '',
+      partyGstin: values.partyGstin || '',
+      partyEmail: values.partyEmail || '',
+    };
+  }
+  if (flags.destination) {
+    next = {
+      ...next,
+      destLabel: values.destLabel || '',
+      receiverCityId: values.receiverCityId || '',
+      receiverStateId: values.receiverStateId || '',
+      receiverCity: values.receiverCity || '',
+      receiverState: values.receiverState || '',
+    };
+  }
+  if (flags.receiver) {
+    next = {
+      ...next,
+      receiverId: values.receiverId || '',
+      receiverName: values.receiverName || '',
+      receiverPhone: values.receiverPhone || '',
+      receiverAddress: values.receiverAddress || '',
+    };
+  }
+  if (flags.courierCompany) {
+    next = {
+      ...next,
+      courierCompanyId: values.courierCompanyId || '',
+      courierCompanyLabel: values.courierCompanyLabel || '',
+    };
+  }
+  if (flags.serviceType) {
+    next = {
+      ...next,
+      rateSectionId: values.rateSectionId || '',
+      rateSectionLabel: values.rateSectionLabel || '',
+      rateColumnId: values.rateColumnId || '',
+    };
+  }
+  if (flags.weight) {
+    next = {
+      ...next,
+      weightGrams: values.weightGrams || 100,
+    };
+  }
+  return next;
+}
 
 interface ConsignmentRow {
   id: string;
@@ -185,11 +437,13 @@ const emptyForm = {
 
 export default function BookingsPage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const typeParam = searchParams.get('type');
   const mode: BookingType =
     typeParam === BookingType.CASH ? BookingType.CASH : BookingType.ACCOUNT;
+  const userId = user?.id || 'anon';
 
   const [form, setForm] = useState({ ...emptyForm, bookingType: mode });
   const [error, setError] = useState('');
@@ -199,9 +453,28 @@ export default function BookingsPage() {
   const [priceManual, setPriceManual] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAwb, setEditingAwb] = useState('');
+  const [rememberFlags, setRememberFlags] = useState<RememberFlags>({
+    ...DEFAULT_REMEMBER_FLAGS,
+  });
+  const [rememberedValues, setRememberedValues] = useState<RememberedValues>(
+    {},
+  );
+  const customerFocusRef = useRef<HTMLInputElement>(null);
+  const partyFocusRef = useRef<HTMLInputElement>(null);
 
   const setMode = (next: BookingType) => {
     router.replace(`/bookings?type=${next}`);
+  };
+
+  const focusStartField = () => {
+    window.setTimeout(() => {
+      const el =
+        mode === BookingType.ACCOUNT
+          ? customerFocusRef.current
+          : partyFocusRef.current;
+      el?.focus();
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
   };
 
   const recentQuery = useQuery({
@@ -278,30 +551,87 @@ export default function BookingsPage() {
     };
   }, [courierCompaniesQuery.data]);
 
-  const resetForm = () => {
-    setForm({
+  const resetForm = (opts?: {
+    focusStart?: boolean;
+    rememberedOverride?: RememberedValues;
+  }) => {
+    const remembered = opts?.rememberedOverride ?? rememberedValues;
+    let next: BookingFormState = {
       ...emptyForm,
       bookingType: mode,
       bookingDate: todayIso(),
       courierCompanyId: defaultCourierCompany.courierCompanyId,
       courierCompanyLabel: defaultCourierCompany.courierCompanyLabel,
-    });
+    };
+    next = applyRememberedValues(next, rememberFlags, remembered);
+    if (!rememberFlags.courierCompany || !remembered.courierCompanyId) {
+      next.courierCompanyId = defaultCourierCompany.courierCompanyId;
+      next.courierCompanyLabel = defaultCourierCompany.courierCompanyLabel;
+    }
+    setForm(next);
     setRateSource(null);
     setRateHint('');
     setError('');
     setPriceManual(false);
     setEditingId(null);
     setEditingAwb('');
+    if (opts?.focusStart) focusStartField();
+  };
+
+  const updateRememberFlag = (key: keyof RememberFlags, checked: boolean) => {
+    setRememberFlags((prev) => {
+      const nextFlags = { ...prev, [key]: checked };
+      const nextValues = checked
+        ? {
+            ...rememberedValues,
+            ...snapshotRememberedValues(
+              { ...DEFAULT_REMEMBER_FLAGS, [key]: true },
+              form,
+            ),
+          }
+        : rememberedValues;
+      if (!checked) {
+        // keep old values in storage until next save; only flags matter for apply
+      }
+      setRememberedValues(nextValues);
+      saveRememberState(userId, mode, nextFlags, nextValues);
+      return nextFlags;
+    });
   };
 
   useEffect(() => {
-    resetForm();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset on booking mode change only
-  }, [mode]);
+    const stored = loadRememberState(userId, mode);
+    setRememberFlags(stored.flags);
+    setRememberedValues(stored.values);
+
+    let next: BookingFormState = {
+      ...emptyForm,
+      bookingType: mode,
+      bookingDate: todayIso(),
+      courierCompanyId: defaultCourierCompany.courierCompanyId,
+      courierCompanyLabel: defaultCourierCompany.courierCompanyLabel,
+    };
+    next = applyRememberedValues(next, stored.flags, stored.values);
+    if (!stored.flags.courierCompany || !stored.values.courierCompanyId) {
+      next.courierCompanyId = defaultCourierCompany.courierCompanyId;
+      next.courierCompanyLabel = defaultCourierCompany.courierCompanyLabel;
+    }
+    setForm(next);
+    setRateSource(null);
+    setRateHint('');
+    setError('');
+    setPriceManual(false);
+    setEditingId(null);
+    setEditingAwb('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate remember + reset when mode/user changes
+  }, [userId, mode]);
 
   useEffect(() => {
     if (editingId) return;
     if (!defaultCourierCompany.courierCompanyId) return;
+    if (rememberFlags.courierCompany && rememberedValues.courierCompanyId) {
+      return;
+    }
     setForm((p) => {
       if (p.courierCompanyId) return p;
       return {
@@ -310,7 +640,12 @@ export default function BookingsPage() {
         courierCompanyLabel: defaultCourierCompany.courierCompanyLabel,
       };
     });
-  }, [defaultCourierCompany, editingId]);
+  }, [
+    defaultCourierCompany,
+    editingId,
+    rememberFlags.courierCompany,
+    rememberedValues.courierCompanyId,
+  ]);
 
   const cashRatesQuery = useQuery({
     queryKey: ['cash-rates-booking'],
@@ -767,7 +1102,7 @@ export default function BookingsPage() {
           toastSummary: 'Success',
           toastDetail: `Booking ${editingAwb || ''} updated successfully.`.trim(),
         });
-        return;
+        return { created: false as const };
       }
       await api.post('/consignments', payload, {
         toastSummary: 'Success',
@@ -776,9 +1111,20 @@ export default function BookingsPage() {
             ? 'Account booking created successfully.'
             : 'Cash booking created successfully.',
       });
+      return { created: true as const };
     },
-    onSuccess: async () => {
-      resetForm();
+    onSuccess: async (result) => {
+      if (result?.created) {
+        const nextValues = {
+          ...rememberedValues,
+          ...snapshotRememberedValues(rememberFlags, form),
+        };
+        setRememberedValues(nextValues);
+        saveRememberState(userId, mode, rememberFlags, nextValues);
+        resetForm({ focusStart: true, rememberedOverride: nextValues });
+      } else {
+        resetForm();
+      }
       await qc.invalidateQueries({ queryKey: ['consignments-recent'] });
       await qc.invalidateQueries({ queryKey: ['consignments'] });
       await qc.invalidateQueries({ queryKey: ['receivers'] });
@@ -940,6 +1286,7 @@ export default function BookingsPage() {
               <div className="field">
                 <label>Customer</label>
                 <SearchSelect
+                  inputRef={customerFocusRef}
                   value={form.customerLabel}
                   options={customerOptions}
                   placeholder="Type customer name…"
@@ -959,6 +1306,7 @@ export default function BookingsPage() {
               <div className="field">
                 <label>Party name</label>
                 <InputText
+                  ref={partyFocusRef}
                   value={form.partyName}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, partyName: e.target.value }))
@@ -1276,6 +1624,72 @@ export default function BookingsPage() {
               />
             ) : null}
           </div>
+
+          {!editingId ? (
+            <div
+              className="booking-remember"
+              style={{
+                marginTop: '1.25rem',
+                paddingTop: '1rem',
+                borderTop: '1px solid var(--surface-border, #e5e7eb)',
+              }}
+            >
+              <p style={{ margin: '0 0 0.5rem', fontWeight: 600 }}>
+                Remember for next booking
+              </p>
+              <p className="muted" style={{ margin: '0 0 0.75rem' }}>
+                Checked fields stay filled after Create booking. Focus returns to{' '}
+                {mode === BookingType.ACCOUNT ? 'Customer' : 'Party name'}.
+              </p>
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem 1.25rem',
+                }}
+              >
+                {(
+                  [
+                    {
+                      key: 'customer' as const,
+                      label:
+                        mode === BookingType.ACCOUNT
+                          ? 'Customer'
+                          : 'Party details',
+                    },
+                    { key: 'destination' as const, label: 'Destination' },
+                    { key: 'receiver' as const, label: 'Receiver' },
+                    {
+                      key: 'courierCompany' as const,
+                      label: 'Courier company',
+                    },
+                    { key: 'serviceType' as const, label: 'Service type' },
+                    { key: 'weight' as const, label: 'Weight' },
+                  ] as const
+                ).map((opt) => (
+                  <label
+                    key={opt.key}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={rememberFlags[opt.key]}
+                      onChange={(e) =>
+                        updateRememberFlag(opt.key, e.target.checked)
+                      }
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <aside className="bookings-split-recent panel">

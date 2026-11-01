@@ -8,6 +8,7 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type Ref,
 } from 'react';
 import { InputText } from './InputText';
 
@@ -28,6 +29,7 @@ type Props = {
   /** Keep free-typed text even if it does not match an option */
   allowFreeText?: boolean;
   emptyHint?: string;
+  inputRef?: Ref<HTMLInputElement>;
 };
 
 export function SearchSelect({
@@ -40,6 +42,7 @@ export function SearchSelect({
   style,
   allowFreeText = true,
   emptyHint = 'No matches',
+  inputRef,
 }: Props) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -118,6 +121,7 @@ export function SearchSelect({
   return (
     <div className="search-select" ref={rootRef} style={style}>
       <InputText
+        ref={inputRef}
         value={value}
         disabled={disabled}
         placeholder={placeholder}
