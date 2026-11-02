@@ -21,6 +21,14 @@ export interface UserInfoProfile {
   pincode: string | null;
   companyName: string | null;
   gstin: string | null;
+  panNumber: string | null;
+  bankName: string | null;
+  bankAccountNo: string | null;
+  bankIfsc: string | null;
+  upiId: string | null;
+  sgstPercent: string | number | null;
+  cgstPercent: string | number | null;
+  igstPercent: string | number | null;
   notes: string | null;
   isActive: boolean;
 }

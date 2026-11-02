@@ -22,7 +22,8 @@ const NAV = [
   { href: '/courier-companies', label: 'Courier companies', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/masters/states', label: 'States', roles: [Role.ADMIN] },
   { href: '/masters/cities', label: 'Cities', roles: [Role.ADMIN] },
-  { href: '/billing', label: 'Billing', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
+  { href: '/billing', label: 'Generate bill', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
+  { href: '/billing/invoices', label: 'Invoices', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/admin/users', label: 'Users', roles: [Role.ADMIN] },
   { href: '/profile', label: 'Profile', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
 ];
@@ -53,12 +54,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             const isActive =
               item.href === '/profile'
                 ? pathname === '/profile'
-                : item.href === '/quotations'
-                  ? pathname === '/quotations' ||
-                    (pathname.startsWith('/quotations/') &&
-                      !pathname.startsWith('/quotations/templates'))
-                  : pathname === item.href ||
-                    pathname.startsWith(`${item.href}/`);
+                : item.href === '/billing'
+                  ? pathname === '/billing'
+                  : item.href === '/billing/invoices'
+                    ? pathname === '/billing/invoices' ||
+                      pathname.startsWith('/billing/invoices/')
+                    : item.href === '/quotations'
+                      ? pathname === '/quotations' ||
+                        (pathname.startsWith('/quotations/') &&
+                          !pathname.startsWith('/quotations/templates'))
+                      : pathname === item.href ||
+                        pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}

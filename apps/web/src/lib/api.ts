@@ -94,6 +94,9 @@ function resolveResource(path: string): ResourceInfo {
   if (p.includes('/users')) {
     return { noun: 'User', createVerb: 'saved' };
   }
+  if (p.includes('/billing/invoices/generate')) {
+    return { noun: 'Bill', createVerb: 'generated' };
+  }
   if (p.includes('/billing') || p.includes('/invoices')) {
     return { noun: 'Invoice', createVerb: 'created' };
   }

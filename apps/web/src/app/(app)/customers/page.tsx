@@ -42,6 +42,7 @@ interface Customer {
   stateId: string | null;
   pincode: string | null;
   gstin: string | null;
+  panNumber: string | null;
   notes: string | null;
   fuelChargesExtraPercent: string | number;
   fovPercent: string | number;
@@ -62,6 +63,7 @@ interface CustomerForm {
   stateId: string;
   pincode: string;
   gstin: string;
+  panNumber: string;
   notes: string;
   fuelChargesExtraPercent: number;
   fovPercent: number;
@@ -81,6 +83,7 @@ const EMPTY_FORM: CustomerForm = {
   stateId: '',
   pincode: '',
   gstin: '',
+  panNumber: '',
   notes: '',
   fuelChargesExtraPercent: 0,
   fovPercent: 0,
@@ -110,6 +113,7 @@ function toForm(c: Customer): CustomerForm {
     stateId: c.stateId || '',
     pincode: c.pincode || '',
     gstin: c.gstin || '',
+    panNumber: c.panNumber || '',
     notes: c.notes || '',
     fuelChargesExtraPercent: Number(c.fuelChargesExtraPercent ?? 0),
     fovPercent: Number(c.fovPercent ?? 0),
@@ -132,6 +136,7 @@ function toPayload(form: CustomerForm) {
     stateId: cleaned.stateId || null,
     pincode: cleaned.pincode || null,
     gstin: cleaned.gstin || null,
+    panNumber: cleaned.panNumber || null,
     notes: cleaned.notes || null,
     fuelChargesExtraPercent: Number(form.fuelChargesExtraPercent ?? 0),
     fovPercent: Number(form.fovPercent ?? 0),
@@ -480,6 +485,14 @@ export default function CustomersPage() {
             <InputText
               value={form.gstin}
               onChange={(e) => setField('gstin', e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>PAN number</label>
+            <InputText
+              value={form.panNumber}
+              onChange={(e) => setField('panNumber', e.target.value)}
               style={{ width: '100%' }}
             />
           </div>

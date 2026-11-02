@@ -34,6 +34,49 @@ export class Invoice {
   })
   status: InvoiceStatus;
 
+  /** Business bill / invoice date */
+  @Column({ type: 'date', nullable: true })
+  billDate: string | null;
+
+  /** Billing period start (inclusive) */
+  @Column({ type: 'date', nullable: true })
+  periodStart: string | null;
+
+  /** Billing period end (inclusive) */
+  @Column({ type: 'date', nullable: true })
+  periodEnd: string | null;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  grossAmount: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  fuelSurcharge: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  subTotal: string;
+
+  @Column({ type: 'decimal', precision: 8, scale: 2, default: 9 })
+  cgstPercent: string;
+
+  @Column({ type: 'decimal', precision: 8, scale: 2, default: 9 })
+  sgstPercent: string;
+
+  @Column({ type: 'decimal', precision: 8, scale: 2, default: 0 })
+  igstPercent: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  cgstAmount: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  sgstAmount: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  igstAmount: string;
+
+  /** Difference to nearest rupee (can be negative) */
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  roundOffAmount: string;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   totalAmount: string;
 

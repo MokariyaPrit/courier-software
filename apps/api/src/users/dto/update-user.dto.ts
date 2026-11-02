@@ -1,10 +1,13 @@
 import { Role } from '@courier/shared';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEmail,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
+  Min,
   MinLength,
   ValidateIf,
 } from 'class-validator';
@@ -61,6 +64,44 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   gstin?: string | null;
+
+  @IsOptional()
+  @IsString()
+  panNumber?: string | null;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  bankAccountNo?: string | null;
+
+  @IsOptional()
+  @IsString()
+  bankIfsc?: string | null;
+
+  @IsOptional()
+  @IsString()
+  upiId?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  sgstPercent?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  cgstPercent?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  igstPercent?: number;
 
   @IsOptional()
   @IsString()

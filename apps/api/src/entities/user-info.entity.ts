@@ -49,6 +49,31 @@ export class UserInfo {
   @Column({ type: 'varchar', nullable: true })
   gstin: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  panNumber: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  bankName: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  bankAccountNo: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  bankIfsc: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  upiId: string | null;
+
+  /** Default billing GST rates (%) */
+  @Column({ type: 'numeric', precision: 8, scale: 2, default: 9 })
+  sgstPercent: string;
+
+  @Column({ type: 'numeric', precision: 8, scale: 2, default: 9 })
+  cgstPercent: string;
+
+  @Column({ type: 'numeric', precision: 8, scale: 2, default: 0 })
+  igstPercent: string;
+
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 

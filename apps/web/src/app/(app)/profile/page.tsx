@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Dialog, InputText, Tag } from '@/components/ui';
+import { Button, Dialog, InputNumber, InputText, Tag } from '@/components/ui';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -27,6 +27,14 @@ interface ProfileFormState {
   phone: string;
   companyName: string;
   gstin: string;
+  panNumber: string;
+  bankName: string;
+  bankAccountNo: string;
+  bankIfsc: string;
+  upiId: string;
+  sgstPercent: number;
+  cgstPercent: number;
+  igstPercent: number;
   address: string;
   city: string;
   state: string;
@@ -40,6 +48,14 @@ const OPTIONAL_FIELDS = new Set<ProfileFieldKey>([
   'phone',
   'companyName',
   'gstin',
+  'panNumber',
+  'bankName',
+  'bankAccountNo',
+  'bankIfsc',
+  'upiId',
+  'sgstPercent',
+  'cgstPercent',
+  'igstPercent',
   'address',
   'city',
   'state',
@@ -47,10 +63,7 @@ const OPTIONAL_FIELDS = new Set<ProfileFieldKey>([
   'notes',
 ]);
 
-function validateProfileField(
-  key: ProfileFieldKey,
-  value: string,
-): string {
+function validateProfileField(key: ProfileFieldKey, value: string): string {
   if (key === 'fullName') return validateFullName(value);
   if (key === 'email') return validateEmail(value);
   return '';
@@ -76,6 +89,14 @@ export default function ProfilePage() {
     phone: '',
     companyName: '',
     gstin: '',
+    panNumber: '',
+    bankName: '',
+    bankAccountNo: '',
+    bankIfsc: '',
+    upiId: '',
+    sgstPercent: 9,
+    cgstPercent: 9,
+    igstPercent: 0,
     address: '',
     city: '',
     state: '',
@@ -91,6 +112,14 @@ export default function ProfilePage() {
       phone: info?.phone || '',
       companyName: info?.companyName || '',
       gstin: info?.gstin || '',
+      panNumber: info?.panNumber || '',
+      bankName: info?.bankName || '',
+      bankAccountNo: info?.bankAccountNo || '',
+      bankIfsc: info?.bankIfsc || '',
+      upiId: info?.upiId || '',
+      sgstPercent: Number(info?.sgstPercent ?? 9),
+      cgstPercent: Number(info?.cgstPercent ?? 9),
+      igstPercent: Number(info?.igstPercent ?? 0),
       address: info?.address || '',
       city: info?.city || '',
       state: info?.state || '',
@@ -111,7 +140,7 @@ export default function ProfilePage() {
 
   const blurField = (key: ProfileFieldKey) => {
     if (OPTIONAL_FIELDS.has(key)) return;
-    const msg = validateProfileField(key, form[key]);
+    const msg = validateProfileField(key, String(form[key] ?? ''));
     setFieldErrors((prev) => ({ ...prev, [key]: msg }));
   };
 
@@ -133,6 +162,14 @@ export default function ProfilePage() {
         phone: cleaned.phone || null,
         companyName: cleaned.companyName || null,
         gstin: cleaned.gstin || null,
+        panNumber: cleaned.panNumber || null,
+        bankName: cleaned.bankName || null,
+        bankAccountNo: cleaned.bankAccountNo || null,
+        bankIfsc: cleaned.bankIfsc || null,
+        upiId: cleaned.upiId || null,
+        sgstPercent: Number(form.sgstPercent ?? 9),
+        cgstPercent: Number(form.cgstPercent ?? 9),
+        igstPercent: Number(form.igstPercent ?? 0),
         address: cleaned.address || null,
         city: cleaned.city || null,
         state: cleaned.state || null,
@@ -151,12 +188,17 @@ export default function ProfilePage() {
     }
   };
 
-  const fields = [
+  const textFields = [
     ['fullName', 'Full name'],
     ['email', 'Email'],
     ['phone', 'Phone'],
     ['companyName', 'Company name'],
     ['gstin', 'GSTIN'],
+    ['panNumber', 'PAN number'],
+    ['bankName', 'Bank name'],
+    ['bankAccountNo', 'Acc. No.'],
+    ['bankIfsc', 'IFSC code'],
+    ['upiId', 'UPI ID'],
     ['address', 'Address'],
     ['city', 'City'],
     ['state', 'State'],
@@ -201,6 +243,17 @@ export default function ProfilePage() {
           <InfoRow label="Phone" value={info?.phone} />
           <InfoRow label="Company name" value={info?.companyName} />
           <InfoRow label="GSTIN" value={info?.gstin} />
+          <InfoRow label="PAN number" value={info?.panNumber} />
+          <InfoRow label="Bank name" value={info?.bankName} />
+          <InfoRow label="Acc. No." value={info?.bankAccountNo} />
+          <InfoRow label="IFSC code" value={info?.bankIfsc} />
+          <InfoRow label="UPI ID" value={info?.upiId} />
+          <InfoRow
+            label="SGST / UTGST %"
+            value={String(info?.sgstPercent ?? '9.00')}
+          />
+          <InfoRow label="CGST %" value={String(info?.cgstPercent ?? '9.00')} />
+          <InfoRow label="IGST %" value={String(info?.igstPercent ?? '0.00')} />
           <InfoRow label="Address" value={info?.address} />
           <InfoRow label="City" value={info?.city} />
           <InfoRow label="State" value={info?.state} />
@@ -212,11 +265,11 @@ export default function ProfilePage() {
       <Dialog
         header="Edit user information"
         visible={editOpen}
-        style={{ width: 'min(560px, 95vw)' }}
+        style={{ width: 'min(640px, 95vw)' }}
         onHide={() => setEditOpen(false)}
       >
         <div className="form-grid">
-          {fields.map(([key, label]) => {
+          {textFields.map(([key, label]) => {
             const err = fieldErrors[key];
             const isWide = key === 'address' || key === 'notes';
             return (
@@ -227,7 +280,7 @@ export default function ProfilePage() {
                 <label htmlFor={key}>{label}</label>
                 <InputText
                   id={key}
-                  value={form[key]}
+                  value={String(form[key] ?? '')}
                   className={err ? 'p-invalid' : undefined}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -246,6 +299,60 @@ export default function ProfilePage() {
               </div>
             );
           })}
+          <div className="field">
+            <label>SGST / UTGST %</label>
+            <InputNumber
+              value={form.sgstPercent}
+              onValueChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  sgstPercent: Number(e.value ?? 0),
+                }))
+              }
+              min={0}
+              minFractionDigits={0}
+              maxFractionDigits={2}
+              suffix=" %"
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>CGST %</label>
+            <InputNumber
+              value={form.cgstPercent}
+              onValueChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  cgstPercent: Number(e.value ?? 0),
+                }))
+              }
+              min={0}
+              minFractionDigits={0}
+              maxFractionDigits={2}
+              suffix=" %"
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>IGST %</label>
+            <InputNumber
+              value={form.igstPercent}
+              onValueChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  igstPercent: Number(e.value ?? 0),
+                }))
+              }
+              min={0}
+              minFractionDigits={0}
+              maxFractionDigits={2}
+              suffix=" %"
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
         </div>
         {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>

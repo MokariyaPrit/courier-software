@@ -60,6 +60,14 @@ export class UsersService {
         pincode: dto.pincode ?? null,
         companyName: dto.companyName ?? null,
         gstin: dto.gstin ?? null,
+        panNumber: dto.panNumber ?? null,
+        bankName: dto.bankName ?? null,
+        bankAccountNo: dto.bankAccountNo ?? null,
+        bankIfsc: dto.bankIfsc ?? null,
+        upiId: dto.upiId ?? null,
+        sgstPercent: String(dto.sgstPercent ?? 9),
+        cgstPercent: String(dto.cgstPercent ?? 9),
+        igstPercent: String(dto.igstPercent ?? 0),
         notes: dto.notes ?? null,
         isActive: dto.isActive ?? true,
       }),
@@ -157,6 +165,20 @@ export class UsersService {
     if (dto.pincode !== undefined) info.pincode = dto.pincode;
     if (dto.companyName !== undefined) info.companyName = dto.companyName;
     if (dto.gstin !== undefined) info.gstin = dto.gstin;
+    if (dto.panNumber !== undefined) info.panNumber = dto.panNumber;
+    if (dto.bankName !== undefined) info.bankName = dto.bankName;
+    if (dto.bankAccountNo !== undefined) info.bankAccountNo = dto.bankAccountNo;
+    if (dto.bankIfsc !== undefined) info.bankIfsc = dto.bankIfsc;
+    if (dto.upiId !== undefined) info.upiId = dto.upiId;
+    if (dto.sgstPercent !== undefined) {
+      info.sgstPercent = String(dto.sgstPercent);
+    }
+    if (dto.cgstPercent !== undefined) {
+      info.cgstPercent = String(dto.cgstPercent);
+    }
+    if (dto.igstPercent !== undefined) {
+      info.igstPercent = String(dto.igstPercent);
+    }
     if (dto.notes !== undefined) info.notes = dto.notes;
     if (dto.infoIsActive !== undefined) info.isActive = dto.infoIsActive;
 

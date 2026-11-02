@@ -1,184 +1,304 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Button,
-  DataTable,
-  Dialog,
-  InputText,
-  MultiSelect,
-  Select,
-} from '@/components/ui';
-import { useState } from 'react';
-import { ListFilterChrome } from '@/components/ListControls';
-import { api } from '@/lib/api';
-import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
+import { Button, InputNumber, InputText } from '@/components/ui';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { api, unwrap } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { fetchPaginated } from '@/lib/list';
 
-interface Invoice {
+interface CustomerRow {
   id: string;
-  invoiceNumber: string;
-  totalAmount: string;
-  status: string;
-  createdAt: string;
-  customer?: { name: string };
+  name: string;
+  city: string | null;
+  isActive: boolean;
 }
 
-const SORT_OPTIONS: SortOption[] = [
-  { label: 'Newest first', sortBy: 'createdAt', sortOrder: 'DESC', isDefault: true },
-  { label: 'Oldest first', sortBy: 'createdAt', sortOrder: 'ASC' },
-  { label: 'Invoice # Asc', sortBy: 'invoiceNumber', sortOrder: 'ASC' },
-  { label: 'Invoice # Desc', sortBy: 'invoiceNumber', sortOrder: 'DESC' },
-  { label: 'Amount Asc', sortBy: 'totalAmount', sortOrder: 'ASC' },
-  { label: 'Amount Desc', sortBy: 'totalAmount', sortOrder: 'DESC' },
-  { label: 'Status Asc', sortBy: 'status', sortOrder: 'ASC' },
-];
+function todayIso() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
-export default function BillingPage() {
+function firstOfMonthIso() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${yyyy}-${mm}-01`;
+}
+
+export default function GenerateBillPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const qc = useQueryClient();
-  const list = useListParams({ sortOptions: SORT_OPTIONS });
-  const [open, setOpen] = useState(false);
-  const [customerId, setCustomerId] = useState('');
-  const [consignmentIds, setConsignmentIds] = useState<string[]>([]);
-  const [notes, setNotes] = useState('');
+  const [billDate, setBillDate] = useState(todayIso);
+  const [dateFrom, setDateFrom] = useState(firstOfMonthIso);
+  const [dateTo, setDateTo] = useState(todayIso);
+  const [sgstPercent, setSgstPercent] = useState(9);
+  const [cgstPercent, setCgstPercent] = useState(9);
+  const [igstPercent, setIgstPercent] = useState(0);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [message, setMessage] = useState('');
 
-  const invoicesQuery = useQuery({
-    queryKey: ['invoices', list.queryParams],
-    queryFn: () =>
-      fetchPaginated<Invoice>('/billing/invoices', {
-        page: list.page,
-        pageSize: list.pageSize,
-        sortBy: list.sort.sortBy,
-        sortOrder: list.sort.sortOrder,
-      }),
-  });
+  useEffect(() => {
+    const info = user?.userInfo;
+    if (!info) return;
+    setSgstPercent(Number(info.sgstPercent ?? 9));
+    setCgstPercent(Number(info.cgstPercent ?? 9));
+    setIgstPercent(Number(info.igstPercent ?? 0));
+  }, [user?.userInfo]);
 
   const customersQuery = useQuery({
-    queryKey: ['customers-billing'],
+    queryKey: ['customers-billing-generate'],
     queryFn: () =>
-      fetchPaginated<{ id: string; name: string }>('/customers', {
+      fetchPaginated<CustomerRow>('/customers', {
         page: 1,
-        pageSize: 200,
+        pageSize: 500,
         sortBy: 'name',
         sortOrder: 'ASC',
       }),
   });
 
-  const consignmentsQuery = useQuery({
-    queryKey: ['consignments-billing'],
-    queryFn: () =>
-      fetchPaginated<{ id: string; awb: string; customerId: string | null }>(
-        '/consignments',
-        { page: 1, pageSize: 200, sortBy: 'createdAt', sortOrder: 'DESC' },
-      ),
-  });
+  const customers = useMemo(() => {
+    return (customersQuery.data?.data ?? []).filter((c) => c.isActive !== false);
+  }, [customersQuery.data?.data]);
 
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      await api.post('/billing/invoices', {
-        customerId,
-        consignmentIds,
-        notes: notes || undefined,
-      });
-    },
-    onSuccess: async () => {
-      setOpen(false);
-      setCustomerId('');
-      setConsignmentIds([]);
-      setNotes('');
-      await qc.invalidateQueries({ queryKey: ['invoices'] });
-    },
-  });
+  const allSelected =
+    customers.length > 0 && selected.length === customers.length;
+  const someSelected = selected.length > 0 && !allSelected;
 
-  const meta = invoicesQuery.data?.meta ?? {
-    page: list.page,
-    pageSize: list.pageSize,
-    total: 0,
+  const toggleAll = () => {
+    if (allSelected) setSelected([]);
+    else setSelected(customers.map((c) => c.id));
   };
+
+  const toggleOne = (id: string) => {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/billing/invoices/generate', {
+        billDate,
+        dateFrom,
+        dateTo,
+        customerIds: selected,
+        sgstPercent,
+        cgstPercent,
+        igstPercent,
+      });
+      return unwrap<{
+        invoices: Array<{ id: string; invoiceNumber: string }>;
+        skipped: Array<{ customerName: string; reason: string }>;
+        meta: { created: number; skipped: number };
+      }>(res.data);
+    },
+    onSuccess: async (result) => {
+      await qc.invalidateQueries({ queryKey: ['invoices'] });
+      const created = result.meta?.created ?? result.invoices?.length ?? 0;
+      const skipped = result.skipped ?? [];
+      const parts = [`Generated ${created} invoice${created === 1 ? '' : 's'}.`];
+      if (skipped.length) {
+        parts.push(
+          `Skipped ${skipped.length}: ${skipped
+            .map((s) => `${s.customerName} (${s.reason})`)
+            .join('; ')}`,
+        );
+      }
+      setMessage(parts.join(' '));
+      setSelected([]);
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message || 'Failed to generate bills';
+      setMessage(msg);
+    },
+  });
+
+  const canGenerate =
+    Boolean(billDate && dateFrom && dateTo) &&
+    selected.length > 0 &&
+    dateFrom <= dateTo;
 
   return (
     <div>
       <div className="page-header">
-        <h1>Billing</h1>
-        <Button label="Create invoice" icon="pi pi-plus" onClick={() => setOpen(true)} />
-      </div>
-      <div className="panel">
-        <ListFilterChrome
-          meta={meta}
-          sortOptions={SORT_OPTIONS}
-          sortKey={list.sortKey}
-          onSortChange={list.setSortKey}
-          onPageChange={list.setPage}
-          onPageSizeChange={list.setPageSize}
-          showClearFilters
-          onClearFilters={list.clearFilters}
-          clearFiltersDisabled={!list.hasActiveFilters}
-        >
-          <DataTable
-            value={invoicesQuery.data?.data ?? []}
-            loading={invoicesQuery.isLoading}
-            columns={[
-              { field: 'invoiceNumber', header: 'Invoice #' },
-              {
-                header: 'Customer',
-                body: (row: Invoice) => row.customer?.name ?? '—',
-              },
-              { field: 'totalAmount', header: 'Amount' },
-              { field: 'status', header: 'Status' },
-              {
-                header: 'Created',
-                body: (row: Invoice) => new Date(row.createdAt).toLocaleString(),
-              },
-            ]}
-          />
-        </ListFilterChrome>
+        <h1>Generate bill</h1>
+        <Button
+          label="View invoices"
+          icon="pi pi-list"
+          severity="secondary"
+          outlined
+          onClick={() => router.push('/billing/invoices')}
+        />
       </div>
 
-      <Dialog header="New invoice" visible={open} onHide={() => setOpen(false)} style={{ width: 560 }}>
+      <div className="panel" style={{ maxWidth: 720 }}>
         <div className="form-grid">
-          <div className="field full">
-            <label>Customer</label>
-            <Select
-              value={customerId}
-              options={(customersQuery.data?.data ?? []).map((c) => ({
-                label: c.name,
-                value: c.id,
-              }))}
-              onChange={(e) => setCustomerId(e.value)}
-              placeholder="Select customer"
-              style={{ width: '100%' }}
-            />
-          </div>
-          <div className="field full">
-            <label>Consignments</label>
-            <MultiSelect
-              value={consignmentIds}
-              options={(consignmentsQuery.data?.data ?? []).map((c) => ({
-                label: c.awb,
-                value: c.id,
-              }))}
-              onChange={(e) => setConsignmentIds(e.value)}
-              placeholder="Select AWBs"
-              style={{ width: '100%' }}
-            />
-          </div>
-          <div className="field full">
-            <label>Notes</label>
+          <div className="field">
+            <label htmlFor="billDate">Bill date</label>
             <InputText
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              id="billDate"
+              type="date"
+              value={billDate}
+              onChange={(e) => setBillDate(e.target.value)}
               style={{ width: '100%' }}
             />
           </div>
+          <div className="field">
+            <label htmlFor="dateFrom">Start date</label>
+            <InputText
+              id="dateFrom"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="dateTo">End date</label>
+            <InputText
+              id="dateTo"
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>SGST / UTGST %</label>
+            <InputNumber
+              value={sgstPercent}
+              onValueChange={(e) => setSgstPercent(Number(e.value ?? 0))}
+              min={0}
+              minFractionDigits={0}
+              maxFractionDigits={2}
+              suffix=" %"
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>CGST %</label>
+            <InputNumber
+              value={cgstPercent}
+              onValueChange={(e) => setCgstPercent(Number(e.value ?? 0))}
+              min={0}
+              minFractionDigits={0}
+              maxFractionDigits={2}
+              suffix=" %"
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>IGST %</label>
+            <InputNumber
+              value={igstPercent}
+              onValueChange={(e) => setIgstPercent(Number(e.value ?? 0))}
+              min={0}
+              minFractionDigits={0}
+              maxFractionDigits={2}
+              suffix=" %"
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
         </div>
-        <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+        <p className="muted" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+          Bill amount = Sub total + SGST + CGST + IGST (defaults from Profile).
+        </p>
+
+        <div style={{ marginTop: '1.25rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '0.65rem',
+            }}
+          >
+            <strong>Customers</strong>
+            <span className="muted" style={{ fontSize: '0.9rem' }}>
+              {selected.length} selected
+            </span>
+          </div>
+
+          <div className="billing-customer-list">
+            <label className="billing-customer-row billing-customer-row--all">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = someSelected;
+                }}
+                onChange={toggleAll}
+                disabled={!customers.length}
+              />
+              <span>Select all customers</span>
+            </label>
+
+            {customersQuery.isLoading ? (
+              <p className="muted" style={{ padding: '0.75rem' }}>
+                Loading customers…
+              </p>
+            ) : customers.length === 0 ? (
+              <p className="muted" style={{ padding: '0.75rem' }}>
+                No customers found.
+              </p>
+            ) : (
+              customers.map((c) => (
+                <label key={c.id} className="billing-customer-row">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(c.id)}
+                    onChange={() => toggleOne(c.id)}
+                  />
+                  <span>
+                    {c.name}
+                    {c.city ? (
+                      <span className="muted"> — {c.city}</span>
+                    ) : null}
+                  </span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+
+        {message ? (
+          <p style={{ marginTop: '1rem' }} className="muted">
+            {message}
+          </p>
+        ) : null}
+
+        <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem' }}>
           <Button
-            label="Issue invoice"
-            loading={createMutation.isPending}
-            disabled={!customerId || consignmentIds.length === 0}
-            onClick={() => createMutation.mutate()}
+            label="Generate bill"
+            icon="pi pi-file"
+            loading={generateMutation.isPending}
+            disabled={!canGenerate || generateMutation.isPending}
+            onClick={() => {
+              setMessage('');
+              generateMutation.mutate();
+            }}
           />
+          {generateMutation.isSuccess &&
+          (generateMutation.data?.invoices?.length ?? 0) > 0 ? (
+            <Button
+              label="Open invoices"
+              text
+              onClick={() => router.push('/billing/invoices')}
+            />
+          ) : null}
         </div>
-      </Dialog>
+      </div>
     </div>
   );
 }

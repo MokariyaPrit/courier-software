@@ -157,6 +157,14 @@ export class AuthService {
       pincode: dto.pincode,
       companyName: dto.companyName,
       gstin: dto.gstin,
+      panNumber: dto.panNumber,
+      bankName: dto.bankName,
+      bankAccountNo: dto.bankAccountNo,
+      bankIfsc: dto.bankIfsc,
+      upiId: dto.upiId,
+      sgstPercent: dto.sgstPercent,
+      cgstPercent: dto.cgstPercent,
+      igstPercent: dto.igstPercent,
       notes: dto.notes,
     });
     return this.me(userId);

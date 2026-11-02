@@ -59,6 +59,7 @@ export class CustomersService {
         stateId: dto.stateId ?? null,
         pincode: this.emptyToNull(dto.pincode) ?? null,
         gstin: this.emptyToNull(dto.gstin) ?? null,
+        panNumber: this.emptyToNull(dto.panNumber) ?? null,
         notes: this.emptyToNull(dto.notes) ?? null,
         fuelChargesExtraPercent: String(dto.fuelChargesExtraPercent ?? 0),
         fovPercent: String(dto.fovPercent ?? 0),
@@ -157,6 +158,9 @@ export class CustomersService {
     }
     if (dto.gstin !== undefined) {
       customer.gstin = this.emptyToNull(dto.gstin) ?? null;
+    }
+    if (dto.panNumber !== undefined) {
+      customer.panNumber = this.emptyToNull(dto.panNumber) ?? null;
     }
     if (dto.notes !== undefined) {
       customer.notes = this.emptyToNull(dto.notes) ?? null;

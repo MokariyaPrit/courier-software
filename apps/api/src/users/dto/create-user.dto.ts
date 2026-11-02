@@ -1,10 +1,13 @@
 import { Role } from '@courier/shared';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEmail,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
+  Min,
   MinLength,
 } from 'class-validator';
 
@@ -54,6 +57,44 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   gstin?: string;
+
+  @IsOptional()
+  @IsString()
+  panNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccountNo?: string;
+
+  @IsOptional()
+  @IsString()
+  bankIfsc?: string;
+
+  @IsOptional()
+  @IsString()
+  upiId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  sgstPercent?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  cgstPercent?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  igstPercent?: number;
 
   @IsOptional()
   @IsString()

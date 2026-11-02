@@ -64,6 +64,10 @@ export class CreateCustomerDto {
 
   @IsOptional()
   @IsString()
+  panNumber?: string;
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 
   @IsOptional()
@@ -134,6 +138,10 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsString()
   gstin?: string | null;
+
+  @IsOptional()
+  @IsString()
+  panNumber?: string | null;
 
   @IsOptional()
   @IsString()

@@ -52,6 +52,9 @@ export class Customer {
   @Column({ type: 'varchar', nullable: true })
   gstin: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  panNumber: string | null;
+
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 

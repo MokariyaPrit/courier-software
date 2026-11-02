@@ -6,6 +6,7 @@ import {
   Button,
   DataTable,
   Dialog,
+  InputNumber,
   InputText,
   Select,
   Tag,
@@ -41,6 +42,14 @@ interface UserInfoFields {
   email: string | null;
   companyName: string | null;
   gstin: string | null;
+  panNumber: string | null;
+  bankName: string | null;
+  bankAccountNo: string | null;
+  bankIfsc: string | null;
+  upiId: string | null;
+  sgstPercent: string | number | null;
+  cgstPercent: string | number | null;
+  igstPercent: string | number | null;
   address: string | null;
   city: string | null;
   state: string | null;
@@ -64,6 +73,14 @@ interface UserFormState {
   phone: string;
   companyName: string;
   gstin: string;
+  panNumber: string;
+  bankName: string;
+  bankAccountNo: string;
+  bankIfsc: string;
+  upiId: string;
+  sgstPercent: number;
+  cgstPercent: number;
+  igstPercent: number;
   address: string;
   city: string;
   state: string;
@@ -82,6 +99,14 @@ const EMPTY_USER_FORM: UserFormState = {
   phone: '',
   companyName: '',
   gstin: '',
+  panNumber: '',
+  bankName: '',
+  bankAccountNo: '',
+  bankIfsc: '',
+  upiId: '',
+  sgstPercent: 9,
+  cgstPercent: 9,
+  igstPercent: 0,
   address: '',
   city: '',
   state: '',
@@ -104,6 +129,14 @@ function toFormFromUser(user: UserRow): UserFormState {
     phone: user.userInfo?.phone || '',
     companyName: user.userInfo?.companyName || '',
     gstin: user.userInfo?.gstin || '',
+    panNumber: user.userInfo?.panNumber || '',
+    bankName: user.userInfo?.bankName || '',
+    bankAccountNo: user.userInfo?.bankAccountNo || '',
+    bankIfsc: user.userInfo?.bankIfsc || '',
+    upiId: user.userInfo?.upiId || '',
+    sgstPercent: Number(user.userInfo?.sgstPercent ?? 9),
+    cgstPercent: Number(user.userInfo?.cgstPercent ?? 9),
+    igstPercent: Number(user.userInfo?.igstPercent ?? 0),
     address: user.userInfo?.address || '',
     city: user.userInfo?.city || '',
     state: user.userInfo?.state || '',
@@ -258,6 +291,118 @@ function UserFormFields({
       </div>
 
       <div className="field">
+        <label>PAN number</label>
+        <InputText
+          value={state.panNumber}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, panNumber: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>Bank name</label>
+        <InputText
+          value={state.bankName}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, bankName: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>Acc. No.</label>
+        <InputText
+          value={state.bankAccountNo}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, bankAccountNo: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>IFSC code</label>
+        <InputText
+          value={state.bankIfsc}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, bankIfsc: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>UPI ID</label>
+        <InputText
+          value={state.upiId}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, upiId: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>SGST / UTGST %</label>
+        <InputNumber
+          value={state.sgstPercent}
+          onValueChange={(e) =>
+            setState((prev) => ({
+              ...prev,
+              sgstPercent: Number(e.value ?? 0),
+            }))
+          }
+          min={0}
+          minFractionDigits={0}
+          maxFractionDigits={2}
+          suffix=" %"
+          style={{ width: '100%' }}
+          inputStyle={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>CGST %</label>
+        <InputNumber
+          value={state.cgstPercent}
+          onValueChange={(e) =>
+            setState((prev) => ({
+              ...prev,
+              cgstPercent: Number(e.value ?? 0),
+            }))
+          }
+          min={0}
+          minFractionDigits={0}
+          maxFractionDigits={2}
+          suffix=" %"
+          style={{ width: '100%' }}
+          inputStyle={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
+        <label>IGST %</label>
+        <InputNumber
+          value={state.igstPercent}
+          onValueChange={(e) =>
+            setState((prev) => ({
+              ...prev,
+              igstPercent: Number(e.value ?? 0),
+            }))
+          }
+          min={0}
+          minFractionDigits={0}
+          maxFractionDigits={2}
+          suffix=" %"
+          style={{ width: '100%' }}
+          inputStyle={{ width: '100%' }}
+        />
+      </div>
+
+      <div className="field">
         <label>City</label>
         <InputText
           value={state.city}
@@ -361,6 +506,14 @@ export default function UsersPage() {
         phone: cleaned.phone || undefined,
         companyName: cleaned.companyName || undefined,
         gstin: cleaned.gstin || undefined,
+        panNumber: cleaned.panNumber || undefined,
+        bankName: cleaned.bankName || undefined,
+        bankAccountNo: cleaned.bankAccountNo || undefined,
+        bankIfsc: cleaned.bankIfsc || undefined,
+        upiId: cleaned.upiId || undefined,
+        sgstPercent: Number(form.sgstPercent ?? 9),
+        cgstPercent: Number(form.cgstPercent ?? 9),
+        igstPercent: Number(form.igstPercent ?? 0),
         address: cleaned.address || undefined,
         city: cleaned.city || undefined,
         state: cleaned.state || undefined,
@@ -395,6 +548,14 @@ export default function UsersPage() {
         phone: cleaned.phone || null,
         companyName: cleaned.companyName || null,
         gstin: cleaned.gstin || null,
+        panNumber: cleaned.panNumber || null,
+        bankName: cleaned.bankName || null,
+        bankAccountNo: cleaned.bankAccountNo || null,
+        bankIfsc: cleaned.bankIfsc || null,
+        upiId: cleaned.upiId || null,
+        sgstPercent: Number(editForm.sgstPercent ?? 9),
+        cgstPercent: Number(editForm.cgstPercent ?? 9),
+        igstPercent: Number(editForm.igstPercent ?? 0),
         address: cleaned.address || null,
         city: cleaned.city || null,
         state: cleaned.state || null,
@@ -565,7 +726,7 @@ export default function UsersPage() {
         header="New user"
         visible={createOpen}
         onHide={() => setCreateOpen(false)}
-        style={{ width: 'min(560px, 95vw)' }}
+        style={{ width: 'min(640px, 95vw)' }}
       >
         <UserFormFields
           state={form}
@@ -591,7 +752,7 @@ export default function UsersPage() {
           setEditOpen(false);
           setEditingUserId(null);
         }}
-        style={{ width: 'min(560px, 95vw)' }}
+        style={{ width: 'min(640px, 95vw)' }}
       >
         {editLoading ? (
           <p className="muted">Loading user…</p>
