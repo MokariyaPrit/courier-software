@@ -166,6 +166,7 @@ export class AuthService {
       cgstPercent: dto.cgstPercent,
       igstPercent: dto.igstPercent,
       notes: dto.notes,
+      bookingTabConfig: dto.bookingTabConfig,
     });
     return this.me(userId);
   }

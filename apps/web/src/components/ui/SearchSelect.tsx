@@ -30,6 +30,7 @@ type Props = {
   allowFreeText?: boolean;
   emptyHint?: string;
   inputRef?: Ref<HTMLInputElement>;
+  tabIndex?: number;
 };
 
 export function SearchSelect({
@@ -43,6 +44,7 @@ export function SearchSelect({
   allowFreeText = true,
   emptyHint = 'No matches',
   inputRef,
+  tabIndex,
 }: Props) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -84,7 +86,19 @@ export function SearchSelect({
       pick(filtered[Math.min(activeIndex, filtered.length - 1)]);
       return true;
     }
+    // Options not loaded / no match: keep current value (needed for remember fields)
     if (!allowFreeText) {
+      const exact = options.find(
+        (o) => o.label.trim().toLowerCase() === value.trim().toLowerCase(),
+      );
+      if (exact) {
+        pick(exact);
+        return true;
+      }
+      if (options.length === 0 && value.trim()) {
+        setOpen(false);
+        return false;
+      }
       onChange('');
       onSelect(null);
     } else {
@@ -125,6 +139,7 @@ export function SearchSelect({
         value={value}
         disabled={disabled}
         placeholder={placeholder}
+        tabIndex={tabIndex}
         autoComplete="off"
         role="combobox"
         aria-expanded={open}

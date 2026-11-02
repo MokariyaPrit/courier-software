@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth';
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/bookings', label: 'Bookings', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
+  { href: '/booking-cursor', label: 'Booking cursor', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/tracking', label: 'Booking list', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/delivery', label: 'Delivery', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/customers', label: 'Customers', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },

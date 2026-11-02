@@ -13,6 +13,7 @@ import {
 } from '../common/dto/pagination.dto';
 import { UserInfo } from '../entities/user-info.entity';
 import { User } from '../entities/user.entity';
+import { normalizeBookingTabConfigDto } from './dto/booking-tab-config.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -180,6 +181,12 @@ export class UsersService {
       info.igstPercent = String(dto.igstPercent);
     }
     if (dto.notes !== undefined) info.notes = dto.notes;
+    if (dto.bookingTabConfig !== undefined) {
+      // Persist per-user Tab focus field lists (account / cash)
+      info.bookingTabConfig = normalizeBookingTabConfigDto(
+        dto.bookingTabConfig,
+      );
+    }
     if (dto.infoIsActive !== undefined) info.isActive = dto.infoIsActive;
 
     await this.userInfoRepo.save(info);

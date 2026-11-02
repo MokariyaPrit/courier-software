@@ -30,6 +30,7 @@ export interface UserInfoProfile {
   cgstPercent: string | number | null;
   igstPercent: string | number | null;
   notes: string | null;
+  bookingTabConfig?: { account: string[]; cash: string[] } | null;
   isActive: boolean;
 }
 

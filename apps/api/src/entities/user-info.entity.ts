@@ -77,6 +77,13 @@ export class UserInfo {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  /**
+   * Per-user booking Tab order: which fields receive focus.
+   * Shape: { account: string[], cash: string[] }
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  bookingTabConfig: { account: string[]; cash: string[] } | null;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

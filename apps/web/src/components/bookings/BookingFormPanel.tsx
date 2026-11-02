@@ -20,6 +20,11 @@ import {
   toMatrixForm,
   weightLabelForGrams,
 } from '@/lib/quotations';
+import {
+  bookingActionTabIndex,
+  bookingFieldTabIndex,
+  type BookingTabConfig,
+} from '@/lib/booking-tab-config';
 import { trimFormData } from '@/lib/trim';
 
 type RememberFlags = {
@@ -449,6 +454,13 @@ export function BookingFormPanel({
   const { user } = useAuth();
   const userId = user?.id || 'anon';
   const isDialog = variant === 'dialog';
+  const tabConfig = user?.userInfo?.bookingTabConfig as
+    | BookingTabConfig
+    | null
+    | undefined;
+  const ti = (fieldKey: string) =>
+    bookingFieldTabIndex(fieldKey, mode, tabConfig);
+  const actionTi = bookingActionTabIndex(mode, tabConfig);
 
   const [form, setForm] = useState({ ...emptyForm, bookingType: mode });
   const [error, setError] = useState('');
@@ -825,6 +837,49 @@ export function BookingFormPanel({
     [matrix],
   );
 
+  // After rates load, re-bind remembered Service type id/label to matrix sections
+  useEffect(() => {
+    if (editingId) return;
+    if (!rememberFlags.serviceType) return;
+    if (!sectionOptions.length) return;
+
+    const wantedId =
+      form.rateSectionId || rememberedValues.rateSectionId || '';
+    const wantedLabel =
+      form.rateSectionLabel || rememberedValues.rateSectionLabel || '';
+
+    const byId = wantedId
+      ? sectionOptions.find((o) => o.value === wantedId)
+      : undefined;
+    const byLabel = wantedLabel
+      ? sectionOptions.find(
+          (o) =>
+            o.label.trim().toLowerCase() === wantedLabel.trim().toLowerCase(),
+        )
+      : undefined;
+    const match = byId || byLabel;
+    if (!match) return;
+    if (
+      form.rateSectionId === match.value &&
+      form.rateSectionLabel === match.label
+    ) {
+      return;
+    }
+    setForm((p) => ({
+      ...p,
+      rateSectionId: match.value,
+      rateSectionLabel: match.label,
+    }));
+  }, [
+    editingId,
+    rememberFlags.serviceType,
+    sectionOptions,
+    form.rateSectionId,
+    form.rateSectionLabel,
+    rememberedValues.rateSectionId,
+    rememberedValues.rateSectionLabel,
+  ]);
+
   const applyCustomer = (opt: SearchSelectOption | null) => {
     if (!opt) {
       setForm((p) => ({
@@ -836,8 +891,10 @@ export function BookingFormPanel({
         senderName: '',
         senderPhone: '',
         senderAddress: '',
-        rateSectionId: '',
-        rateSectionLabel: '',
+        // Keep service type when "Remember → Service type" is on
+        ...(rememberFlags.serviceType
+          ? {}
+          : { rateSectionId: '', rateSectionLabel: '' }),
       }));
       return;
     }
@@ -849,8 +906,10 @@ export function BookingFormPanel({
       ...p,
       customerId: opt.value,
       customerLabel: opt.label,
-      rateSectionId: '',
-      rateSectionLabel: '',
+      // Changing customer used to wipe Service type — preserve when remembered
+      ...(rememberFlags.serviceType
+        ? {}
+        : { rateSectionId: '', rateSectionLabel: '' }),
       senderLocationId: center?.id || '',
       senderName: c?.name || opt.label,
       senderPhone: c?.primaryPhone || '',
@@ -1081,9 +1140,18 @@ export function BookingFormPanel({
         receiverCityId: cleaned.receiverCityId || undefined,
         receiverStateId: cleaned.receiverStateId || undefined,
         weightKg,
-        cgst: Number(cleaned.cgst) || 0,
-        sgst: Number(cleaned.sgst) || 0,
-        igst: Number(cleaned.igst) || 0,
+        cgst:
+          cleaned.bookingType === BookingType.ACCOUNT
+            ? 0
+            : Number(cleaned.cgst) || 0,
+        sgst:
+          cleaned.bookingType === BookingType.ACCOUNT
+            ? 0
+            : Number(cleaned.sgst) || 0,
+        igst:
+          cleaned.bookingType === BookingType.ACCOUNT
+            ? 0
+            : Number(cleaned.igst) || 0,
         serviceType: ServiceType.STANDARD,
         remarks: cleaned.remarks || undefined,
         charges,
@@ -1252,6 +1320,7 @@ export function BookingFormPanel({
               <InputText
                 type="date"
                 value={form.bookingDate}
+                tabIndex={ti('bookingDate')}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, bookingDate: e.target.value }))
                 }
@@ -1269,6 +1338,7 @@ export function BookingFormPanel({
                   placeholder="Type customer name…"
                   allowFreeText={false}
                   emptyHint="No customers match"
+                  tabIndex={ti('customer')}
                   onChange={(text) =>
                     setForm((p) => ({
                       ...p,
@@ -1285,6 +1355,7 @@ export function BookingFormPanel({
                 <InputText
                   ref={partyFocusRef}
                   value={form.partyName}
+                  tabIndex={ti('partyName')}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, partyName: e.target.value }))
                   }
@@ -1301,6 +1372,7 @@ export function BookingFormPanel({
                 placeholder="Type courier company…"
                 allowFreeText={false}
                 emptyHint="No active courier companies"
+                tabIndex={ti('courierCompany')}
                 onChange={(text) =>
                   setForm((p) => ({
                     ...p,
@@ -1316,6 +1388,7 @@ export function BookingFormPanel({
               <label>Document Number</label>
               <InputText
                 value={form.documentNumber}
+                tabIndex={ti('documentNumber')}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, documentNumber: e.target.value }))
                 }
@@ -1332,6 +1405,7 @@ export function BookingFormPanel({
                 placeholder="Type destination from Centers…"
                 allowFreeText={false}
                 emptyHint="Configure Centers first"
+                tabIndex={ti('destination')}
                 onChange={(text) =>
                   setForm((p) => ({
                     ...p,
@@ -1349,6 +1423,7 @@ export function BookingFormPanel({
                   <label>Party phone</label>
                   <InputText
                     value={form.partyPhone}
+                    tabIndex={ti('partyPhone')}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, partyPhone: e.target.value }))
                     }
@@ -1359,6 +1434,7 @@ export function BookingFormPanel({
                   <label>Party address</label>
                   <InputText
                     value={form.partyAddress}
+                    tabIndex={ti('partyAddress')}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, partyAddress: e.target.value }))
                     }
@@ -1369,6 +1445,7 @@ export function BookingFormPanel({
                   <label>Party city</label>
                   <InputText
                     value={form.partyCity}
+                    tabIndex={ti('partyCity')}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, partyCity: e.target.value }))
                     }
@@ -1379,6 +1456,7 @@ export function BookingFormPanel({
                   <label>Party GSTIN</label>
                   <InputText
                     value={form.partyGstin}
+                    tabIndex={ti('partyGstin')}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, partyGstin: e.target.value }))
                     }
@@ -1396,6 +1474,7 @@ export function BookingFormPanel({
                 placeholder="Type receiver name…"
                 allowFreeText
                 emptyHint="New receiver will be created"
+                tabIndex={ti('receiverName')}
                 onChange={(text) =>
                   setForm((p) => ({
                     ...p,
@@ -1410,6 +1489,7 @@ export function BookingFormPanel({
               <label>Receiver Phone</label>
               <InputText
                 value={form.receiverPhone}
+                tabIndex={ti('receiverPhone')}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, receiverPhone: e.target.value }))
                 }
@@ -1420,6 +1500,7 @@ export function BookingFormPanel({
               <label>Receiver Address</label>
               <InputText
                 value={form.receiverAddress}
+                tabIndex={ti('receiverAddress')}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, receiverAddress: e.target.value }))
                 }
@@ -1437,6 +1518,7 @@ export function BookingFormPanel({
                 emptyHint={
                   matrix ? 'No sections' : 'Select customer / cash rates first'
                 }
+                tabIndex={ti('serviceType')}
                 onChange={(text) =>
                   setForm((p) => ({
                     ...p,
@@ -1467,6 +1549,7 @@ export function BookingFormPanel({
               <label>Weight (g)</label>
               <InputNumber
                 value={form.weightGrams}
+                tabIndex={ti('weight')}
                 onValueChange={(e) =>
                   setForm((p) => ({
                     ...p,
@@ -1486,6 +1569,7 @@ export function BookingFormPanel({
               <label>{isPriceAuto ? 'Price (Auto)' : 'Price (Manual)'}</label>
               <InputNumber
                 value={form.freight}
+                tabIndex={ti('price')}
                 onValueChange={(e) => {
                   const next = Math.max(Number(e.value ?? 0), 0);
                   const auto = Number(resolvedPrice.amount);
@@ -1500,62 +1584,70 @@ export function BookingFormPanel({
               />
             </div>
 
-            <div className="field">
-              <label>CGST</label>
-              <InputNumber
-                value={form.cgst}
-                onValueChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    cgst: Math.max(Number(e.value ?? 0), 0),
-                  }))
-                }
-                min={0}
-                minFractionDigits={0}
-                maxFractionDigits={2}
-                style={{ width: '100%' }}
-                inputStyle={{ width: '100%' }}
-              />
-            </div>
-            <div className="field">
-              <label>SGST</label>
-              <InputNumber
-                value={form.sgst}
-                onValueChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    sgst: Math.max(Number(e.value ?? 0), 0),
-                  }))
-                }
-                min={0}
-                minFractionDigits={0}
-                maxFractionDigits={2}
-                style={{ width: '100%' }}
-                inputStyle={{ width: '100%' }}
-              />
-            </div>
-            <div className="field">
-              <label>IGST</label>
-              <InputNumber
-                value={form.igst}
-                onValueChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    igst: Math.max(Number(e.value ?? 0), 0),
-                  }))
-                }
-                min={0}
-                minFractionDigits={0}
-                maxFractionDigits={2}
-                style={{ width: '100%' }}
-                inputStyle={{ width: '100%' }}
-              />
-            </div>
+            {mode === BookingType.CASH ? (
+              <>
+                <div className="field">
+                  <label>CGST</label>
+                  <InputNumber
+                    value={form.cgst}
+                    tabIndex={ti('cgst')}
+                    onValueChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        cgst: Math.max(Number(e.value ?? 0), 0),
+                      }))
+                    }
+                    min={0}
+                    minFractionDigits={0}
+                    maxFractionDigits={2}
+                    style={{ width: '100%' }}
+                    inputStyle={{ width: '100%' }}
+                  />
+                </div>
+                <div className="field">
+                  <label>SGST</label>
+                  <InputNumber
+                    value={form.sgst}
+                    tabIndex={ti('sgst')}
+                    onValueChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        sgst: Math.max(Number(e.value ?? 0), 0),
+                      }))
+                    }
+                    min={0}
+                    minFractionDigits={0}
+                    maxFractionDigits={2}
+                    style={{ width: '100%' }}
+                    inputStyle={{ width: '100%' }}
+                  />
+                </div>
+                <div className="field">
+                  <label>IGST</label>
+                  <InputNumber
+                    value={form.igst}
+                    tabIndex={ti('igst')}
+                    onValueChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        igst: Math.max(Number(e.value ?? 0), 0),
+                      }))
+                    }
+                    min={0}
+                    minFractionDigits={0}
+                    maxFractionDigits={2}
+                    style={{ width: '100%' }}
+                    inputStyle={{ width: '100%' }}
+                  />
+                </div>
+              </>
+            ) : null}
 
             <div className="field full">
               <label>Remarks</label>
               <Textarea
                 value={form.remarks}
+                tabIndex={ti('remarks')}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, remarks: e.target.value }))
                 }
@@ -1590,6 +1682,7 @@ export function BookingFormPanel({
               label={editingId ? 'Update booking' : 'Create booking'}
               icon="pi pi-check"
               loading={saveMutation.isPending}
+              tabIndex={actionTi}
               onClick={() => saveMutation.mutate()}
             />
             {editingId ? (
@@ -1597,6 +1690,7 @@ export function BookingFormPanel({
                 label="Cancel edit"
                 severity="secondary"
                 outlined
+                tabIndex={actionTi + 1}
                 onClick={() => {
                 resetForm();
                 onEditingChange?.(null);
@@ -1660,6 +1754,7 @@ export function BookingFormPanel({
                   >
                     <input
                       type="checkbox"
+                      tabIndex={-1}
                       checked={rememberFlags[opt.key]}
                       onChange={(e) =>
                         updateRememberFlag(opt.key, e.target.checked)

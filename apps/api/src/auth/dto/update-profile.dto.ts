@@ -6,7 +6,9 @@ import {
   IsString,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { BookingTabConfigDto } from '../../users/dto/booking-tab-config.dto';
 
 /** Logged-in user updates own profile — single email used for login */
 export class UpdateProfileDto {
@@ -88,4 +90,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   notes?: string | null;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BookingTabConfigDto)
+  bookingTabConfig?: BookingTabConfigDto | null;
 }

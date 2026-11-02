@@ -10,7 +10,9 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { BookingTabConfigDto } from './booking-tab-config.dto';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -106,6 +108,11 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   notes?: string | null;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BookingTabConfigDto)
+  bookingTabConfig?: BookingTabConfigDto | null;
 
   @IsOptional()
   @IsBoolean()
