@@ -1052,35 +1052,6 @@ export function BookingFormPanel({
           .join(', ') || senderAddress;
     }
 
-    const charges = [
-      {
-        type: ChargeType.FREIGHT,
-        amount: freight,
-        description: 'Freight',
-      },
-    ];
-    if (Number(cleaned.cgst) > 0) {
-      charges.push({
-        type: ChargeType.CGST,
-        amount: Number(cleaned.cgst),
-        description: 'CGST',
-      });
-    }
-    if (Number(cleaned.sgst) > 0) {
-      charges.push({
-        type: ChargeType.SGST,
-        amount: Number(cleaned.sgst),
-        description: 'SGST',
-      });
-    }
-    if (Number(cleaned.igst) > 0) {
-      charges.push({
-        type: ChargeType.IGST,
-        amount: Number(cleaned.igst),
-        description: 'IGST',
-      });
-    }
-
     return {
       cleaned,
       payload: {
@@ -1140,6 +1111,7 @@ export function BookingFormPanel({
         receiverCityId: cleaned.receiverCityId || undefined,
         receiverStateId: cleaned.receiverStateId || undefined,
         weightKg,
+        price: freight,
         cgst:
           cleaned.bookingType === BookingType.ACCOUNT
             ? 0
@@ -1154,7 +1126,6 @@ export function BookingFormPanel({
             : Number(cleaned.igst) || 0,
         serviceType: ServiceType.STANDARD,
         remarks: cleaned.remarks || undefined,
-        charges,
       },
     };
   };

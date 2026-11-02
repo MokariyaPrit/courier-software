@@ -167,7 +167,7 @@ function BookingsPageInner() {
   const askDelete = (row: ConsignmentRow) => {
     confirmDialog({
       header: 'Delete booking',
-      message: `Delete booking ${row.awb}? It will be hidden from lists (soft delete).`,
+      message: `Delete booking ${row.awb}? Bookings already on an invoice cannot be deleted.`,
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',
@@ -213,68 +213,81 @@ function BookingsPageInner() {
             Last {recentQuery.data?.data?.length ?? 0} of yours
           </p>
           <div className="booking-recent-list">
-            {(recentQuery.data?.data ?? []).map((row) => (
-              <div key={row.id} className="booking-recent-card">
-                <div className="booking-recent-top">
-                  <button
-                    type="button"
-                    className="booking-recent-awb"
-                    onClick={() => setViewId(row.id)}
-                  >
-                    {row.awb}
-                  </button>
-                  <div className="booking-recent-rate">
-                    ₹{freightOf(row.charges)}
+            {(recentQuery.data?.data ?? []).map((row) => {
+              const accountOrParty =
+                row.customer?.name || row.partyName || null;
+              const metaParts = [
+                row.bookingDate ||
+                  new Date(row.createdAt).toLocaleDateString(),
+                row.receiverCity || null,
+                row.rateSectionId
+                  ? serviceTypeLabel(row.rateSectionId)
+                  : null,
+                row.weightKg != null
+                  ? `${weightGrams(row.weightKg)} g`
+                  : null,
+              ].filter(Boolean);
+
+              return (
+                <div key={row.id} className="booking-recent-card">
+                  <div className="booking-recent-main">
+                    <div className="booking-recent-line">
+                      <button
+                        type="button"
+                        className="booking-recent-awb"
+                        onClick={() => setViewId(row.id)}
+                      >
+                        {row.awb}
+                      </button>
+                      <span className="booking-recent-rate">
+                        ₹{freightOf(row.charges)}
+                      </span>
+                    </div>
+                    <div className="booking-recent-receiver">
+                      {row.receiverName}
+                      {accountOrParty ? (
+                        <span className="muted"> · {accountOrParty}</span>
+                      ) : null}
+                    </div>
+                    {metaParts.length ? (
+                      <div className="booking-recent-meta">
+                        {metaParts.join(' · ')}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="booking-recent-actions">
+                    <button
+                      type="button"
+                      className="booking-recent-icon-btn"
+                      title="View"
+                      aria-label="View"
+                      onClick={() => setViewId(row.id)}
+                    >
+                      <i className="pi pi-eye" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="booking-recent-icon-btn"
+                      title="Edit"
+                      aria-label="Edit"
+                      onClick={() => setEditingId(row.id)}
+                    >
+                      <i className="pi pi-pencil" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="booking-recent-icon-btn danger"
+                      title="Delete"
+                      aria-label="Delete"
+                      disabled={deleteMutation.isPending}
+                      onClick={() => askDelete(row)}
+                    >
+                      <i className="pi pi-trash" aria-hidden />
+                    </button>
                   </div>
                 </div>
-                <div className="booking-recent-receiver">
-                  {row.receiverName}
-                  {row.customer?.name
-                    ? ` · ${row.customer.name}`
-                    : row.partyName
-                      ? ` · ${row.partyName}`
-                      : ''}
-                </div>
-                <div className="booking-recent-meta">
-                  <span>
-                    {row.bookingDate ||
-                      new Date(row.createdAt).toLocaleDateString()}
-                  </span>
-                  {row.receiverCity ? <span>{row.receiverCity}</span> : null}
-                  {row.rateSectionId ? (
-                    <span>{serviceTypeLabel(row.rateSectionId)}</span>
-                  ) : null}
-                  {row.weightKg != null ? (
-                    <span>{weightGrams(row.weightKg)} g</span>
-                  ) : null}
-                </div>
-                <div className="booking-recent-actions">
-                  <Button
-                    size="small"
-                    text
-                    icon="pi pi-eye"
-                    label="View"
-                    onClick={() => setViewId(row.id)}
-                  />
-                  <Button
-                    size="small"
-                    text
-                    icon="pi pi-pencil"
-                    label="Edit"
-                    onClick={() => setEditingId(row.id)}
-                  />
-                  <Button
-                    size="small"
-                    text
-                    severity="danger"
-                    icon="pi pi-trash"
-                    label="Delete"
-                    loading={deleteMutation.isPending}
-                    onClick={() => askDelete(row)}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </aside>
       </div>

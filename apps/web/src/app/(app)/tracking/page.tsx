@@ -214,12 +214,14 @@ function BookingListInner() {
   });
 
   const customerOptions: SearchSelectOption[] = useMemo(
-    () =>
-      (customersQuery.data?.data ?? []).map((c) => ({
+    () => [
+      { value: '', label: 'All customers' },
+      ...(customersQuery.data?.data ?? []).map((c) => ({
         value: c.id,
         label: c.name,
         subLabel: c.city || c.primaryPhone || undefined,
       })),
+    ],
     [customersQuery.data],
   );
 
@@ -231,9 +233,12 @@ function BookingListInner() {
       const key = name.toLowerCase();
       if (!names.has(key)) names.set(key, name);
     }
-    return Array.from(names.values())
-      .sort((a, b) => a.localeCompare(b))
-      .map((name) => ({ value: name, label: name }));
+    return [
+      { value: '', label: 'All parties' },
+      ...Array.from(names.values())
+        .sort((a, b) => a.localeCompare(b))
+        .map((name) => ({ value: name, label: name })),
+    ];
   }, [partyOptionsQuery.data]);
 
   const listQuery = useQuery({
@@ -264,10 +269,6 @@ function BookingListInner() {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
       }),
-    enabled:
-      viewMode === 'all' ||
-      (viewMode === 'customer' && Boolean(customerId)) ||
-      (viewMode === 'party' && Boolean(partyName)),
   });
 
   const detailQuery = useQuery({
@@ -377,12 +378,7 @@ function BookingListInner() {
   const freight = chargeAmount(detail?.charges, ChargeType.FREIGHT) ?? '0.00';
   const detailOpen = Boolean(dialogMode && (detailId || detailAwb));
 
-  const emptyMessage =
-    viewMode === 'customer' && !customerId
-      ? 'Select a customer to see their bookings'
-      : viewMode === 'party' && !partyName
-        ? 'Select a party to see their bookings'
-        : 'No bookings found';
+  const emptyMessage = 'No bookings found';
 
   return (
     <div>
@@ -401,6 +397,8 @@ function BookingListInner() {
               setViewMode('customer');
               setPartyLabel('');
               setPartyName('');
+              setCustomerId('');
+              setCustomerLabel('');
               setBookingType('');
               list.setPage(1);
             }}
@@ -412,6 +410,8 @@ function BookingListInner() {
               setViewMode('party');
               setCustomerId('');
               setCustomerLabel('');
+              setPartyName('');
+              setPartyLabel('');
               setBookingType('');
               list.setPage(1);
             }}
@@ -419,8 +419,9 @@ function BookingListInner() {
         </div>
       </div>
       <p className="muted" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-        Switch to Customer wise or Party wise to list bookings for one account
-        customer or cash party.
+        Customer wise loads all account bookings by default (pick a customer to
+        filter). Party wise loads all cash bookings by default (pick a party to
+        filter).
       </p>
 
       <ListSearch
@@ -434,7 +435,7 @@ function BookingListInner() {
                 <SearchSelect
                   value={customerLabel}
                   options={customerOptions}
-                  placeholder="Type customer name…"
+                  placeholder="All customers — type to filter…"
                   allowFreeText={false}
                   emptyHint="No customers match"
                   onChange={(text) => {
@@ -442,8 +443,10 @@ function BookingListInner() {
                     setCustomerId('');
                   }}
                   onSelect={(opt) => {
-                    if (!opt) {
+                    if (!opt || !opt.value) {
                       setCustomerId('');
+                      setCustomerLabel('');
+                      list.setPage(1);
                       return;
                     }
                     setCustomerId(opt.value);
@@ -458,7 +461,7 @@ function BookingListInner() {
                 <SearchSelect
                   value={partyLabel}
                   options={partyOptions}
-                  placeholder="Type party name…"
+                  placeholder="All parties — type to filter…"
                   allowFreeText
                   emptyHint="No parties yet — type a name"
                   onChange={(text) => {
@@ -466,9 +469,18 @@ function BookingListInner() {
                     setPartyName('');
                   }}
                   onSelect={(opt) => {
-                    if (!opt) {
+                    if (!opt || !opt.value) {
                       const typed = partyLabel.trim();
-                      setPartyName(typed);
+                      if (
+                        typed &&
+                        typed.toLowerCase() !== 'all parties'
+                      ) {
+                        setPartyName(typed);
+                        setPartyLabel(typed);
+                      } else {
+                        setPartyName('');
+                        setPartyLabel('');
+                      }
                       list.setPage(1);
                       return;
                     }

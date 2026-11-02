@@ -405,15 +405,18 @@ a {
 .booking-recent-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.4rem;
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
 }
 
 .booking-recent-card {
-  display: block;
-  padding: 0.75rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.4rem 0.4rem 0.65rem;
   border: 1px solid var(--main-border);
   border-radius: var(--radius-md);
   text-decoration: none;
@@ -426,11 +429,16 @@ a {
   border-color: var(--main-primary);
 }
 
-.booking-recent-top {
+.booking-recent-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.booking-recent-line {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.55rem;
+  min-width: 0;
 }
 
 .booking-recent-awb {
@@ -441,9 +449,14 @@ a {
   margin: 0;
   font: inherit;
   font-weight: 600;
+  font-size: 0.92rem;
   color: var(--main-primary);
   cursor: pointer;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .booking-recent-awb:hover {
@@ -452,27 +465,70 @@ a {
 
 .booking-recent-rate {
   font-weight: 600;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.booking-recent-receiver {
+  font-size: 0.84rem;
+  line-height: 1.25;
+  margin-top: 0.1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .booking-recent-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--main-text-muted);
-  margin: 0.25rem 0;
-}
-
-.booking-recent-receiver {
-  font-size: 0.92rem;
+  line-height: 1.25;
+  margin-top: 0.08rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .booking-recent-actions {
   display: flex;
-  gap: 0.35rem;
-  margin-top: 0.5rem;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.booking-recent-icon-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--main-primary);
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  margin: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.booking-recent-icon-btn:hover {
+  background: color-mix(in srgb, var(--main-primary) 12%, transparent);
+}
+
+.booking-recent-icon-btn.danger {
+  color: var(--main-danger, #b91c1c);
+}
+
+.booking-recent-icon-btn.danger:hover {
+  background: color-mix(in srgb, var(--main-danger, #b91c1c) 12%, transparent);
+}
+
+.booking-recent-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 @media (max-width: 960px) {

@@ -181,6 +181,12 @@ export class CreateConsignmentDto {
   @IsString()
   remarks?: string;
 
+  /** Price amount — stored as FREIGHT charge row */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
+
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
@@ -189,6 +195,14 @@ export class CreateConsignmentDto {
 }
 
 export class UpdateConsignmentDto {
+  @IsOptional()
+  @IsEnum(BookingType)
+  bookingType?: BookingType;
+
+  @IsOptional()
+  @IsEnum(ServiceType)
+  serviceType?: ServiceType;
+
   @IsOptional()
   @IsDateString()
   bookingDate?: string;
@@ -328,6 +342,12 @@ export class UpdateConsignmentDto {
   @IsOptional()
   @IsString()
   remarks?: string | null;
+
+  /** Price amount — stored as FREIGHT charge row */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
 
   @IsOptional()
   @IsArray()

@@ -2,13 +2,19 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConsignmentCharge } from '../entities/consignment-charge.entity';
 import { Consignment } from '../entities/consignment.entity';
+import { Invoice } from '../entities/invoice.entity';
 import { TrackingEvent } from '../entities/tracking-event.entity';
 import { ConsignmentsController } from './consignments.controller';
 import { ConsignmentsService } from './consignments.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Consignment, ConsignmentCharge, TrackingEvent]),
+    TypeOrmModule.forFeature([
+      Consignment,
+      ConsignmentCharge,
+      TrackingEvent,
+      Invoice,
+    ]),
   ],
   controllers: [ConsignmentsController],
   providers: [ConsignmentsService],

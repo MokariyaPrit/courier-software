@@ -176,9 +176,9 @@ export function SearchSelect({
                 }}
               >
                 <span>{opt.label}</span>
-                {opt.subLabel ? (
+                {/* {opt.subLabel ? (
                   <span className="muted search-select-sub">{opt.subLabel}</span>
-                ) : null}
+                ) : null} */}
               </li>
             ))
           )}

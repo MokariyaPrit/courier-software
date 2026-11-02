@@ -513,6 +513,8 @@ export class BillingService {
           where: { id: In(invoice.consignmentIds) },
           relations: { charges: true },
           order: { bookingDate: 'ASC', createdAt: 'ASC' },
+          // Keep billed lines even if a booking was soft-deleted earlier
+          withDeleted: true,
         })
       : [];
 
