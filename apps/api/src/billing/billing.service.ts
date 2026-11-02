@@ -6,7 +6,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   BookingType,
-  ChargeType,
   InvoiceStatus,
   QUOTATION_SERVICE_TYPE_LABELS,
   QuotationServiceType,
@@ -76,14 +75,7 @@ function consignmentWeightLabel(c: Consignment) {
 }
 
 function freightOf(c: Consignment) {
-  return (c.charges ?? [])
-    .filter(
-      (ch) =>
-        ch.type === ChargeType.FREIGHT ||
-        ch.type === ChargeType.OTHER ||
-        ch.type === ChargeType.COD,
-    )
-    .reduce((s, ch) => s + Number(ch.amount || 0), 0);
+  return Number(c.price || 0);
 }
 
 type GstRates = {
@@ -303,7 +295,6 @@ export class BillingService {
 
     const consignments = await this.consignmentsRepo.find({
       where: { id: In(dto.consignmentIds) },
-      relations: { charges: true },
     });
     if (consignments.length !== dto.consignmentIds.length) {
       throw new BadRequestException('One or more consignments not found');
@@ -373,7 +364,6 @@ export class BillingService {
     for (const customer of customers) {
       const qb = this.consignmentsRepo
         .createQueryBuilder('c')
-        .leftJoinAndSelect('c.charges', 'charges')
         .where('c.deletedAt IS NULL')
         .andWhere('c.customerId = :customerId', { customerId: customer.id })
         .andWhere('c.bookingType = :bookingType', {
@@ -511,7 +501,6 @@ export class BillingService {
     const consignments = invoice.consignmentIds?.length
       ? await this.consignmentsRepo.find({
           where: { id: In(invoice.consignmentIds) },
-          relations: { charges: true },
           order: { bookingDate: 'ASC', createdAt: 'ASC' },
           // Keep billed lines even if a booking was soft-deleted earlier
           withDeleted: true,

@@ -7,7 +7,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   BookingType,
-  ChargeType,
   ConsignmentStatus,
   InvoiceStatus,
   Role,
@@ -16,7 +15,6 @@ import {
 import { Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { paginateMeta, resolveSortPair } from '../common/dto/pagination.dto';
-import { ConsignmentCharge } from '../entities/consignment-charge.entity';
 import { Consignment } from '../entities/consignment.entity';
 import { Invoice } from '../entities/invoice.entity';
 import { TrackingEvent } from '../entities/tracking-event.entity';
@@ -40,8 +38,6 @@ export class ConsignmentsService {
   constructor(
     @InjectRepository(Consignment)
     private readonly consignmentsRepo: Repository<Consignment>,
-    @InjectRepository(ConsignmentCharge)
-    private readonly chargesRepo: Repository<ConsignmentCharge>,
     @InjectRepository(TrackingEvent)
     private readonly eventsRepo: Repository<TrackingEvent>,
     @InjectRepository(Invoice)
@@ -132,6 +128,7 @@ export class ConsignmentsService {
       receiverCityId: dto.receiverCityId ?? null,
       receiverStateId: dto.receiverStateId ?? null,
       weightKg: String(dto.weightKg ?? 0),
+      price: String(dto.price ?? 0),
       cgst: String(dto.cgst ?? 0),
       sgst: String(dto.sgst ?? 0),
       igst: String(dto.igst ?? 0),
@@ -140,14 +137,6 @@ export class ConsignmentsService {
     });
 
     const saved = await this.consignmentsRepo.save(consignment);
-
-    await this.replaceCharges(saved.id, {
-      charges: dto.charges,
-      cgst: dto.cgst,
-      sgst: dto.sgst,
-      igst: dto.igst,
-      freightAmount: dto.price,
-    });
 
     await this.eventsRepo.save(
       this.eventsRepo.create({
@@ -173,7 +162,6 @@ export class ConsignmentsService {
       .leftJoinAndSelect('c.courierCompany', 'courierCompany')
       .leftJoinAndSelect('c.receiver', 'receiver')
       .leftJoinAndSelect('c.senderLocation', 'senderLocation')
-      .leftJoinAndSelect('c.charges', 'charges')
       .leftJoinAndSelect('c.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
       .where('c.deletedAt IS NULL')
@@ -254,7 +242,6 @@ export class ConsignmentsService {
         receiver: true,
         senderLocation: true,
         quotation: true,
-        charges: true,
         trackingEvents: {
           createdBy: {
             userInfo: true,
@@ -298,78 +285,6 @@ export class ConsignmentsService {
   private assertOwner(consignment: Consignment, user: AuthUser) {
     if (user.role !== Role.ADMIN && consignment.createdById !== user.id) {
       throw new ForbiddenException('You can only manage your own bookings');
-    }
-  }
-
-  private async replaceCharges(
-    consignmentId: string,
-    dto: {
-      charges?: CreateConsignmentDto['charges'];
-      cgst?: number;
-      sgst?: number;
-      igst?: number;
-      freightAmount?: number;
-    },
-  ) {
-    let freightAmount = dto.freightAmount;
-    if (freightAmount === undefined && !dto.charges?.length) {
-      const existingFreight = await this.chargesRepo.findOne({
-        where: { consignmentId, type: ChargeType.FREIGHT },
-      });
-      freightAmount = existingFreight ? Number(existingFreight.amount) : 0;
-    }
-
-    await this.chargesRepo.softDelete({ consignmentId });
-
-    const chargeInputs =
-      dto.charges?.length
-        ? [...dto.charges]
-        : [
-            {
-              type: ChargeType.FREIGHT,
-              amount: Number(freightAmount ?? 0),
-              description: 'Freight',
-            },
-          ];
-
-    const taxCharges: Array<{
-      type: ChargeType;
-      amount: number;
-      description: string;
-    }> = [
-      {
-        type: ChargeType.CGST,
-        amount: Number(dto.cgst ?? 0),
-        description: 'CGST',
-      },
-      {
-        type: ChargeType.SGST,
-        amount: Number(dto.sgst ?? 0),
-        description: 'SGST',
-      },
-      {
-        type: ChargeType.IGST,
-        amount: Number(dto.igst ?? 0),
-        description: 'IGST',
-      },
-    ];
-    for (const tax of taxCharges) {
-      if (tax.amount <= 0) continue;
-      if (chargeInputs.some((c) => c.type === tax.type)) continue;
-      chargeInputs.push(tax);
-    }
-
-    if (chargeInputs.length) {
-      await this.chargesRepo.save(
-        chargeInputs.map((c) =>
-          this.chargesRepo.create({
-            consignmentId,
-            type: c.type,
-            amount: String(c.amount),
-            description: c.description ?? null,
-          }),
-        ),
-      );
     }
   }
 
@@ -463,6 +378,7 @@ export class ConsignmentsService {
     if (dto.weightKg !== undefined) {
       consignment.weightKg = String(dto.weightKg);
     }
+    if (dto.price !== undefined) consignment.price = String(dto.price);
     if (dto.cgst !== undefined) consignment.cgst = String(dto.cgst);
     if (dto.sgst !== undefined) consignment.sgst = String(dto.sgst);
     if (dto.igst !== undefined) consignment.igst = String(dto.igst);
@@ -471,28 +387,6 @@ export class ConsignmentsService {
     }
 
     await this.consignmentsRepo.save(consignment);
-
-    if (
-      dto.charges !== undefined ||
-      dto.price !== undefined ||
-      dto.cgst !== undefined ||
-      dto.sgst !== undefined ||
-      dto.igst !== undefined
-    ) {
-      const freightFromCharges = dto.charges?.find(
-        (c) => c.type === ChargeType.FREIGHT,
-      )?.amount;
-      await this.replaceCharges(id, {
-        charges: dto.charges,
-        cgst: dto.cgst !== undefined ? dto.cgst : Number(consignment.cgst),
-        sgst: dto.sgst !== undefined ? dto.sgst : Number(consignment.sgst),
-        igst: dto.igst !== undefined ? dto.igst : Number(consignment.igst),
-        freightAmount:
-          freightFromCharges ??
-          (dto.price !== undefined ? dto.price : undefined),
-      });
-    }
-
     return this.findOne(id);
   }
 
@@ -500,7 +394,6 @@ export class ConsignmentsService {
     const consignment = await this.findOne(id);
     this.assertOwner(consignment, user);
     await this.assertNotOnActiveInvoice(consignment);
-    await this.chargesRepo.softDelete({ consignmentId: id });
     await this.consignmentsRepo.softDelete(id);
     return { deleted: true };
   }

@@ -4,7 +4,6 @@ export { Customer } from './customer.entity';
 export { State } from './state.entity';
 export { City } from './city.entity';
 export { Consignment } from './consignment.entity';
-export { ConsignmentCharge } from './consignment-charge.entity';
 export { TrackingEvent } from './tracking-event.entity';
 export { Invoice } from './invoice.entity';
 export { QuotationRateTemplate } from './quotation-rate-template.entity';

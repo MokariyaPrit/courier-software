@@ -3,7 +3,6 @@
 import {
   BOOKING_TYPE_LABELS,
   BookingType,
-  ChargeType,
   ConsignmentStatus,
 } from '@courier/shared';
 import { useQuery } from '@tanstack/react-query';
@@ -42,11 +41,6 @@ interface BookingRow {
   weightKg?: string | number | null;
 }
 
-interface ChargeRow {
-  type: ChargeType | string;
-  amount: string | number;
-}
-
 interface ConsignmentDetail {
   id: string;
   awb: string;
@@ -61,13 +55,13 @@ interface ConsignmentDetail {
   receiverState?: string | null;
   rateSectionId?: string | null;
   weightKg?: string | number | null;
+  price?: string | number | null;
   cgst?: string | number | null;
   sgst?: string | number | null;
   igst?: string | number | null;
   remarks?: string | null;
   customer?: { name?: string } | null;
   partyName?: string | null;
-  charges?: ChargeRow[];
 }
 
 type DialogMode = 'view' | 'edit';
@@ -112,11 +106,6 @@ function weightGrams(value: string | number | null | undefined) {
   const kg = Number(value ?? 0);
   if (!Number.isFinite(kg)) return '—';
   return String(Math.round(kg * 1000));
-}
-
-function chargeAmount(charges: ChargeRow[] | undefined, type: ChargeType) {
-  const row = (charges ?? []).find((c) => c.type === type);
-  return row ? money(row.amount) : null;
 }
 
 function statusSeverity(
@@ -375,7 +364,7 @@ function BookingListInner() {
   }, []);
 
   const detail = detailQuery.data;
-  const freight = chargeAmount(detail?.charges, ChargeType.FREIGHT) ?? '0.00';
+  const freight = money(detail?.price);
   const detailOpen = Boolean(dialogMode && (detailId || detailAwb));
 
   const emptyMessage = 'No bookings found';
@@ -669,22 +658,19 @@ function BookingListInner() {
             <div className="field">
               <label>CGST</label>
               <div>
-                {chargeAmount(detail.charges, ChargeType.CGST) ??
-                  money(detail.cgst)}
+                {money(detail.cgst)}
               </div>
             </div>
             <div className="field">
               <label>SGST</label>
               <div>
-                {chargeAmount(detail.charges, ChargeType.SGST) ??
-                  money(detail.sgst)}
+                {money(detail.sgst)}
               </div>
             </div>
             <div className="field">
               <label>IGST</label>
               <div>
-                {chargeAmount(detail.charges, ChargeType.IGST) ??
-                  money(detail.igst)}
+                {money(detail.igst)}
               </div>
             </div>
             <div className="field full">

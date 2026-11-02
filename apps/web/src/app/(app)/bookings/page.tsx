@@ -3,7 +3,6 @@
 import {
   BOOKING_TYPE_LABELS,
   BookingType,
-  ChargeType,
   ConsignmentStatus,
 } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,11 +20,6 @@ import { api, unwrap } from '@/lib/api';
 import { fetchPaginated } from '@/lib/list';
 import { serviceTypeLabel } from '@/lib/quotations';
 
-interface ChargeRow {
-  type: ChargeType | string;
-  amount: string | number;
-}
-
 interface ConsignmentRow {
   id: string;
   awb: string;
@@ -39,7 +33,7 @@ interface ConsignmentRow {
   partyName?: string | null;
   weightKg?: string | number | null;
   rateSectionId?: string | null;
-  charges?: ChargeRow[];
+  price?: string | number | null;
 }
 
 interface ConsignmentDetail {
@@ -55,28 +49,18 @@ interface ConsignmentDetail {
   receiverState?: string | null;
   rateSectionId?: string | null;
   weightKg?: string | number | null;
+  price?: string | number | null;
   cgst?: string | number | null;
   sgst?: string | number | null;
   igst?: string | number | null;
   remarks?: string | null;
   customer?: { name?: string } | null;
   partyName?: string | null;
-  charges?: ChargeRow[];
 }
 
 function money(value: string | number | null | undefined) {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? n.toFixed(2) : '0.00';
-}
-
-function freightOf(charges?: ChargeRow[]) {
-  const row = (charges ?? []).find((c) => c.type === ChargeType.FREIGHT);
-  return row ? money(row.amount) : '0.00';
-}
-
-function chargeAmount(charges: ChargeRow[] | undefined, type: ChargeType) {
-  const row = (charges ?? []).find((c) => c.type === type);
-  return row ? money(row.amount) : null;
 }
 
 function weightGrams(value: string | number | null | undefined) {
@@ -176,7 +160,7 @@ function BookingsPageInner() {
   };
 
   const detail = viewQuery.data;
-  const freight = chargeAmount(detail?.charges, ChargeType.FREIGHT) ?? '0.00';
+  const freight = money(detail?.price);
 
   return (
     <div>
@@ -240,7 +224,7 @@ function BookingsPageInner() {
                         {row.awb}
                       </button>
                       <span className="booking-recent-rate">
-                        ₹{freightOf(row.charges)}
+                        ₹{money(row.price)}
                       </span>
                     </div>
                     <div className="booking-recent-receiver">
@@ -378,24 +362,15 @@ function BookingsPageInner() {
             </div>
             <div className="field">
               <label>CGST</label>
-              <div>
-                {chargeAmount(detail.charges, ChargeType.CGST) ??
-                  money(detail.cgst)}
-              </div>
+              <div>{money(detail.cgst)}</div>
             </div>
             <div className="field">
               <label>SGST</label>
-              <div>
-                {chargeAmount(detail.charges, ChargeType.SGST) ??
-                  money(detail.sgst)}
-              </div>
+              <div>{money(detail.sgst)}</div>
             </div>
             <div className="field">
               <label>IGST</label>
-              <div>
-                {chargeAmount(detail.charges, ChargeType.IGST) ??
-                  money(detail.igst)}
-              </div>
+              <div>{money(detail.igst)}</div>
             </div>
             <div className="field full">
               <label>Remarks</label>

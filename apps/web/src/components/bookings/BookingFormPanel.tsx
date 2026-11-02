@@ -1,6 +1,6 @@
 'use client';
 
-import { BookingType, ChargeType, ServiceType } from '@courier/shared';
+import { BookingType, ServiceType } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -323,11 +323,11 @@ interface ConsignmentDetail {
   receiverCityId?: string | null;
   receiverStateId?: string | null;
   weightKg?: string | number | null;
+  price?: string | number | null;
   cgst?: string | number | null;
   sgst?: string | number | null;
   igst?: string | number | null;
   remarks?: string | null;
-  charges?: Array<{ type: string; amount: string | number }>;
 }
 
 interface CustomerOpt {
@@ -1190,10 +1190,7 @@ export function BookingFormPanel({
       const detail = unwrap<ConsignmentDetail>(res.data);
       const nextType = detail.bookingType || mode;
 
-      const freightCharge = (detail.charges ?? []).find(
-        (c) => c.type === ChargeType.FREIGHT,
-      );
-      const freight = Number(freightCharge?.amount ?? 0);
+      const freight = Number(detail.price ?? 0);
       const weightGrams = Math.round(Number(detail.weightKg ?? 0) * 1000) || 100;
 
       setEditingId(detail.id);

@@ -7,7 +7,6 @@ import * as path from 'path';
 import { DataSource } from 'typeorm';
 import { City } from './entities/city.entity';
 import { Consignment } from './entities/consignment.entity';
-import { ConsignmentCharge } from './entities/consignment-charge.entity';
 import { Customer } from './entities/customer.entity';
 import { Invoice } from './entities/invoice.entity';
 import { State } from './entities/state.entity';
@@ -171,7 +170,6 @@ async function run() {
       State,
       City,
       Consignment,
-      ConsignmentCharge,
       TrackingEvent,
       Invoice,
     ],

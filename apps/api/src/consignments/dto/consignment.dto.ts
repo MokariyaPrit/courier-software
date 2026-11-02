@@ -1,11 +1,6 @@
+import { BookingType, ServiceType } from '@courier/shared';
+import { Transform } from 'class-transformer';
 import {
-  BookingType,
-  ChargeType,
-  ServiceType,
-} from '@courier/shared';
-import { Transform, Type } from 'class-transformer';
-import {
-  IsArray,
   IsBoolean,
   IsDateString,
   IsEnum,
@@ -16,22 +11,8 @@ import {
   Min,
   MinLength,
   ValidateIf,
-  ValidateNested,
 } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-
-class ChargeDto {
-  @IsEnum(ChargeType)
-  type: ChargeType;
-
-  @IsNumber()
-  @Min(0)
-  amount: number;
-
-  @IsOptional()
-  @IsString()
-  description?: string;
-}
 
 export class CreateConsignmentDto {
   @IsOptional()
@@ -181,17 +162,10 @@ export class CreateConsignmentDto {
   @IsString()
   remarks?: string;
 
-  /** Price amount — stored as FREIGHT charge row */
   @IsOptional()
   @IsNumber()
   @Min(0)
   price?: number;
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ChargeDto)
-  charges?: ChargeDto[];
 }
 
 export class UpdateConsignmentDto {
@@ -343,17 +317,10 @@ export class UpdateConsignmentDto {
   @IsString()
   remarks?: string | null;
 
-  /** Price amount — stored as FREIGHT charge row */
   @IsOptional()
   @IsNumber()
   @Min(0)
   price?: number;
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ChargeDto)
-  charges?: ChargeDto[];
 }
 
 export class ConsignmentQueryDto extends PaginationDto {

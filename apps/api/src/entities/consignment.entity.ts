@@ -20,7 +20,6 @@ import { Quotation } from './quotation.entity';
 import { Receiver } from './receiver.entity';
 import { SenderLocation } from './sender-location.entity';
 import { User } from './user.entity';
-import { ConsignmentCharge } from './consignment-charge.entity';
 import { TrackingEvent } from './tracking-event.entity';
 
 @Entity('consignments')
@@ -160,6 +159,10 @@ export class Consignment {
   @Column({ type: 'decimal', precision: 10, scale: 3, default: 0 })
   weightKg: string;
 
+  /** Booking price (was FREIGHT in consignment_charges) */
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  price: string;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   cgst: string;
 
@@ -178,11 +181,6 @@ export class Consignment {
 
   @Column({ type: 'text', nullable: true })
   remarks: string | null;
-
-  @OneToMany(() => ConsignmentCharge, (charge) => charge.consignment, {
-    cascade: true,
-  })
-  charges: ConsignmentCharge[];
 
   @OneToMany(() => TrackingEvent, (event) => event.consignment, {
     cascade: true,

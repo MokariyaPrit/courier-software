@@ -15,7 +15,6 @@ import { CustomersModule } from './customers/customers.module';
 import {
   City,
   Consignment,
-  ConsignmentCharge,
   CourierCompany,
   Customer,
   Invoice,
@@ -60,7 +59,6 @@ import { UsersModule } from './users/users.module';
           State,
           City,
           Consignment,
-          ConsignmentCharge,
           TrackingEvent,
           Invoice,
           QuotationRateTemplate,
