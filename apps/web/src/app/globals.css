@@ -1386,3 +1386,31 @@ a {
     min-height: 0;
   }
 }
+
+/* CA GST report */
+.ca-gst-summary {
+  margin-bottom: 1rem;
+}
+
+.ca-gst-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.ca-gst-summary-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ca-gst-summary-grid strong {
+  font-size: 1.05rem;
+}
+
+.ca-gst-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+}

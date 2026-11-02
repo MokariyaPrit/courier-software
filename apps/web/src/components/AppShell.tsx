@@ -24,6 +24,7 @@ const NAV = [
   { href: '/masters/cities', label: 'Cities', roles: [Role.ADMIN] },
   { href: '/billing', label: 'Generate bill', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/billing/invoices', label: 'Invoices', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
+  { href: '/ca-gst', label: 'CA GST', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/admin/users', label: 'Users', roles: [Role.ADMIN] },
   { href: '/profile', label: 'Profile', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
 ];

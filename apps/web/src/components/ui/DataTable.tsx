@@ -33,9 +33,9 @@ export function DataTable<T>({
       emptyMessage={emptyMessage}
       dataKey={dataKey}
     >
-      {columns.map((col) => (
+      {columns.map((col, index) => (
         <Column
-          key={col.header}
+          key={`${String(col.field || 'col')}-${col.header}-${index}`}
           field={col.field}
           header={col.header}
           body={col.body as ((row: object) => ReactNode) | undefined}
