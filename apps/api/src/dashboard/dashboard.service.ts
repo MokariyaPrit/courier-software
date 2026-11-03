@@ -1,11 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  BookingType,
-  ConsignmentStatus,
-  InvoiceStatus,
-  Role,
-} from '@courier/shared';
+import { BookingType, InvoiceStatus, Role } from '@courier/shared';
 import { Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { Consignment } from '../entities/consignment.entity';
@@ -115,9 +110,6 @@ export class DashboardService {
       bookingsMonth,
       accountMonth,
       cashMonth,
-      inTransit,
-      ofd,
-      delivered,
       customersCount,
       invoicesMonthCount,
       invoicesMonthAmount,
@@ -142,18 +134,6 @@ export class DashboardService {
         .clone()
         .andWhere(`${bookingDayExpr} >= :monthStartIso`, { monthStartIso })
         .andWhere('c.bookingType = :t', { t: BookingType.CASH })
-        .getCount(),
-      bookingBase
-        .clone()
-        .andWhere('c.status = :s', { s: ConsignmentStatus.IN_TRANSIT })
-        .getCount(),
-      bookingBase
-        .clone()
-        .andWhere('c.status = :s', { s: ConsignmentStatus.OUT_FOR_DELIVERY })
-        .getCount(),
-      bookingBase
-        .clone()
-        .andWhere('c.status = :s', { s: ConsignmentStatus.DELIVERED })
         .getCount(),
       customerBase.getCount(),
       invoiceBase
@@ -212,17 +192,8 @@ export class DashboardService {
       bookingsLast14Days.push({ date: d, count: dailyMap.get(d) || 0 });
     }
 
-    // Status breakdown
-    const statusRaw = await bookingBase
-      .clone()
-      .select('c.status', 'status')
-      .addSelect('COUNT(*)', 'count')
-      .groupBy('c.status')
-      .getRawMany();
-    const bookingsByStatus = statusRaw.map((r) => ({
-      status: r.status as string,
-      count: Number(r.count || 0),
-    }));
+    // Status column removed from consignments
+    const bookingsByStatus: Array<{ status: string; count: number }> = [];
 
     // Top billed customers this month
     const topBilledRaw = await invoiceBase
@@ -342,9 +313,9 @@ export class DashboardService {
         bookingsMonth,
         accountBookingsMonth: accountMonth,
         cashBookingsMonth: cashMonth,
-        inTransit,
-        outForDelivery: ofd,
-        delivered,
+        inTransit: 0,
+        outForDelivery: 0,
+        delivered: 0,
         customersCount,
         invoicesMonthCount,
         invoicesMonthAmount: money(invoicesMonthAmount),

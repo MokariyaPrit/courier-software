@@ -1,8 +1,4 @@
-import {
-  BookingType,
-  ConsignmentStatus,
-  ServiceType,
-} from '@courier/shared';
+import { BookingType } from '@courier/shared';
 import {
   Column,
   CreateDateColumn,
@@ -32,24 +28,10 @@ export class Consignment {
 
   @Column({
     type: 'enum',
-    enum: ConsignmentStatus,
-    default: ConsignmentStatus.BOOKED,
-  })
-  status: ConsignmentStatus;
-
-  @Column({
-    type: 'enum',
     enum: BookingType,
     default: BookingType.CASH,
   })
   bookingType: BookingType;
-
-  @Column({
-    type: 'enum',
-    enum: ServiceType,
-    default: ServiceType.STANDARD,
-  })
-  serviceType: ServiceType;
 
   /** Quotation / cash matrix section id (DOX, PARCEL, …) */
   @Column({ type: 'varchar', nullable: true })
@@ -159,9 +141,13 @@ export class Consignment {
   @Column({ type: 'decimal', precision: 10, scale: 3, default: 0 })
   weightKg: string;
 
-  /** Booking price (was FREIGHT in consignment_charges) */
+  /** Booking price / total rate (GST-inclusive when taxes are set) */
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   price: string;
+
+  /** Taxable base amount (price = basePrice + cgst + sgst + igst when GST applied) */
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  basePrice: string;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   cgst: string;

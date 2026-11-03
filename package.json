@@ -10,8 +10,7 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:embedded": "pnpm --filter @courier/api db:embedded",
-    "seed": "pnpm --filter @courier/api seed",
-    "migrate:terms": "pnpm --filter @courier/api migrate:terms"
+    "seed": "pnpm --filter @courier/api seed"
   },
   "engines": {
     "node": ">=20"

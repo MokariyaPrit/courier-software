@@ -5,19 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  BookingType,
-  ConsignmentStatus,
-  InvoiceStatus,
-  Role,
-  ServiceType,
-} from '@courier/shared';
+import { BookingType, InvoiceStatus, Role } from '@courier/shared';
 import { Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { paginateMeta, resolveSortPair } from '../common/dto/pagination.dto';
 import { Consignment } from '../entities/consignment.entity';
 import { Invoice } from '../entities/invoice.entity';
-import { TrackingEvent } from '../entities/tracking-event.entity';
 import {
   ConsignmentQueryDto,
   CreateConsignmentDto,
@@ -27,7 +20,6 @@ import {
 const CONSIGNMENT_SORT = [
   'awb',
   'receiverName',
-  'status',
   'bookingType',
   'bookingDate',
   'createdAt',
@@ -38,8 +30,6 @@ export class ConsignmentsService {
   constructor(
     @InjectRepository(Consignment)
     private readonly consignmentsRepo: Repository<Consignment>,
-    @InjectRepository(TrackingEvent)
-    private readonly eventsRepo: Repository<TrackingEvent>,
     @InjectRepository(Invoice)
     private readonly invoicesRepo: Repository<Invoice>,
   ) {}
@@ -86,9 +76,7 @@ export class ConsignmentsService {
 
     const consignment = this.consignmentsRepo.create({
       awb,
-      status: ConsignmentStatus.BOOKED,
       bookingType,
-      serviceType: dto.serviceType ?? ServiceType.STANDARD,
       customerId:
         bookingType === BookingType.ACCOUNT ? (dto.customerId ?? null) : null,
       courierCompanyId: dto.courierCompanyId ?? null,
@@ -129,6 +117,9 @@ export class ConsignmentsService {
       receiverStateId: dto.receiverStateId ?? null,
       weightKg: String(dto.weightKg ?? 0),
       price: String(dto.price ?? 0),
+      basePrice: String(
+        dto.basePrice ?? dto.price ?? 0,
+      ),
       cgst: String(dto.cgst ?? 0),
       sgst: String(dto.sgst ?? 0),
       igst: String(dto.igst ?? 0),
@@ -137,17 +128,6 @@ export class ConsignmentsService {
     });
 
     const saved = await this.consignmentsRepo.save(consignment);
-
-    await this.eventsRepo.save(
-      this.eventsRepo.create({
-        consignmentId: saved.id,
-        status: ConsignmentStatus.BOOKED,
-        locationLabel: null,
-        createdById: user.id,
-        remarks: 'Consignment booked',
-      }),
-    );
-
     return this.findOne(saved.id);
   }
 
@@ -169,9 +149,6 @@ export class ConsignmentsService {
       .skip((query.page - 1) * query.pageSize)
       .take(query.pageSize);
 
-    if (query.status) {
-      qb.andWhere('c.status = :status', { status: query.status });
-    }
     if (query.bookingType) {
       qb.andWhere('c.bookingType = :bookingType', {
         bookingType: query.bookingType,
@@ -242,11 +219,6 @@ export class ConsignmentsService {
         receiver: true,
         senderLocation: true,
         quotation: true,
-        trackingEvents: {
-          createdBy: {
-            userInfo: true,
-          },
-        },
         createdBy: {
           userInfo: true,
         },
@@ -254,17 +226,6 @@ export class ConsignmentsService {
     });
     if (!consignment) {
       throw new NotFoundException('Consignment not found');
-    }
-    if (consignment.trackingEvents?.length) {
-      consignment.trackingEvents.sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-      );
-      for (const event of consignment.trackingEvents) {
-        if (event.createdBy) {
-          delete (event.createdBy as { passwordHash?: string }).passwordHash;
-        }
-      }
     }
     if (consignment.createdBy) {
       delete (consignment.createdBy as { passwordHash?: string }).passwordHash;
@@ -292,9 +253,6 @@ export class ConsignmentsService {
     const consignment = await this.findOne(id);
     this.assertOwner(consignment, user);
 
-    if (dto.serviceType !== undefined) {
-      consignment.serviceType = dto.serviceType;
-    }
     if (dto.bookingDate !== undefined) {
       consignment.bookingDate = dto.bookingDate || this.todayIsoDate();
     }
@@ -379,6 +337,18 @@ export class ConsignmentsService {
       consignment.weightKg = String(dto.weightKg);
     }
     if (dto.price !== undefined) consignment.price = String(dto.price);
+    if (dto.basePrice !== undefined) {
+      consignment.basePrice = String(dto.basePrice);
+    } else if (dto.price !== undefined) {
+      // Keep base in sync when only price is sent without an explicit base
+      const tax =
+        Number(dto.cgst ?? consignment.cgst ?? 0) +
+        Number(dto.sgst ?? consignment.sgst ?? 0) +
+        Number(dto.igst ?? consignment.igst ?? 0);
+      if (tax <= 0) {
+        consignment.basePrice = String(dto.price);
+      }
+    }
     if (dto.cgst !== undefined) consignment.cgst = String(dto.cgst);
     if (dto.sgst !== undefined) consignment.sgst = String(dto.sgst);
     if (dto.igst !== undefined) consignment.igst = String(dto.igst);
@@ -409,18 +379,12 @@ export class ConsignmentsService {
       .clone()
       .andWhere('c.createdAt >= :today', { today })
       .getCount();
-    const inTransit = await qb
-      .clone()
-      .andWhere('c.status = :s', { s: ConsignmentStatus.IN_TRANSIT })
-      .getCount();
-    const ofd = await qb
-      .clone()
-      .andWhere('c.status = :s', { s: ConsignmentStatus.OUT_FOR_DELIVERY })
-      .getCount();
-    const delivered = await qb
-      .clone()
-      .andWhere('c.status = :s', { s: ConsignmentStatus.DELIVERED })
-      .getCount();
-    return { total, bookedToday, inTransit, ofd, delivered };
+    return {
+      total,
+      bookedToday,
+      inTransit: 0,
+      ofd: 0,
+      delivered: 0,
+    };
   }
 }

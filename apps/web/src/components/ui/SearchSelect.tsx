@@ -28,6 +28,8 @@ type Props = {
   style?: CSSProperties;
   /** Keep free-typed text even if it does not match an option */
   allowFreeText?: boolean;
+  /** When false, filter by label only (ignore subLabel). Default true. */
+  matchSubLabel?: boolean;
   emptyHint?: string;
   inputRef?: Ref<HTMLInputElement>;
   tabIndex?: number;
@@ -42,6 +44,7 @@ export function SearchSelect({
   disabled,
   style,
   allowFreeText = true,
+  matchSubLabel = true,
   emptyHint = 'No matches',
   inputRef,
   tabIndex,
@@ -55,13 +58,19 @@ export function SearchSelect({
     const q = value.trim().toLowerCase();
     if (!q) return options.slice(0, 40);
     return options
-      .filter(
-        (o) =>
-          o.label.toLowerCase().includes(q) ||
-          (o.subLabel && o.subLabel.toLowerCase().includes(q)),
-      )
+      .filter((o) => {
+        if (o.label.toLowerCase().includes(q)) return true;
+        if (
+          matchSubLabel &&
+          o.subLabel &&
+          o.subLabel.toLowerCase().includes(q)
+        ) {
+          return true;
+        }
+        return false;
+      })
       .slice(0, 40);
-  }, [options, value]);
+  }, [options, value, matchSubLabel]);
 
   useEffect(() => {
     setActiveIndex(0);

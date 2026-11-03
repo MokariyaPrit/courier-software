@@ -1,4 +1,4 @@
-import { BookingType, ServiceType } from '@courier/shared';
+import { BookingType } from '@courier/shared';
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
@@ -155,10 +155,6 @@ export class CreateConsignmentDto {
   igst?: number;
 
   @IsOptional()
-  @IsEnum(ServiceType)
-  serviceType?: ServiceType;
-
-  @IsOptional()
   @IsString()
   remarks?: string;
 
@@ -166,16 +162,17 @@ export class CreateConsignmentDto {
   @IsNumber()
   @Min(0)
   price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  basePrice?: number;
 }
 
 export class UpdateConsignmentDto {
   @IsOptional()
   @IsEnum(BookingType)
   bookingType?: BookingType;
-
-  @IsOptional()
-  @IsEnum(ServiceType)
-  serviceType?: ServiceType;
 
   @IsOptional()
   @IsDateString()
@@ -321,16 +318,17 @@ export class UpdateConsignmentDto {
   @IsNumber()
   @Min(0)
   price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  basePrice?: number;
 }
 
 export class ConsignmentQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
   search?: string;
-
-  @IsOptional()
-  @IsString()
-  status?: string;
 
   @IsOptional()
   @IsEnum(BookingType)

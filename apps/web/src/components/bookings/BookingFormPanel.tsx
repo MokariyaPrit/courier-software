@@ -1,6 +1,6 @@
 'use client';
 
-import { BookingType, ServiceType } from '@courier/shared';
+import { BookingType } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -8,6 +8,7 @@ import {
   InputText,
   SearchSelect,
   Textarea,
+  ToggleSwitch,
   type SearchSelectOption,
 } from '@/components/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -26,6 +27,29 @@ import {
   type BookingTabConfig,
 } from '@/lib/booking-tab-config';
 import { trimFormData } from '@/lib/trim';
+
+function roundMoney(n: number) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/** Split GST-inclusive total so base + CGST + SGST = total. */
+function splitInclusiveGst(
+  total: number,
+  cgstPercent: number,
+  sgstPercent: number,
+): { base: number; cgst: number; sgst: number } {
+  const inclusive = Math.max(0, Number(total) || 0);
+  const cPct = Math.max(0, Number(cgstPercent) || 0);
+  const sPct = Math.max(0, Number(sgstPercent) || 0);
+  const totalPct = cPct + sPct;
+  if (inclusive <= 0 || totalPct <= 0) {
+    return { base: inclusive, cgst: 0, sgst: 0 };
+  }
+  const base = roundMoney(inclusive / (1 + totalPct / 100));
+  const cgst = roundMoney(base * (cPct / 100));
+  const sgst = roundMoney(inclusive - base - cgst);
+  return { base, cgst, sgst: Math.max(0, sgst) };
+}
 
 type RememberFlags = {
   customer: boolean;
@@ -281,7 +305,6 @@ function applyRememberedValues(
 interface ConsignmentRow {
   id: string;
   awb: string;
-  status: string;
   bookingType?: BookingType;
   receiverName: string;
   bookingDate?: string | null;
@@ -324,6 +347,7 @@ interface ConsignmentDetail {
   receiverStateId?: string | null;
   weightKg?: string | number | null;
   price?: string | number | null;
+  basePrice?: string | number | null;
   cgst?: string | number | null;
   sgst?: string | number | null;
   igst?: string | number | null;
@@ -468,6 +492,8 @@ export function BookingFormPanel({
   const [rateHint, setRateHint] = useState('');
   /** false = follow slab auto price; true = user override */
   const [priceManual, setPriceManual] = useState(false);
+  /** Cash: rate is GST-inclusive; split into base + CGST + SGST */
+  const [gstInclusive, setGstInclusive] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAwb, setEditingAwb] = useState('');
   const [rememberFlags, setRememberFlags] = useState<RememberFlags>({
@@ -577,6 +603,7 @@ export function BookingFormPanel({
     setRatesNonce((n) => n + 1);
     setError('');
     setPriceManual(false);
+    setGstInclusive(false);
     setEditingId(null);
     setEditingAwb('');
     if (opts?.focusStart) focusStartField();
@@ -629,6 +656,7 @@ export function BookingFormPanel({
     setRatesNonce((n) => n + 1);
     setError('');
     setPriceManual(false);
+    setGstInclusive(false);
     setEditingId(null);
     setEditingAwb('');
     focusStartField();
@@ -788,6 +816,36 @@ export function BookingFormPanel({
 
   const isPriceAuto =
     !priceManual || Number(form.freight) === Number(resolvedPrice.amount);
+
+  const cgstPercent = Number(user?.userInfo?.cgstPercent ?? 9);
+  const sgstPercent = Number(user?.userInfo?.sgstPercent ?? 9);
+
+  const gstSplit = useMemo(() => {
+    if (mode !== BookingType.CASH || !gstInclusive) {
+      return null;
+    }
+    return splitInclusiveGst(form.freight, cgstPercent, sgstPercent);
+  }, [mode, gstInclusive, form.freight, cgstPercent, sgstPercent]);
+
+  // Keep cash GST amounts in sync when inclusive mode is on
+  useEffect(() => {
+    if (mode !== BookingType.CASH || !gstInclusive || !gstSplit) return;
+    setForm((p) => {
+      if (
+        p.cgst === gstSplit.cgst &&
+        p.sgst === gstSplit.sgst &&
+        p.igst === 0
+      ) {
+        return p;
+      }
+      return {
+        ...p,
+        cgst: gstSplit.cgst,
+        sgst: gstSplit.sgst,
+        igst: 0,
+      };
+    });
+  }, [mode, gstInclusive, gstSplit]);
 
   const customerOptions: SearchSelectOption[] = useMemo(
     () =>
@@ -1004,6 +1062,10 @@ export function BookingFormPanel({
 
     const weightKg = Math.max(0, Number(cleaned.weightGrams || 0) / 1000);
     const freight = Number(cleaned.freight);
+    const cashGstSplit =
+      cleaned.bookingType === BookingType.CASH && gstInclusive
+        ? splitInclusiveGst(freight, cgstPercent, sgstPercent)
+        : null;
 
     const receiverRes = await api.post(
       '/receivers/find-or-create',
@@ -1111,20 +1173,28 @@ export function BookingFormPanel({
         receiverCityId: cleaned.receiverCityId || undefined,
         receiverStateId: cleaned.receiverStateId || undefined,
         weightKg,
+        // price = entered rate (GST-inclusive total when Add GST is on)
+        // basePrice = taxable base (equals price when GST is off)
         price: freight,
+        basePrice: cashGstSplit ? cashGstSplit.base : freight,
         cgst:
           cleaned.bookingType === BookingType.ACCOUNT
             ? 0
-            : Number(cleaned.cgst) || 0,
+            : cashGstSplit
+              ? cashGstSplit.cgst
+              : Number(cleaned.cgst) || 0,
         sgst:
           cleaned.bookingType === BookingType.ACCOUNT
             ? 0
-            : Number(cleaned.sgst) || 0,
+            : cashGstSplit
+              ? cashGstSplit.sgst
+              : Number(cleaned.sgst) || 0,
         igst:
           cleaned.bookingType === BookingType.ACCOUNT
             ? 0
-            : Number(cleaned.igst) || 0,
-        serviceType: ServiceType.STANDARD,
+            : cashGstSplit
+              ? 0
+              : Number(cleaned.igst) || 0,
         remarks: cleaned.remarks || undefined,
       },
     };
@@ -1190,12 +1260,31 @@ export function BookingFormPanel({
       const detail = unwrap<ConsignmentDetail>(res.data);
       const nextType = detail.bookingType || mode;
 
-      const freight = Number(detail.price ?? 0);
+      const totalPrice = Number(detail.price ?? 0);
+      const storedBase = Number(detail.basePrice ?? 0);
+      const cgstAmt = Number(detail.cgst ?? 0);
+      const sgstAmt = Number(detail.sgst ?? 0);
+      const igstAmt = Number(detail.igst ?? 0);
+      const taxTotal = cgstAmt + sgstAmt + igstAmt;
+      const useInclusiveGst =
+        nextType === BookingType.CASH &&
+        igstAmt <= 0 &&
+        (cgstAmt > 0 || sgstAmt > 0);
+      // Prefer stored total in price; fall back for older rows where price was base-only
+      const freight = useInclusiveGst
+        ? totalPrice > 0 &&
+          Math.abs(totalPrice - (storedBase + taxTotal)) < 0.02
+          ? totalPrice
+          : storedBase > 0
+            ? roundMoney(storedBase + taxTotal)
+            : roundMoney(totalPrice + taxTotal)
+        : totalPrice;
       const weightGrams = Math.round(Number(detail.weightKg ?? 0) * 1000) || 100;
 
       setEditingId(detail.id);
       setEditingAwb(detail.awb);
       setPriceManual(true);
+      setGstInclusive(useInclusiveGst);
       setForm({
         ...emptyForm,
         bookingType: nextType,
@@ -1235,9 +1324,9 @@ export function BookingFormPanel({
         destLabel: detail.receiverCity || '',
         weightGrams,
         freight,
-        cgst: Number(detail.cgst ?? 0),
-        sgst: Number(detail.sgst ?? 0),
-        igst: Number(detail.igst ?? 0),
+        cgst: cgstAmt,
+        sgst: sgstAmt,
+        igst: igstAmt,
         remarks: detail.remarks || '',
       });
 
@@ -1372,6 +1461,7 @@ export function BookingFormPanel({
                 options={destOptions}
                 placeholder="Type destination from Centers…"
                 allowFreeText={false}
+                matchSubLabel={false}
                 emptyHint="Configure Centers first"
                 tabIndex={ti('destination')}
                 onChange={(text) =>
@@ -1536,7 +1626,15 @@ export function BookingFormPanel({
             </div>
 
             <div className="field">
-              <label>{isPriceAuto ? 'Price (Auto)' : 'Price (Manual)'}</label>
+              <label>
+                {gstInclusive
+                  ? isPriceAuto
+                    ? 'Total price (Auto)'
+                    : 'Total price (Manual)'
+                  : isPriceAuto
+                    ? 'Price (Auto)'
+                    : 'Price (Manual)'}
+              </label>
               <InputNumber
                 value={form.freight}
                 tabIndex={ti('price')}
@@ -1556,60 +1654,141 @@ export function BookingFormPanel({
 
             {mode === BookingType.CASH ? (
               <>
-                <div className="field">
-                  <label>CGST</label>
-                  <InputNumber
-                    value={form.cgst}
-                    tabIndex={ti('cgst')}
-                    onValueChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        cgst: Math.max(Number(e.value ?? 0), 0),
-                      }))
-                    }
-                    min={0}
-                    minFractionDigits={0}
-                    maxFractionDigits={2}
-                    style={{ width: '100%' }}
-                    inputStyle={{ width: '100%' }}
-                  />
+                <div className="field booking-gst-toggle">
+                  <label htmlFor="cash-gst-inclusive">Add GST</label>
+                  <div className="booking-gst-toggle-row">
+                    <ToggleSwitch
+                      inputId="cash-gst-inclusive"
+                      checked={gstInclusive}
+                      onChange={(e) => {
+                        const on = Boolean(e.value);
+                        setGstInclusive(on);
+                        if (on) {
+                          const split = splitInclusiveGst(
+                            form.freight,
+                            cgstPercent,
+                            sgstPercent,
+                          );
+                          setForm((p) => ({
+                            ...p,
+                            cgst: split.cgst,
+                            sgst: split.sgst,
+                            igst: 0,
+                          }));
+                        } else {
+                          setForm((p) => ({
+                            ...p,
+                            cgst: 0,
+                            sgst: 0,
+                            igst: 0,
+                          }));
+                        }
+                      }}
+                    />
+                    <span className="muted" style={{ fontSize: '0.85rem' }}>
+                      {gstInclusive
+                        ? `Split total into base + CGST ${cgstPercent}% + SGST ${sgstPercent}%`
+                        : 'Off — enter tax manually if needed'}
+                    </span>
+                  </div>
                 </div>
-                <div className="field">
-                  <label>SGST</label>
-                  <InputNumber
-                    value={form.sgst}
-                    tabIndex={ti('sgst')}
-                    onValueChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        sgst: Math.max(Number(e.value ?? 0), 0),
-                      }))
-                    }
-                    min={0}
-                    minFractionDigits={0}
-                    maxFractionDigits={2}
-                    style={{ width: '100%' }}
-                    inputStyle={{ width: '100%' }}
-                  />
-                </div>
-                <div className="field">
-                  <label>IGST</label>
-                  <InputNumber
-                    value={form.igst}
-                    tabIndex={ti('igst')}
-                    onValueChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        igst: Math.max(Number(e.value ?? 0), 0),
-                      }))
-                    }
-                    min={0}
-                    minFractionDigits={0}
-                    maxFractionDigits={2}
-                    style={{ width: '100%' }}
-                    inputStyle={{ width: '100%' }}
-                  />
-                </div>
+
+                {gstInclusive && gstSplit ? (
+                  <>
+                    <div className="field">
+                      <label>Base price</label>
+                      <InputNumber
+                        value={gstSplit.base}
+                        disabled
+                        minFractionDigits={0}
+                        maxFractionDigits={2}
+                        style={{ width: '100%' }}
+                        inputStyle={{ width: '100%' }}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>CGST ({cgstPercent}%)</label>
+                      <InputNumber
+                        value={gstSplit.cgst}
+                        disabled
+                        tabIndex={ti('cgst')}
+                        minFractionDigits={0}
+                        maxFractionDigits={2}
+                        style={{ width: '100%' }}
+                        inputStyle={{ width: '100%' }}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>SGST ({sgstPercent}%)</label>
+                      <InputNumber
+                        value={gstSplit.sgst}
+                        disabled
+                        tabIndex={ti('sgst')}
+                        minFractionDigits={0}
+                        maxFractionDigits={2}
+                        style={{ width: '100%' }}
+                        inputStyle={{ width: '100%' }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="field">
+                      <label>CGST</label>
+                      <InputNumber
+                        value={form.cgst}
+                        tabIndex={ti('cgst')}
+                        onValueChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            cgst: Math.max(Number(e.value ?? 0), 0),
+                          }))
+                        }
+                        min={0}
+                        minFractionDigits={0}
+                        maxFractionDigits={2}
+                        style={{ width: '100%' }}
+                        inputStyle={{ width: '100%' }}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>SGST</label>
+                      <InputNumber
+                        value={form.sgst}
+                        tabIndex={ti('sgst')}
+                        onValueChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            sgst: Math.max(Number(e.value ?? 0), 0),
+                          }))
+                        }
+                        min={0}
+                        minFractionDigits={0}
+                        maxFractionDigits={2}
+                        style={{ width: '100%' }}
+                        inputStyle={{ width: '100%' }}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>IGST</label>
+                      <InputNumber
+                        value={form.igst}
+                        tabIndex={ti('igst')}
+                        onValueChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            igst: Math.max(Number(e.value ?? 0), 0),
+                          }))
+                        }
+                        min={0}
+                        minFractionDigits={0}
+                        maxFractionDigits={2}
+                        style={{ width: '100%' }}
+                        inputStyle={{ width: '100%' }}
+                      />
+                    </div>
+                  </>
+                )}
               </>
             ) : null}
 

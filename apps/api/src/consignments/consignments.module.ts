@@ -3,13 +3,12 @@ import { InjectDataSource, TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { Consignment } from '../entities/consignment.entity';
 import { Invoice } from '../entities/invoice.entity';
-import { TrackingEvent } from '../entities/tracking-event.entity';
 import { ConsignmentsController } from './consignments.controller';
 import { ConsignmentsService } from './consignments.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Consignment, TrackingEvent, Invoice]),
+    TypeOrmModule.forFeature([Consignment, Invoice]),
   ],
   controllers: [ConsignmentsController],
   providers: [ConsignmentsService],

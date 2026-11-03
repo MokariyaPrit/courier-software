@@ -481,6 +481,13 @@ a {
   height: 100%;
 }
 
+.booking-gst-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.5rem;
+}
+
 .bookings-split-form h2,
 .bookings-split-recent h2 {
   margin: 0 0 1rem;

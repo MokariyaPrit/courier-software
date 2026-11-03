@@ -23,6 +23,10 @@ interface ConsignmentRow {
   weightKg?: string | number | null;
   rateSectionId?: string | null;
   price?: string | number | null;
+  basePrice?: string | number | null;
+  cgst?: string | number | null;
+  sgst?: string | number | null;
+  igst?: string | number | null;
 }
 
 interface ConsignmentDetail {
@@ -38,6 +42,7 @@ interface ConsignmentDetail {
   rateSectionId?: string | null;
   weightKg?: string | number | null;
   price?: string | number | null;
+  basePrice?: string | number | null;
   cgst?: string | number | null;
   sgst?: string | number | null;
   igst?: string | number | null;
@@ -49,6 +54,27 @@ interface ConsignmentDetail {
 function money(value: string | number | null | undefined) {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? n.toFixed(2) : '0.00';
+}
+
+/** Display total — GST-inclusive uses price; exclusive/legacy adds taxes. */
+function bookingTotal(row: {
+  price?: string | number | null;
+  basePrice?: string | number | null;
+  cgst?: string | number | null;
+  sgst?: string | number | null;
+  igst?: string | number | null;
+}) {
+  const price = Number(row.price ?? 0);
+  const base = Number(row.basePrice ?? 0);
+  const tax =
+    Number(row.cgst ?? 0) + Number(row.sgst ?? 0) + Number(row.igst ?? 0);
+  if (tax <= 0) return price;
+  if (base > 0 && Math.abs(price - (base + tax)) < 0.05) return price;
+  return roundMoney(price + tax);
+}
+
+function roundMoney(n: number) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
 function weightGrams(value: string | number | null | undefined) {
@@ -124,9 +150,17 @@ export function BookingsPageView({ mode }: { mode: BookingType }) {
   };
 
   const detail = viewQuery.data;
-  const freight = money(detail?.price);
+  const detailTotal = detail ? money(bookingTotal(detail)) : '0.00';
+  const detailBase = detail
+    ? money(
+        Number(detail.basePrice ?? 0) > 0
+          ? detail.basePrice
+          : Number(detail.price ?? 0),
+      )
+    : '0.00';
   const title =
     mode === BookingType.ACCOUNT ? 'Account booking' : 'Cash booking';
+  const isCashView = mode === BookingType.CASH;
 
   return (
     <div>
@@ -178,7 +212,7 @@ export function BookingsPageView({ mode }: { mode: BookingType }) {
                         {row.awb}
                       </button>
                       <span className="booking-recent-rate">
-                        ₹{money(row.price)}
+                        ₹{money(bookingTotal(row))}
                       </span>
                     </div>
                     <div className="booking-recent-receiver">
@@ -304,20 +338,28 @@ export function BookingsPageView({ mode }: { mode: BookingType }) {
             </div>
             <div className="field">
               <label>Price</label>
-              <div>{freight}</div>
+              <div>{detailTotal}</div>
             </div>
-            <div className="field">
-              <label>CGST</label>
-              <div>{money(detail.cgst)}</div>
-            </div>
-            <div className="field">
-              <label>SGST</label>
-              <div>{money(detail.sgst)}</div>
-            </div>
-            <div className="field">
-              <label>IGST</label>
-              <div>{money(detail.igst)}</div>
-            </div>
+            {isCashView ? (
+              <>
+                <div className="field">
+                  <label>Base price</label>
+                  <div>{detailBase}</div>
+                </div>
+                <div className="field">
+                  <label>CGST</label>
+                  <div>{money(detail.cgst)}</div>
+                </div>
+                <div className="field">
+                  <label>SGST</label>
+                  <div>{money(detail.sgst)}</div>
+                </div>
+                <div className="field">
+                  <label>IGST</label>
+                  <div>{money(detail.igst)}</div>
+                </div>
+              </>
+            ) : null}
             <div className="field full">
               <label>Remarks</label>
               <div>{detail.remarks || '—'}</div>
