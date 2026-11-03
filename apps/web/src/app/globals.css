@@ -1470,3 +1470,217 @@ a {
   margin-bottom: 0.85rem;
   flex-wrap: wrap;
 }
+
+/* Customer ledger */
+.ledger-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.ledger-customer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+
+.ledger-customer-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--radius-md, 8px);
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.ledger-customer-item:hover {
+  background: color-mix(in srgb, var(--main-primary) 8%, transparent);
+}
+
+.ledger-customer-item.active {
+  border-color: var(--main-primary);
+  background: color-mix(in srgb, var(--main-primary) 12%, transparent);
+}
+
+.ledger-customer-name {
+  font-weight: 600;
+  grid-column: 1;
+}
+
+.ledger-customer-due {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.ledger-customer-due.due {
+  color: #b45309;
+}
+
+.ledger-customer-meta {
+  grid-column: 1;
+  font-size: 0.78rem;
+}
+
+.ledger-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.ledger-outstanding {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ledger-outstanding strong {
+  font-size: 1.35rem;
+}
+
+.ledger-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ledger-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ledger-summary-card strong {
+  font-size: 1.15rem;
+}
+
+.ledger-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ledger-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.ledger-tabs button {
+  border: 1px solid var(--main-border, #d0d7e2);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ledger-tabs button.active {
+  border-color: var(--main-primary);
+  background: color-mix(in srgb, var(--main-primary) 12%, #fff);
+  font-weight: 600;
+}
+
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ledger-table th,
+.ledger-table td {
+  padding: 0.55rem 0.45rem;
+  border-bottom: 1px solid var(--main-border, #e5e7eb);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ledger-table th.num,
+.ledger-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ledger-debit-text {
+  color: #b91c1c;
+}
+
+.ledger-credit-text {
+  color: #047857;
+}
+
+.ledger-type {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+
+.ledger-type.bill {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.ledger-type.payment {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.ledger-print-only {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .ledger-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ledger-customer-list {
+    max-height: 14rem;
+  }
+
+  .ledger-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .ledger-page .no-print {
+    display: none !important;
+  }
+
+  .ledger-layout {
+    display: block;
+  }
+
+  .ledger-print-only {
+    display: block !important;
+    margin-bottom: 1rem;
+  }
+
+  .ledger-tabs,
+  .ledger-customers {
+    display: none !important;
+  }
+
+  .ledger-print-block {
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

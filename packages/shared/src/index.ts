@@ -36,6 +36,36 @@ export enum InvoiceStatus {
   CANCELLED = 'CANCELLED',
 }
 
+/** Computed invoice settlement for ledger UI */
+export enum InvoicePaymentStatus {
+  UNPAID = 'UNPAID',
+  PARTIAL = 'PARTIAL',
+  PAID = 'PAID',
+}
+
+export enum PaymentMode {
+  CASH = 'CASH',
+  UPI = 'UPI',
+  NEFT = 'NEFT',
+  RTGS = 'RTGS',
+  CHEQUE = 'CHEQUE',
+  OTHER = 'OTHER',
+}
+
+export const PAYMENT_MODE_LABELS: Record<PaymentMode, string> = {
+  [PaymentMode.CASH]: 'Cash',
+  [PaymentMode.UPI]: 'UPI',
+  [PaymentMode.NEFT]: 'NEFT',
+  [PaymentMode.RTGS]: 'RTGS',
+  [PaymentMode.CHEQUE]: 'Cheque',
+  [PaymentMode.OTHER]: 'Other',
+};
+
+export enum LedgerTxnType {
+  BILL = 'BILL',
+  PAYMENT = 'PAYMENT',
+}
+
 /** Quotation contract rate service sections */
 export enum QuotationServiceType {
   DOX = 'DOX',

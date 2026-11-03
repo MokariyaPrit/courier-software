@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
 import { CitiesModule } from './cities/cities.module';
 import { GstReportsModule } from './gst-reports/gst-reports.module';
+import { LedgerModule } from './ledger/ledger.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { ConsignmentsModule } from './consignments/consignments.module';
@@ -17,7 +18,9 @@ import {
   Consignment,
   CourierCompany,
   Customer,
+  CustomerPayment,
   Invoice,
+  PaymentAllocation,
   Quotation,
   QuotationRateRow,
   QuotationRateTemplate,
@@ -61,6 +64,8 @@ import { UsersModule } from './users/users.module';
           Consignment,
           TrackingEvent,
           Invoice,
+          CustomerPayment,
+          PaymentAllocation,
           QuotationRateTemplate,
           QuotationRateRow,
           Quotation,
@@ -81,6 +86,7 @@ import { UsersModule } from './users/users.module';
     ConsignmentsModule,
     TrackingModule,
     BillingModule,
+    LedgerModule,
     GstReportsModule,
     QuotationsModule,
     RateColumnsModule,

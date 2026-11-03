@@ -6,6 +6,8 @@ export { City } from './city.entity';
 export { Consignment } from './consignment.entity';
 export { TrackingEvent } from './tracking-event.entity';
 export { Invoice } from './invoice.entity';
+export { CustomerPayment } from './customer-payment.entity';
+export { PaymentAllocation } from './payment-allocation.entity';
 export { QuotationRateTemplate } from './quotation-rate-template.entity';
 export { QuotationRateRow } from './quotation-rate-row.entity';
 export { Quotation } from './quotation.entity';
