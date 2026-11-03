@@ -13,6 +13,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { ConsignmentsModule } from './consignments/consignments.module';
 import { CourierCompaniesModule } from './courier-companies/courier-companies.module';
 import { CustomersModule } from './customers/customers.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import {
   City,
   Consignment,
@@ -80,6 +81,7 @@ import { UsersModule } from './users/users.module';
     }),
     AuthModule,
     UsersModule,
+    DashboardModule,
     CustomersModule,
     StatesModule,
     CitiesModule,
