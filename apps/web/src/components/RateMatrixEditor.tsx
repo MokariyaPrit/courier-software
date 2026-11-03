@@ -167,6 +167,19 @@ export function RateMatrixEditor({
     });
   };
 
+  const moveColumn = (colId: string, direction: -1 | 1) => {
+    const index = columns.findIndex((c) => c.id === colId);
+    if (index < 0) return;
+    const next = index + direction;
+    if (next < 0 || next >= columns.length) return;
+    const reordered = [...columns];
+    const [col] = reordered.splice(index, 1);
+    reordered.splice(next, 0, col);
+    setMatrix({
+      columns: reordered.map((c, i) => ({ ...c, sortOrder: i })),
+    });
+  };
+
   return (
     <div className="rate-matrix">
       {!readOnly ? (
@@ -189,8 +202,8 @@ export function RateMatrixEditor({
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
             Sections are fixed: DOX, PARCEL, DOX BY AIR, PARCEL BY AIR, TATKAL.
-            DOX-type weights are in g (max 1000 g); parcel weights are in kg
-            (max 1 kg).
+            Use the arrows on column headers to reorder destinations. DOX-type
+            weights are in g (max 1000 g); parcel weights are in kg (max 1 kg).
           </p>
         </div>
       ) : null}
@@ -263,8 +276,38 @@ export function RateMatrixEditor({
                 <thead>
                   <tr>
                     <th>Weight ({unit})</th>
-                    {columns.map((col) => (
-                      <th key={col.id}>{col.label}</th>
+                    {columns.map((col, colIndex) => (
+                      <th key={col.id}>
+                        {readOnly ? (
+                          col.label
+                        ) : (
+                          <div className="rate-matrix-col-head">
+                            <button
+                              type="button"
+                              className="rate-matrix-col-move"
+                              title="Move column left"
+                              aria-label={`Move ${col.label} left`}
+                              disabled={colIndex === 0}
+                              onClick={() => moveColumn(col.id, -1)}
+                            >
+                              <i className="pi pi-arrow-left" aria-hidden />
+                            </button>
+                            <span className="rate-matrix-col-label">
+                              {col.label}
+                            </span>
+                            <button
+                              type="button"
+                              className="rate-matrix-col-move"
+                              title="Move column right"
+                              aria-label={`Move ${col.label} right`}
+                              disabled={colIndex === columns.length - 1}
+                              onClick={() => moveColumn(col.id, 1)}
+                            >
+                              <i className="pi pi-arrow-right" aria-hidden />
+                            </button>
+                          </div>
+                        )}
+                      </th>
                     ))}
                     {!readOnly ? (
                       <th className="rate-matrix-actions-col" />

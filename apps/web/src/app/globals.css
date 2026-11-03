@@ -1029,8 +1029,44 @@ a {
 .rate-matrix-col-head {
   display: flex;
   align-items: center;
-  gap: 0.15rem;
+  justify-content: center;
+  gap: 0.2rem;
   min-width: 7.5rem;
+}
+
+.rate-matrix-col-label {
+  flex: 1 1 auto;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rate-matrix-col-move {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--main-primary);
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.rate-matrix-col-move:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--main-primary) 12%, transparent);
+}
+
+.rate-matrix-col-move:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .rate-matrix-col-head .p-inputtext {

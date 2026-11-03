@@ -98,8 +98,8 @@ export function defaultRateMatrix(
 
 /**
  * Align matrix columns to the user's Rate columns selection (+ ROI).
- * Keeps rate values for columns that remain; drops stale city:/state:/roi
- * columns not in the current geography so duplicates do not linger.
+ * Preserves the user's column order; refreshes labels for geography columns;
+ * drops stale city:/state:/roi ids; appends newly selected cities (ROI last).
  */
 export function syncMatrixToGeography(
   existing: {
@@ -113,21 +113,56 @@ export function syncMatrixToGeography(
   geographyColumns: RateColumnDef[],
   _mode: 'cash' | 'quotation' = 'quotation',
 ): { columns: RateColumnDef[]; rows: Array<Record<string, unknown>> } {
-  const prevCols = [...(existing.columns ?? [])];
+  const prevCols = [...(existing.columns ?? [])].sort(
+    (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+  );
+  const geoById = new Map(geographyColumns.map((g) => [g.id, g]));
   const geoIds = new Set(geographyColumns.map((c) => c.id));
+  const nextColumns: RateColumnDef[] = [];
+  const seen = new Set<string>();
 
-  const nextColumns: RateColumnDef[] = geographyColumns.map((g, i) => ({
-    id: g.id,
-    label: g.label,
-    sortOrder: i,
-  }));
-
-  let extraOrder = nextColumns.length;
   for (const col of prevCols) {
-    if (geoIds.has(col.id)) continue;
-    if (col.id.startsWith('city:') || col.id.startsWith('state:')) continue;
-    if (col.id === ROI_RATE_COLUMN_ID) continue;
-    nextColumns.push({ ...col, sortOrder: extraOrder++ });
+    if (geoIds.has(col.id)) {
+      const g = geoById.get(col.id)!;
+      nextColumns.push({
+        id: g.id,
+        label: g.label,
+        sortOrder: nextColumns.length,
+      });
+      seen.add(col.id);
+      continue;
+    }
+    // Drop stale geography columns removed from Rate columns selection
+    if (
+      col.id.startsWith('city:') ||
+      col.id.startsWith('state:') ||
+      col.id === ROI_RATE_COLUMN_ID
+    ) {
+      continue;
+    }
+    nextColumns.push({ ...col, sortOrder: nextColumns.length });
+    seen.add(col.id);
+  }
+
+  // Newly selected cities (not ROI) — append in geography order
+  for (const g of geographyColumns) {
+    if (seen.has(g.id) || g.id === ROI_RATE_COLUMN_ID) continue;
+    nextColumns.push({
+      id: g.id,
+      label: g.label,
+      sortOrder: nextColumns.length,
+    });
+    seen.add(g.id);
+  }
+
+  // ROI always available; append if missing
+  const roi = geographyColumns.find((g) => g.id === ROI_RATE_COLUMN_ID);
+  if (roi && !seen.has(roi.id)) {
+    nextColumns.push({
+      id: roi.id,
+      label: roi.label,
+      sortOrder: nextColumns.length,
+    });
   }
 
   const keepIds = new Set(nextColumns.map((c) => c.id));
