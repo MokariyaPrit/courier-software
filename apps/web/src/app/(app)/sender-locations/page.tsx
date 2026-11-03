@@ -107,6 +107,26 @@ export default function SenderLocationsPage() {
     setSavedHint('');
   };
 
+  const allCityIds = useMemo(
+    () => groups.flatMap((g) => g.cities.map((c) => c.id)),
+    [groups],
+  );
+
+  const selectAllCenters = () => {
+    if (!allCityIds.length) return;
+    setSelected(new Set(allCityIds));
+    setDefaultCityId((prev) => prev || allCityIds[0] || null);
+    setDirty(true);
+    setSavedHint('');
+  };
+
+  const clearAllCenters = () => {
+    setSelected(new Set());
+    setDefaultCityId(null);
+    setDirty(true);
+    setSavedHint('');
+  };
+
   const toggleCollapse = (stateId: string) => {
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -170,14 +190,44 @@ export default function SenderLocationsPage() {
       </div>
 
       <div className="panel" style={{ marginBottom: '1rem' }}>
-        <strong>{selectedCount}</strong> cities selected
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <strong>{selectedCount}</strong>
+          <span className="muted">
+            of {allCityIds.length} cities selected
+          </span>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.35rem' }}>
+            <Button
+              size="small"
+              outlined
+              label="Select all centers"
+              icon="pi pi-check-square"
+              disabled={!allCityIds.length || selectedCount === allCityIds.length}
+              onClick={selectAllCenters}
+            />
+            <Button
+              size="small"
+              outlined
+              severity="secondary"
+              label="Clear all"
+              disabled={selectedCount === 0}
+              onClick={clearAllCenters}
+            />
+          </div>
+        </div>
         {summary.length ? (
           <p className="muted" style={{ marginBottom: 0, marginTop: '0.35rem' }}>
             {summary.slice(0, 12).join(' · ')}
             {summary.length > 12 ? ` · +${summary.length - 12} more` : ''}
           </p>
         ) : (
-          <p className="muted" style={{ marginBottom: 0 }}>
+          <p className="muted" style={{ marginBottom: 0, marginTop: '0.35rem' }}>
             No cities selected yet.
           </p>
         )}
