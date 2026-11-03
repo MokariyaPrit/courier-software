@@ -17,7 +17,14 @@ import { normalizeBookingTabConfigDto } from './dto/booking-tab-config.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
-const USER_SORT = ['email', 'role', 'createdAt', 'isActive', 'fullName'] as const;
+const USER_SORT = [
+  'email',
+  'role',
+  'createdAt',
+  'isActive',
+  'fullName',
+  'expiredOn',
+] as const;
 
 @Injectable()
 export class UsersService {
@@ -71,6 +78,7 @@ export class UsersService {
         igstPercent: String(dto.igstPercent ?? 0),
         notes: dto.notes ?? null,
         isActive: dto.isActive ?? true,
+        expiredOn: dto.expiredOn?.trim() ? dto.expiredOn.trim() : null,
       }),
     );
 
@@ -91,6 +99,8 @@ export class UsersService {
 
     if (sortBy === 'fullName') {
       qb.orderBy('userInfo.fullName', sortOrder);
+    } else if (sortBy === 'expiredOn') {
+      qb.orderBy('userInfo.expiredOn', sortOrder);
     } else {
       qb.orderBy(`user.${sortBy}`, sortOrder);
     }
@@ -188,6 +198,13 @@ export class UsersService {
       );
     }
     if (dto.infoIsActive !== undefined) info.isActive = dto.infoIsActive;
+    if (dto.expiredOn !== undefined) {
+      const raw = dto.expiredOn;
+      info.expiredOn =
+        raw == null || String(raw).trim() === ''
+          ? null
+          : String(raw).trim().slice(0, 10);
+    }
 
     await this.userInfoRepo.save(info);
     return this.findOne(id);

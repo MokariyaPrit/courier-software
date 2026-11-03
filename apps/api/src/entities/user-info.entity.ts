@@ -87,6 +87,14 @@ export class UserInfo {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
+  /**
+   * Last calendar day the account may log in.
+   * After this date (local), login is blocked. Null = no expiry.
+   * Editable by Admin only; Branch Managers may view on profile.
+   */
+  @Column({ type: 'date', nullable: true })
+  expiredOn: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

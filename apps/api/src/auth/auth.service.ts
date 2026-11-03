@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import type { Response } from 'express';
 import { Repository } from 'typeorm';
+import { isAccountExpired } from '../common/utils/account-expiry';
 import { User } from '../entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
@@ -105,6 +106,11 @@ export class AuthService {
         'Your account is inactive. Please contact the administrator.',
       );
     }
+    if (isAccountExpired(user.userInfo?.expiredOn)) {
+      throw new ForbiddenException(
+        'Your account has expired. Please contact the administrator.',
+      );
+    }
     this.setAuthCookies(res, user);
     return this.sanitize(user);
   }
@@ -125,6 +131,9 @@ export class AuthService {
       });
       if (!user || !user.isActive) {
         throw new UnauthorizedException('Invalid session');
+      }
+      if (isAccountExpired(user.userInfo?.expiredOn)) {
+        throw new UnauthorizedException('Account expired');
       }
       this.setAuthCookies(res, user);
       return this.sanitize(user);

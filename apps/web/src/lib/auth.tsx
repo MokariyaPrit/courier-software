@@ -32,6 +32,8 @@ export interface UserInfoProfile {
   notes: string | null;
   bookingTabConfig?: { account: string[]; cash: string[] } | null;
   isActive: boolean;
+  /** Last day account may log in; view-only for branch managers */
+  expiredOn?: string | null;
 }
 
 export interface SessionUser {

@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Repository } from 'typeorm';
+import { isAccountExpired } from '../common/utils/account-expiry';
 import { User } from '../entities/user.entity';
 
 export interface JwtPayload {
@@ -29,9 +30,15 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: JwtPayload) {
-    const user = await this.usersRepo.findOne({ where: { id: payload.sub } });
+    const user = await this.usersRepo.findOne({
+      where: { id: payload.sub },
+      relations: { userInfo: true },
+    });
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid session');
+    }
+    if (isAccountExpired(user.userInfo?.expiredOn)) {
+      throw new UnauthorizedException('Account expired');
     }
     return {
       id: user.id,

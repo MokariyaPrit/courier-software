@@ -2,6 +2,7 @@ import { Role } from '@courier/shared';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsEnum,
   IsNumber,
@@ -9,6 +10,7 @@ import {
   IsString,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -99,4 +101,10 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  /** Last day account may log in (YYYY-MM-DD). Null/omit = no expiry. */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== '')
+  @IsDateString()
+  expiredOn?: string | null;
 }

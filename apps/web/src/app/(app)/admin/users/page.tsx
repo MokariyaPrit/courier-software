@@ -34,6 +34,8 @@ const USER_SORT_OPTIONS: SortOption[] = [
   { label: 'Email Asc', sortBy: 'email', sortOrder: 'ASC' },
   { label: 'Email Desc', sortBy: 'email', sortOrder: 'DESC' },
   { label: 'Role Asc', sortBy: 'role', sortOrder: 'ASC' },
+  { label: 'Expired on Asc', sortBy: 'expiredOn', sortOrder: 'ASC' },
+  { label: 'Expired on Desc', sortBy: 'expiredOn', sortOrder: 'DESC' },
 ];
 
 interface UserInfoFields {
@@ -55,6 +57,7 @@ interface UserInfoFields {
   state: string | null;
   pincode: string | null;
   notes: string | null;
+  expiredOn?: string | null;
 }
 
 interface UserRow {
@@ -86,6 +89,7 @@ interface UserFormState {
   state: string;
   pincode: string;
   notes: string;
+  expiredOn: string;
   isActive: boolean;
 }
 
@@ -112,8 +116,27 @@ const EMPTY_USER_FORM: UserFormState = {
   state: '',
   pincode: '',
   notes: '',
+  expiredOn: '',
   isActive: true,
 };
+
+function formatExpiredOn(value: string | null | undefined) {
+  if (!value) return '—';
+  const key = String(value).slice(0, 10);
+  const d = new Date(`${key}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return key;
+  return d.toLocaleDateString('en-IN');
+}
+
+function isExpiredPast(value: string | null | undefined) {
+  if (!value) return false;
+  const key = String(value).slice(0, 10);
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}` > key;
+}
 
 const ROLE_OPTIONS = [
   { label: 'Admin', value: Role.ADMIN },
@@ -142,6 +165,9 @@ function toFormFromUser(user: UserRow): UserFormState {
     state: user.userInfo?.state || '',
     pincode: user.userInfo?.pincode || '',
     notes: user.userInfo?.notes || '',
+    expiredOn: user.userInfo?.expiredOn
+      ? String(user.userInfo.expiredOn).slice(0, 10)
+      : '',
     isActive: user.isActive,
   };
 }
@@ -457,6 +483,21 @@ function UserFormFields({
         />
       </div>
 
+      <div className="field">
+        <label>Expired on</label>
+        <InputText
+          type="date"
+          value={state.expiredOn}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, expiredOn: e.target.value }))
+          }
+          style={{ width: '100%' }}
+        />
+        <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.8rem' }}>
+          After this date the user cannot log in. Leave blank for no expiry.
+        </p>
+      </div>
+
       <div className="field full account-status-row">
         <div>
           <label>Account status</label>
@@ -519,6 +560,7 @@ export default function UsersPage() {
         state: cleaned.state || undefined,
         pincode: cleaned.pincode || undefined,
         notes: cleaned.notes || undefined,
+        expiredOn: cleaned.expiredOn || null,
       });
     },
     onSuccess: async () => {
@@ -561,6 +603,7 @@ export default function UsersPage() {
         state: cleaned.state || null,
         pincode: cleaned.pincode || null,
         notes: cleaned.notes || null,
+        expiredOn: cleaned.expiredOn || null,
       };
       if (cleaned.password) {
         payload.password = cleaned.password;
@@ -696,6 +739,25 @@ export default function UsersPage() {
                     {row.isActive ? 'Active' : 'Inactive'}
                   </Tag>
                 ),
+              },
+              {
+                header: 'Expired on',
+                body: (row: UserRow) => {
+                  const expired = row.userInfo?.expiredOn;
+                  if (!expired) return '—';
+                  return (
+                    <span
+                      style={{
+                        color: isExpiredPast(expired)
+                          ? 'var(--status-error)'
+                          : undefined,
+                      }}
+                    >
+                      {formatExpiredOn(expired)}
+                      {isExpiredPast(expired) ? ' · expired' : ''}
+                    </span>
+                  );
+                },
               },
               {
                 header: 'Actions',

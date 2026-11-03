@@ -227,6 +227,19 @@ export default function ProfilePage() {
               </Tag>
             </span>
           </div>
+          <div className="profile-row">
+            <span className="profile-label">Expired on</span>
+            <span className="profile-value">
+              {info?.expiredOn
+                ? new Date(
+                    `${String(info.expiredOn).slice(0, 10)}T00:00:00`,
+                  ).toLocaleDateString('en-IN')
+                : '—'}
+              <span className="muted" style={{ display: 'block', fontSize: '0.8rem' }}>
+                Set by admin · view only
+              </span>
+            </span>
+          </div>
         </section>
 
         <section className="panel profile-card">

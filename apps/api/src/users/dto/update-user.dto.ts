@@ -2,6 +2,7 @@ import { Role } from '@courier/shared';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsEnum,
   IsNumber,
@@ -117,4 +118,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsBoolean()
   infoIsActive?: boolean;
+
+  /** Last day account may log in (YYYY-MM-DD). Null clears expiry. Admin only. */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== '')
+  @IsDateString()
+  expiredOn?: string | null;
 }
