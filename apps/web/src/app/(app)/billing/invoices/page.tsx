@@ -120,7 +120,7 @@ export default function InvoicesPage() {
             columns={[
               { field: 'invoiceNumber', header: 'Bill No' },
               {
-                header: 'Customer',
+                header: 'Party',
                 body: (row: Invoice) => row.customer?.name ?? '—',
               },
               {

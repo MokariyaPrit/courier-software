@@ -3,7 +3,7 @@ import { BookingType } from '@courier/shared';
 /** Field keys that can participate in booking Tab navigation */
 export const ACCOUNT_TAB_FIELDS = [
   { key: 'bookingDate', label: 'Booking date' },
-  { key: 'customer', label: 'Customer' },
+  { key: 'customer', label: 'Party' },
   { key: 'courierCompany', label: 'Courier company' },
   { key: 'documentNumber', label: 'Document number' },
   { key: 'destination', label: 'Destination' },

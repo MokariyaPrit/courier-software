@@ -704,7 +704,7 @@ export function BookingFormPanel({
         if (cancelled) return;
         setForm((p) => ({ ...p, quotationId: '' }));
         setRateSource(null);
-        setRateHint('No quotation found for this customer');
+        setRateHint('No quotation found for this party');
       }
     })();
     return () => {
@@ -981,7 +981,7 @@ export function BookingFormPanel({
   const buildPayload = async () => {
     const cleaned = trimFormData(form);
     if (cleaned.bookingType === BookingType.ACCOUNT && !cleaned.customerId) {
-      throw new Error('Select a customer');
+      throw new Error('Select a party');
     }
     if (cleaned.bookingType === BookingType.CASH && !cleaned.partyName) {
       throw new Error('Party name is required for cash booking');
@@ -1298,14 +1298,14 @@ export function BookingFormPanel({
 
             {mode === BookingType.ACCOUNT ? (
               <div className="field">
-                <label>Customer</label>
-                <SearchSelect
+                <label>Party</label>
+                  <SearchSelect
                   inputRef={customerFocusRef}
                   value={form.customerLabel}
                   options={customerOptions}
-                  placeholder="Type customer name…"
+                  placeholder="Type party name…"
                   allowFreeText={false}
-                  emptyHint="No customers match"
+                  emptyHint="No parties match"
                   tabIndex={ti('customer')}
                   onChange={(text) =>
                     setForm((p) => ({
@@ -1453,27 +1453,29 @@ export function BookingFormPanel({
                 onSelect={applyReceiverSuggestion}
               />
             </div>
-            <div className="field">
-              <label>Receiver Phone</label>
-              <InputText
-                value={form.receiverPhone}
-                tabIndex={ti('receiverPhone')}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, receiverPhone: e.target.value }))
-                }
-                style={{ width: '100%' }}
-              />
-            </div>
-            <div className="field full">
-              <label>Receiver Address</label>
-              <InputText
-                value={form.receiverAddress}
-                tabIndex={ti('receiverAddress')}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, receiverAddress: e.target.value }))
-                }
-                style={{ width: '100%' }}
-              />
+            <div className="field-row field-row-1-2 full">
+              <div className="field">
+                <label>Receiver Phone</label>
+                <InputText
+                  value={form.receiverPhone}
+                  tabIndex={ti('receiverPhone')}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, receiverPhone: e.target.value }))
+                  }
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div className="field">
+                <label>Receiver Address</label>
+                <InputText
+                  value={form.receiverAddress}
+                  tabIndex={ti('receiverAddress')}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, receiverAddress: e.target.value }))
+                  }
+                  style={{ width: '100%' }}
+                />
+              </div>
             </div>
 
             <div className="field">
@@ -1484,7 +1486,7 @@ export function BookingFormPanel({
                 placeholder="DOX / PARCEL / …"
                 allowFreeText={false}
                 emptyHint={
-                  matrix ? 'No sections' : 'Select customer / cash rates first'
+                  matrix ? 'No sections' : 'Select party / cash rates first'
                 }
                 tabIndex={ti('serviceType')}
                 onChange={(text) =>
@@ -1682,7 +1684,7 @@ export function BookingFormPanel({
               </p>
               <p className="muted" style={{ margin: '0 0 0.75rem' }}>
                 Checked fields stay filled after Create booking. Focus returns to{' '}
-                {mode === BookingType.ACCOUNT ? 'Customer' : 'Party name'}.
+                {mode === BookingType.ACCOUNT ? 'Party' : 'Party name'}.
               </p>
               <div
                 style={{
@@ -1697,7 +1699,7 @@ export function BookingFormPanel({
                       key: 'customer' as const,
                       label:
                         mode === BookingType.ACCOUNT
-                          ? 'Customer'
+                          ? 'Party'
                           : 'Party details',
                     },
                     { key: 'destination' as const, label: 'Destination' },

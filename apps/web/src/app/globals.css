@@ -550,6 +550,22 @@ a {
   grid-column: 1 / -1;
 }
 
+.form-grid .field-row {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+.form-grid .field-row-1-2 {
+  grid-template-columns: 1fr 2fr;
+}
+
+@media (max-width: 640px) {
+  .form-grid .field-row-1-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .field label {
   display: block;
   margin-bottom: 0.35rem;

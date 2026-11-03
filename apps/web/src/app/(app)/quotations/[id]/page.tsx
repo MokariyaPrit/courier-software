@@ -258,7 +258,7 @@ export default function QuotationDetailPage() {
         </p>
         <p className="muted" style={{ marginBottom: 0 }}>
           Date and rates stay editable. Save anytime; Issue / Re-issue refreshes
-          FOV/fuel from the customer and keeps the quotation code.
+          FOV/fuel from the party and keeps the quotation code.
         </p>
       </div>
 

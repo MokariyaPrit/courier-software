@@ -147,7 +147,7 @@ export default function QuotationsPage() {
         body: (row) => row.quotationCode || '—',
       },
       {
-        header: 'Customer',
+        header: 'Party',
         body: (row) => row.customer?.name || '—',
       },
       {
@@ -215,7 +215,7 @@ export default function QuotationsPage() {
       <ListSearch
         search={list.search}
         onSearchChange={list.setSearch}
-        searchPlaceholder="Search code / customer"
+        searchPlaceholder="Search code / party"
       />
       <div className="panel">
         <ListFilterChrome
@@ -245,21 +245,21 @@ export default function QuotationsPage() {
       >
         <div className="form-grid">
           <div className="field full">
-            <label>Customer</label>
+            <label>Party</label>
             <Select
               value={customerId || null}
               options={customerOptions}
               onChange={(e) => setCustomerId(String(e.value || ''))}
               placeholder={
                 customerOptions.length
-                  ? 'Select customer'
-                  : 'All customers already have a quotation'
+                  ? 'Select party'
+                  : 'All parties already have a quotation'
               }
               disabled={!customerOptions.length}
               style={{ width: '100%' }}
             />
             <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.85rem' }}>
-              One quotation per customer. Customers who already have one are
+              One quotation per party. Parties who already have one are
               hidden.
             </p>
           </div>

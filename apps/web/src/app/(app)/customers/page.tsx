@@ -221,7 +221,7 @@ export default function CustomersPage() {
     onError: (err: unknown) => {
       const message =
         (err as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message || 'Failed to save customer';
+          ?.response?.data?.error?.message || 'Failed to save party';
       setError(message);
     },
   });
@@ -237,7 +237,7 @@ export default function CustomersPage() {
     onError: (err: unknown) => {
       const message =
         (err as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message || 'Failed to delete customer';
+          ?.response?.data?.error?.message || 'Failed to delete party';
       setListError(message);
     },
   });
@@ -263,7 +263,7 @@ export default function CustomersPage() {
 
   const askDelete = (row: Customer) => {
     confirmDialog({
-      header: 'Delete customer',
+      header: 'Delete party',
       message: `Remove "${row.name}"? It will be hidden from lists (soft delete).`,
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Delete',
@@ -338,12 +338,12 @@ export default function CustomersPage() {
     <div>
       <ConfirmDialog />
       <div className="page-header">
-        <h1>Customers</h1>
-        <Button label="Add customer" icon="pi pi-plus" onClick={openCreate} />
+        <h1>Parties</h1>
+        <Button label="Add party" icon="pi pi-plus" onClick={openCreate} />
       </div>
       <p className="muted" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-        Customers are saved under your login. Branch managers see only their own
-        customers; Admin can see all.
+        Parties are saved under your login. Branch managers see only their own
+        parties; Admin can see all.
       </p>
       <ListSearch
         search={list.search}
@@ -372,14 +372,14 @@ export default function CustomersPage() {
       </div>
 
       <Dialog
-        header={editingId ? 'Edit customer' : 'New customer'}
+        header={editingId ? 'Edit party' : 'New party'}
         visible={open}
         onHide={() => setOpen(false)}
         style={{ width: 'min(640px, 95vw)' }}
       >
         <div className="form-grid">
           <div className="field full">
-            <label>Customer name</label>
+            <label>Party name</label>
             <InputText
               value={form.name}
               onChange={(e) => setField('name', e.target.value)}

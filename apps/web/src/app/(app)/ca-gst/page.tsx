@@ -188,7 +188,7 @@ export default function CaGstPage() {
   const report = reportQuery.data;
   const customerOptions = useMemo(
     () => [
-      { label: 'All customers', value: ALL_CUSTOMERS },
+      { label: 'All parties', value: ALL_CUSTOMERS },
       ...(customersQuery.data?.data ?? []).map((c) => ({
         label: c.name,
         value: c.id,
@@ -206,9 +206,9 @@ export default function CaGstPage() {
         'Bill Date',
         'Issuer',
         'Issuer GSTIN',
-        'Customer',
-        'Customer GSTIN',
-        'Customer PAN',
+        'Party',
+        'Party GSTIN',
+        'Party PAN',
         'State',
         'HSN/SAC',
         'Taxable Value',
@@ -247,9 +247,9 @@ export default function CaGstPage() {
   const exportCustomerCsv = () => {
     if (!report) return;
     downloadCsv(
-      `CA-GST-Customers-${report.meta.dateFrom}_to_${report.meta.dateTo}.csv`,
+      `CA-GST-Parties-${report.meta.dateFrom}_to_${report.meta.dateTo}.csv`,
       [
-        'Customer',
+        'Party',
         'GSTIN',
         'PAN',
         'State',
@@ -283,7 +283,7 @@ export default function CaGstPage() {
         <div>
           <h1>CA GST report</h1>
           <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-            Customer bill GST data for CA — income tax &amp; GST return filing
+            Party bill GST data for CA — income tax &amp; GST return filing
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -295,7 +295,7 @@ export default function CaGstPage() {
             onClick={exportInvoiceCsv}
           />
           <Button
-            label="Export customers CSV"
+            label="Export parties CSV"
             icon="pi pi-download"
             outlined
             disabled={!report?.customerSummary.length}
@@ -327,7 +327,7 @@ export default function CaGstPage() {
             />
           </div>
           <div className="field">
-            <label>Customer</label>
+            <label>Party</label>
             <Select
               value={customerId || ALL_CUSTOMERS}
               options={customerOptions}
@@ -335,7 +335,7 @@ export default function CaGstPage() {
                 const next = normalizeCustomerId(e.value);
                 setCustomerId(next || ALL_CUSTOMERS);
               }}
-              placeholder="All customers"
+              placeholder="All parties"
               showClear={customerId !== ALL_CUSTOMERS && customerId !== ''}
               style={{ width: '100%' }}
             />
@@ -392,8 +392,8 @@ export default function CaGstPage() {
                 <span className="muted">Invoices</span>
                 <strong>{report.totals.invoiceCount}</strong>
                 <span className="muted">
-                  {report.totals.customerCount} customer
-                  {report.totals.customerCount === 1 ? '' : 's'}
+                  {report.totals.customerCount} part
+                  {report.totals.customerCount === 1 ? 'y' : 'ies'}
                 </span>
               </div>
               <div>
@@ -427,7 +427,7 @@ export default function CaGstPage() {
                 onClick={() => setTab('invoices')}
               />
               <Button
-                label="Customer-wise"
+                label="Party-wise"
                 text={tab !== 'customers'}
                 onClick={() => setTab('customers')}
               />
@@ -448,7 +448,7 @@ export default function CaGstPage() {
                     header: 'Issuer',
                     body: (row: GstRow) => row.issuerName || '—',
                   },
-                  { field: 'customerName', header: 'Customer' },
+                  { field: 'customerName', header: 'Party' },
                   {
                     header: 'GSTIN',
                     body: (row: GstRow) => row.customerGstin || '—',
@@ -482,7 +482,7 @@ export default function CaGstPage() {
                 dataKey="id"
                 loading={reportQuery.isFetching}
                 columns={[
-                  { field: 'customerName', header: 'Customer' },
+                  { field: 'customerName', header: 'Party' },
                   {
                     header: 'GSTIN',
                     body: (row: CustomerSummary) => row.customerGstin || '—',

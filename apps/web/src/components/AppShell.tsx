@@ -9,11 +9,12 @@ import { useAuth } from '@/lib/auth';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
-  { href: '/bookings', label: 'Bookings', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
+  { href: '/bookings/account', label: 'Account booking', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
+  { href: '/bookings/cash', label: 'Cash booking', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/booking-cursor', label: 'Booking cursor', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/tracking', label: 'Booking list', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/delivery', label: 'Delivery', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
-  { href: '/customers', label: 'Customers', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
+  { href: '/customers', label: 'Parties', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/receivers', label: 'Receivers', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/sender-locations', label: 'Centers', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/rate-columns', label: 'Rate columns', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
@@ -25,7 +26,7 @@ const NAV = [
   { href: '/masters/cities', label: 'Cities', roles: [Role.ADMIN] },
   { href: '/billing', label: 'Generate bill', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/billing/invoices', label: 'Invoices', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
-  { href: '/customer-ledger', label: 'Customer ledger', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
+  { href: '/customer-ledger', label: 'Party ledger', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/ca-gst', label: 'CA GST', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
   { href: '/admin/users', label: 'Users', roles: [Role.ADMIN] },
   { href: '/profile', label: 'Profile', roles: [Role.ADMIN, Role.BRANCH_MANAGER] },
@@ -57,17 +58,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             const isActive =
               item.href === '/profile'
                 ? pathname === '/profile'
-                : item.href === '/billing'
-                  ? pathname === '/billing'
-                  : item.href === '/billing/invoices'
-                    ? pathname === '/billing/invoices' ||
-                      pathname.startsWith('/billing/invoices/')
-                    : item.href === '/quotations'
-                      ? pathname === '/quotations' ||
-                        (pathname.startsWith('/quotations/') &&
-                          !pathname.startsWith('/quotations/templates'))
-                      : pathname === item.href ||
-                        pathname.startsWith(`${item.href}/`);
+                : item.href === '/bookings/account'
+                  ? pathname === '/bookings/account' ||
+                    pathname.startsWith('/bookings/account/')
+                  : item.href === '/bookings/cash'
+                    ? pathname === '/bookings/cash' ||
+                      pathname.startsWith('/bookings/cash/')
+                    : item.href === '/billing'
+                      ? pathname === '/billing'
+                      : item.href === '/billing/invoices'
+                        ? pathname === '/billing/invoices' ||
+                          pathname.startsWith('/billing/invoices/')
+                        : item.href === '/quotations'
+                          ? pathname === '/quotations' ||
+                            (pathname.startsWith('/quotations/') &&
+                              !pathname.startsWith('/quotations/templates'))
+                          : pathname === item.href ||
+                            pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}

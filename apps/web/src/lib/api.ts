@@ -71,7 +71,7 @@ function resolveResource(path: string): ResourceInfo {
     return { noun: 'Quotation', createVerb: 'saved' };
   }
   if (p.includes('/customers')) {
-    return { noun: 'Customer', createVerb: 'saved' };
+    return { noun: 'Party', createVerb: 'saved' };
   }
   if (p.includes('/receivers')) {
     return { noun: 'Receiver', createVerb: 'saved' };

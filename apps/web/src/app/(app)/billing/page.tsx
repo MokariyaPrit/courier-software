@@ -224,7 +224,7 @@ export default function GenerateBillPage() {
               marginBottom: '0.65rem',
             }}
           >
-            <strong>Customers</strong>
+            <strong>Parties</strong>
             <span className="muted" style={{ fontSize: '0.9rem' }}>
               {selected.length} selected
             </span>
@@ -241,16 +241,16 @@ export default function GenerateBillPage() {
                 onChange={toggleAll}
                 disabled={!customers.length}
               />
-              <span>Select all customers</span>
+              <span>Select all parties</span>
             </label>
 
             {customersQuery.isLoading ? (
               <p className="muted" style={{ padding: '0.75rem' }}>
-                Loading customers…
+                Loading parties…
               </p>
             ) : customers.length === 0 ? (
               <p className="muted" style={{ padding: '0.75rem' }}>
-                No customers found.
+                No parties found.
               </p>
             ) : (
               customers.map((c) => (

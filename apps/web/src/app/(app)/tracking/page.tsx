@@ -204,7 +204,7 @@ function BookingListInner() {
 
   const customerOptions: SearchSelectOption[] = useMemo(
     () => [
-      { value: '', label: 'All customers' },
+      { value: '', label: 'All parties' },
       ...(customersQuery.data?.data ?? []).map((c) => ({
         value: c.id,
         label: c.name,
@@ -310,7 +310,7 @@ function BookingListInner() {
           row.bookingType ? BOOKING_TYPE_LABELS[row.bookingType] : '—',
       },
       {
-        header: 'Customer / Party',
+        header: 'Party',
         body: (row) => row.customer?.name || row.partyName || '—',
       },
       { field: 'receiverName', header: 'Receiver' },
@@ -380,7 +380,7 @@ function BookingListInner() {
             onClick={goAllBookings}
           />
           <Button
-            label="Customer wise"
+            label="Account party"
             outlined={viewMode !== 'customer'}
             onClick={() => {
               setViewMode('customer');
@@ -393,7 +393,7 @@ function BookingListInner() {
             }}
           />
           <Button
-            label="Party wise"
+            label="Cash party"
             outlined={viewMode !== 'party'}
             onClick={() => {
               setViewMode('party');
@@ -408,15 +408,15 @@ function BookingListInner() {
         </div>
       </div>
       <p className="muted" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-        Customer wise loads all account bookings by default (pick a customer to
-        filter). Party wise loads all cash bookings by default (pick a party to
-        filter).
+        Account party loads all account bookings by default (pick a party to
+        filter). Cash party loads all cash bookings by default (pick a cash
+        party to filter).
       </p>
 
       <ListSearch
         search={list.search}
         onSearchChange={list.setSearch}
-        searchPlaceholder="Search document no. / receiver / party / customer…"
+        searchPlaceholder="Search document no. / receiver / party…"
         extra={
           <>
             {viewMode === 'customer' ? (
@@ -424,9 +424,9 @@ function BookingListInner() {
                 <SearchSelect
                   value={customerLabel}
                   options={customerOptions}
-                  placeholder="All customers — type to filter…"
+                  placeholder="All parties — type to filter…"
                   allowFreeText={false}
-                  emptyHint="No customers match"
+                  emptyHint="No parties match"
                   onChange={(text) => {
                     setCustomerLabel(text);
                     setCustomerId('');
@@ -616,7 +616,7 @@ function BookingListInner() {
               </div>
             </div>
             <div className="field">
-              <label>Customer / Party</label>
+              <label>Party</label>
               <div>{detail.customer?.name || detail.partyName || '—'}</div>
             </div>
             <div className="field">

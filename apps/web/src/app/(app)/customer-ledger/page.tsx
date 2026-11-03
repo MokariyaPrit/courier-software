@@ -287,7 +287,7 @@ export default function CustomerLedgerPage() {
       <ConfirmDialog />
       <div className="page-header no-print">
         <div>
-          <h1>Customer ledger</h1>
+          <h1>Party ledger</h1>
           <p className="muted" style={{ margin: 0 }}>
             Bills debit the account; payments credit it. Running balance is
             outstanding.
@@ -321,13 +321,13 @@ export default function CustomerLedgerPage() {
           <InputText
             value={customerSearch}
             onChange={(e) => setCustomerSearch(e.target.value)}
-            placeholder="Search customer…"
+            placeholder="Search party…"
             style={{ width: '100%', marginBottom: '0.75rem' }}
           />
           {customersQuery.isLoading ? (
             <p className="muted">Loading…</p>
           ) : customers.length === 0 ? (
-            <p className="muted">No customers</p>
+            <p className="muted">No parties</p>
           ) : (
             <ul className="ledger-customer-list">
               {customers.map((c) => {
@@ -371,7 +371,7 @@ export default function CustomerLedgerPage() {
           {!selectedId ? (
             <div className="panel">
               <p className="muted" style={{ margin: 0 }}>
-                Select a customer to view their ledger.
+                Select a party to view their ledger.
               </p>
             </div>
           ) : detailQuery.isLoading || !detail ? (

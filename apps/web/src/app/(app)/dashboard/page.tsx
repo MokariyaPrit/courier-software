@@ -151,8 +151,11 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="dash-quick no-print">
-          <Link href="/bookings" className="dash-quick-link">
-            New booking
+          <Link href="/bookings/account" className="dash-quick-link">
+            Account booking
+          </Link>
+          <Link href="/bookings/cash" className="dash-quick-link">
+            Cash booking
           </Link>
           <Link href="/billing" className="dash-quick-link">
             Generate bill
@@ -164,14 +167,18 @@ export default function DashboardPage() {
       </div>
 
       <div className="dash-kpi-grid">
-        <Kpi label="Bookings today" value={kpis.bookingsToday} href="/bookings" />
+        <Kpi
+          label="Bookings today"
+          value={kpis.bookingsToday}
+          href="/bookings/account"
+        />
         <Kpi
           label="Bookings this month"
           value={kpis.bookingsMonth}
           hint={`${kpis.accountBookingsMonth} account · ${kpis.cashBookingsMonth} cash`}
         />
         <Kpi label="Total bookings" value={kpis.totalBookings} href="/tracking" />
-        <Kpi label="Customers" value={kpis.customersCount} href="/customers" />
+        <Kpi label="Parties" value={kpis.customersCount} href="/customers" />
         <Kpi
           label="Billed this month"
           value={`₹${Number(kpis.invoicesMonthAmount).toLocaleString('en-IN')}`}
@@ -239,7 +246,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="panel dash-card dash-card-wide">
-          <h2>Top billed customers · this month</h2>
+          <h2>Top billed parties · this month</h2>
           <HBarChart
             valuePrefix="₹"
             emptyText="No bills this month"
@@ -278,8 +285,8 @@ export default function DashboardPage() {
           <section className="panel dash-card dash-card-wide">
             <h2>Your focus</h2>
             <div className="dash-focus">
-              <Link href="/bookings?type=ACCOUNT">Account booking</Link>
-              <Link href="/bookings?type=CASH">Cash booking</Link>
+              <Link href="/bookings/account">Account booking</Link>
+              <Link href="/bookings/cash">Cash booking</Link>
               <Link href="/billing">Generate bill</Link>
               <Link href="/customer-ledger">Collect payment</Link>
               <Link href="/tracking">Booking list</Link>
