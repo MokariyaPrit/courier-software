@@ -1,18 +1,9 @@
 'use client';
 
-import {
-  BOOKING_TYPE_LABELS,
-  BookingType,
-  ConsignmentStatus,
-} from '@courier/shared';
+import { BOOKING_TYPE_LABELS, BookingType } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  ConfirmDialog,
-  confirmDialog,
-  Dialog,
-  Tag,
-} from '@/components/ui';
+import { ConfirmDialog, confirmDialog, Dialog } from '@/components/ui';
 import { BookingFormPanel } from '@/components/bookings/BookingFormPanel';
 import { useEffect, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
@@ -22,7 +13,6 @@ import { serviceTypeLabel } from '@/lib/quotations';
 interface ConsignmentRow {
   id: string;
   awb: string;
-  status: string;
   bookingType?: BookingType;
   receiverName: string;
   receiverCity?: string | null;
@@ -38,7 +28,6 @@ interface ConsignmentRow {
 interface ConsignmentDetail {
   id: string;
   awb: string;
-  status: ConsignmentStatus;
   bookingType?: BookingType;
   bookingDate?: string | null;
   receiverName: string;
@@ -66,25 +55,6 @@ function weightGrams(value: string | number | null | undefined) {
   const kg = Number(value ?? 0);
   if (!Number.isFinite(kg)) return '—';
   return String(Math.round(kg * 1000));
-}
-
-function statusSeverity(
-  status: string,
-): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-  switch (status) {
-    case ConsignmentStatus.DELIVERED:
-      return 'success';
-    case ConsignmentStatus.CANCELLED:
-    case ConsignmentStatus.RTO:
-    case ConsignmentStatus.FAILED_ATTEMPT:
-      return 'danger';
-    case ConsignmentStatus.OUT_FOR_DELIVERY:
-      return 'warn';
-    case ConsignmentStatus.BOOKED:
-      return 'info';
-    default:
-      return 'secondary';
-  }
 }
 
 function modePath(mode: BookingType) {
@@ -294,14 +264,6 @@ export function BookingsPageView({ mode }: { mode: BookingType }) {
                 {detail.bookingType
                   ? BOOKING_TYPE_LABELS[detail.bookingType]
                   : '—'}
-              </div>
-            </div>
-            <div className="field">
-              <label>Status</label>
-              <div>
-                <Tag severity={statusSeverity(detail.status)}>
-                  {detail.status}
-                </Tag>
               </div>
             </div>
             <div className="field">

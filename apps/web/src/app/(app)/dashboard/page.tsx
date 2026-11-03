@@ -56,17 +56,6 @@ type Overview = {
   } | null;
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  BOOKED: '#3b82f6',
-  IN_TRANSIT: '#8b5cf6',
-  AT_HUB: '#06b6d4',
-  OUT_FOR_DELIVERY: '#f59e0b',
-  DELIVERED: '#10b981',
-  RTO: '#ef4444',
-  CANCELLED: '#6b7280',
-  FAILED_ATTEMPT: '#f97316',
-};
-
 function Kpi({
   label,
   value,
@@ -177,7 +166,11 @@ export default function DashboardPage() {
           value={kpis.bookingsMonth}
           hint={`${kpis.accountBookingsMonth} account · ${kpis.cashBookingsMonth} cash`}
         />
-        <Kpi label="Total bookings" value={kpis.totalBookings} href="/tracking" />
+        <Kpi
+          label="Total bookings"
+          value={kpis.totalBookings}
+          href="/bookings/account"
+        />
         <Kpi label="Parties" value={kpis.customersCount} href="/customers" />
         <Kpi
           label="Billed this month"
@@ -195,9 +188,6 @@ export default function DashboardPage() {
           value={`₹${Number(kpis.outstandingAmount).toLocaleString('en-IN')}`}
           href="/customer-ledger"
         />
-        <Kpi label="In transit" value={kpis.inTransit} href="/delivery" />
-        <Kpi label="Out for delivery" value={kpis.outForDelivery} href="/delivery" />
-        <Kpi label="Delivered" value={kpis.delivered} />
         {isAdmin && admin ? (
           <Kpi label="Active users" value={admin.activeUsers} href="/admin/users" />
         ) : null}
@@ -231,17 +221,6 @@ export default function DashboardPage() {
               color: t.type === 'ACCOUNT' ? '#0f766e' : '#d97706',
             }))}
             emptyText="No bookings this month"
-          />
-        </section>
-
-        <section className="panel dash-card">
-          <h2>Status breakdown</h2>
-          <DonutChart
-            items={charts.bookingsByStatus.map((s) => ({
-              label: s.status.replaceAll('_', ' '),
-              value: s.count,
-              color: STATUS_COLORS[s.status] || '#64748b',
-            }))}
           />
         </section>
 
@@ -289,7 +268,6 @@ export default function DashboardPage() {
               <Link href="/bookings/cash">Cash booking</Link>
               <Link href="/billing">Generate bill</Link>
               <Link href="/customer-ledger">Collect payment</Link>
-              <Link href="/tracking">Booking list</Link>
               <Link href="/ca-gst">CA GST</Link>
             </div>
           </section>

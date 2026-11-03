@@ -52,6 +52,8 @@ export function SortBySelect({
       optionValue="value"
       dropdownIcon={dropdownIcon}
       className={`sort-by-select ${className ?? ''}`.trim()}
+      panelClassName="sort-by-panel"
+      appendTo={typeof document !== 'undefined' ? document.body : undefined}
       placeholder={placeholder ? `Sort by : ${placeholder}` : 'Sort by'}
       valueTemplate={(option) => (
         <span className="sort-by-label">

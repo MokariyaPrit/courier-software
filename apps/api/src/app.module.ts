@@ -40,7 +40,6 @@ import { RateColumnsModule } from './rate-columns/rate-columns.module';
 import { ReceiversModule } from './receivers/receivers.module';
 import { SenderLocationsModule } from './sender-locations/sender-locations.module';
 import { StatesModule } from './states/states.module';
-import { TrackingModule } from './tracking/tracking.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -86,7 +85,6 @@ import { UsersModule } from './users/users.module';
     StatesModule,
     CitiesModule,
     ConsignmentsModule,
-    TrackingModule,
     BillingModule,
     LedgerModule,
     GstReportsModule,
