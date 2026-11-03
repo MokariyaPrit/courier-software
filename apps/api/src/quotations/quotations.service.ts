@@ -16,11 +16,13 @@ import {
   PaginationDto,
   resolveSortPair,
 } from '../common/dto/pagination.dto';
+import { resolveTermsLines } from '../common/utils/terms-and-conditions';
 import { Customer } from '../entities/customer.entity';
 import { Quotation, QuotationSnapshot } from '../entities/quotation.entity';
 import { QuotationRateRow } from '../entities/quotation-rate-row.entity';
 import { QuotationRateTemplate } from '../entities/quotation-rate-template.entity';
 import { User } from '../entities/user.entity';
+import { UserInfo } from '../entities/user-info.entity';
 import { RateColumnsService } from '../rate-columns/rate-columns.service';
 import {
   CreateQuotationDto,
@@ -492,17 +494,60 @@ export class QuotationsService {
         phone: snapshot?.customerPhone ?? quotation.customer?.primaryPhone,
         email: snapshot?.customerEmail ?? quotation.customer?.primaryEmail,
       },
-      terms: {
-        fovPercent: snapshot?.fovPercent ?? quotation.customer?.fovPercent ?? '0',
-        fuelChargesExtraPercent:
-          snapshot?.fuelChargesExtraPercent ??
-          quotation.customer?.fuelChargesExtraPercent ??
-          '0',
-        gstPercent: '18',
-        insurancePercent: '2',
-      },
+      terms: this.buildTermsDocument(info, snapshot, quotation.customer),
       columns,
       sections,
+    };
+  }
+
+  private buildTermsDocument(
+    info: UserInfo | null | undefined,
+    snapshot: QuotationSnapshot | null | undefined,
+    customer: Customer | null | undefined,
+  ) {
+    const sgst = Number(info?.sgstPercent ?? 9);
+    const cgst = Number(info?.cgstPercent ?? 9);
+    const igst = Number(info?.igstPercent ?? 0);
+    const gstPercent =
+      igst > 0 ? String(igst) : String(Number((sgst + cgst).toFixed(2)));
+    const fovPercent = String(
+      snapshot?.fovPercent ?? customer?.fovPercent ?? '0',
+    );
+    const fuelChargesExtraPercent = String(
+      snapshot?.fuelChargesExtraPercent ??
+        customer?.fuelChargesExtraPercent ??
+        '0',
+    );
+    const insurancePercent = String(info?.insurancePercent ?? '2');
+    const paymentDays = String(info?.paymentDays ?? 10);
+    const volumetricDivisor = String(info?.volumetricDivisor ?? 5000);
+    const ewayRaw = Number(info?.ewayBillThreshold ?? 50000);
+    const ewayBillThreshold = Number.isFinite(ewayRaw)
+      ? ewayRaw.toLocaleString('en-IN')
+      : '50,000';
+    const companyName =
+      info?.companyName?.trim() || info?.fullName?.trim() || 'Courier';
+
+    const lines = resolveTermsLines(info?.termsAndConditions, {
+      companyName,
+      fovPercent,
+      fuelChargesExtraPercent,
+      gstPercent,
+      insurancePercent,
+      paymentDays,
+      volumetricDivisor,
+      ewayBillThreshold,
+    });
+
+    return {
+      fovPercent,
+      fuelChargesExtraPercent,
+      gstPercent,
+      insurancePercent,
+      paymentDays,
+      volumetricDivisor,
+      ewayBillThreshold,
+      lines,
     };
   }
 }

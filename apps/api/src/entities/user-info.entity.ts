@@ -84,6 +84,30 @@ export class UserInfo {
   @Column({ type: 'jsonb', nullable: true })
   bookingTabConfig: { account: string[]; cash: string[] } | null;
 
+  /**
+   * Quotation / contract Terms & Conditions lines.
+   * Supports {{placeholders}} e.g. companyName, gstPercent, fovPercent.
+   * Null = use system defaults.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  termsAndConditions: string[] | null;
+
+  /** Optional insurance % shown in T&C (default 2) */
+  @Column({ type: 'numeric', precision: 8, scale: 2, default: 2 })
+  insurancePercent: string;
+
+  /** Payment due days in T&C (default 10) */
+  @Column({ type: 'int', default: 10 })
+  paymentDays: number;
+
+  /** Volumetric divisor in T&C (default 5000) */
+  @Column({ type: 'int', default: 5000 })
+  volumetricDivisor: number;
+
+  /** E-way bill threshold amount in T&C (default 50000) */
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 50000 })
+  ewayBillThreshold: string;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

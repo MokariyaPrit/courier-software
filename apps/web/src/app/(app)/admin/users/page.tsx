@@ -10,6 +10,7 @@ import {
   InputText,
   Select,
   Tag,
+  Textarea,
   ToggleSwitch,
 } from '@/components/ui';
 import { Dispatch, SetStateAction, useState } from 'react';
@@ -24,6 +25,11 @@ import {
   validatePassword,
 } from '@/lib/form-validation';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
+import {
+  TERM_PLACEHOLDER_HELP,
+  editorTextToTerms,
+  termsToEditorText,
+} from '@/lib/terms-and-conditions';
 import { trimFormData } from '@/lib/trim';
 
 const USER_SORT_OPTIONS: SortOption[] = [
@@ -57,6 +63,11 @@ interface UserInfoFields {
   state: string | null;
   pincode: string | null;
   notes: string | null;
+  termsAndConditions?: string[] | null;
+  insurancePercent?: string | number | null;
+  paymentDays?: number | null;
+  volumetricDivisor?: number | null;
+  ewayBillThreshold?: string | number | null;
   expiredOn?: string | null;
 }
 
@@ -89,6 +100,11 @@ interface UserFormState {
   state: string;
   pincode: string;
   notes: string;
+  insurancePercent: number;
+  paymentDays: number;
+  volumetricDivisor: number;
+  ewayBillThreshold: number;
+  termsText: string;
   expiredOn: string;
   isActive: boolean;
 }
@@ -116,6 +132,11 @@ const EMPTY_USER_FORM: UserFormState = {
   state: '',
   pincode: '',
   notes: '',
+  insurancePercent: 2,
+  paymentDays: 10,
+  volumetricDivisor: 5000,
+  ewayBillThreshold: 50000,
+  termsText: termsToEditorText(null),
   expiredOn: '',
   isActive: true,
 };
@@ -165,6 +186,11 @@ function toFormFromUser(user: UserRow): UserFormState {
     state: user.userInfo?.state || '',
     pincode: user.userInfo?.pincode || '',
     notes: user.userInfo?.notes || '',
+    insurancePercent: Number(user.userInfo?.insurancePercent ?? 2),
+    paymentDays: Number(user.userInfo?.paymentDays ?? 10),
+    volumetricDivisor: Number(user.userInfo?.volumetricDivisor ?? 5000),
+    ewayBillThreshold: Number(user.userInfo?.ewayBillThreshold ?? 50000),
+    termsText: termsToEditorText(user.userInfo?.termsAndConditions),
     expiredOn: user.userInfo?.expiredOn
       ? String(user.userInfo.expiredOn).slice(0, 10)
       : '',
@@ -483,6 +509,90 @@ function UserFormFields({
         />
       </div>
 
+      <div className="field full">
+        <h3 style={{ margin: '0.35rem 0 0' }}>Terms &amp; conditions</h3>
+        <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.8rem' }}>
+          One clause per line. Placeholders: {TERM_PLACEHOLDER_HELP}
+        </p>
+      </div>
+      <div className="field">
+        <label>Payment days</label>
+        <InputNumber
+          value={state.paymentDays}
+          onValueChange={(e) =>
+            setState((prev) => ({
+              ...prev,
+              paymentDays: Number(e.value ?? 10),
+            }))
+          }
+          min={1}
+          useGrouping={false}
+          style={{ width: '100%' }}
+          inputStyle={{ width: '100%' }}
+        />
+      </div>
+      <div className="field">
+        <label>Insurance %</label>
+        <InputNumber
+          value={state.insurancePercent}
+          onValueChange={(e) =>
+            setState((prev) => ({
+              ...prev,
+              insurancePercent: Number(e.value ?? 2),
+            }))
+          }
+          min={0}
+          minFractionDigits={0}
+          maxFractionDigits={2}
+          suffix=" %"
+          style={{ width: '100%' }}
+          inputStyle={{ width: '100%' }}
+        />
+      </div>
+      <div className="field">
+        <label>Volumetric divisor</label>
+        <InputNumber
+          value={state.volumetricDivisor}
+          onValueChange={(e) =>
+            setState((prev) => ({
+              ...prev,
+              volumetricDivisor: Number(e.value ?? 5000),
+            }))
+          }
+          min={1}
+          useGrouping={false}
+          style={{ width: '100%' }}
+          inputStyle={{ width: '100%' }}
+        />
+      </div>
+      <div className="field">
+        <label>E-way bill threshold (₹)</label>
+        <InputNumber
+          value={state.ewayBillThreshold}
+          onValueChange={(e) =>
+            setState((prev) => ({
+              ...prev,
+              ewayBillThreshold: Number(e.value ?? 50000),
+            }))
+          }
+          min={0}
+          style={{ width: '100%' }}
+          inputStyle={{ width: '100%' }}
+        />
+      </div>
+      <div className="field full">
+        <label>Clauses (one per line)</label>
+        <Textarea
+          value={state.termsText}
+          onChange={(e) =>
+            setState((prev) => ({ ...prev, termsText: e.target.value }))
+          }
+          rows={10}
+          autoResize
+          style={{ width: '100%' }}
+        />
+      </div>
+
       <div className="field">
         <label>Expired on</label>
         <InputText
@@ -560,6 +670,11 @@ export default function UsersPage() {
         state: cleaned.state || undefined,
         pincode: cleaned.pincode || undefined,
         notes: cleaned.notes || undefined,
+        insurancePercent: Number(form.insurancePercent ?? 2),
+        paymentDays: Number(form.paymentDays ?? 10),
+        volumetricDivisor: Number(form.volumetricDivisor ?? 5000),
+        ewayBillThreshold: Number(form.ewayBillThreshold ?? 50000),
+        termsAndConditions: editorTextToTerms(form.termsText),
         expiredOn: cleaned.expiredOn || null,
       });
     },
@@ -603,6 +718,11 @@ export default function UsersPage() {
         state: cleaned.state || null,
         pincode: cleaned.pincode || null,
         notes: cleaned.notes || null,
+        insurancePercent: Number(editForm.insurancePercent ?? 2),
+        paymentDays: Number(editForm.paymentDays ?? 10),
+        volumetricDivisor: Number(editForm.volumetricDivisor ?? 5000),
+        ewayBillThreshold: Number(editForm.ewayBillThreshold ?? 50000),
+        termsAndConditions: editorTextToTerms(editForm.termsText),
         expiredOn: cleaned.expiredOn || null,
       };
       if (cleaned.password) {

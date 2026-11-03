@@ -346,6 +346,18 @@ a {
   font-size: 0.9rem;
 }
 
+.profile-terms-preview {
+  margin: 0.75rem 0 0;
+  padding-left: 1.15rem;
+  line-height: 1.45;
+  font-size: 0.9rem;
+  color: var(--main-text);
+}
+
+.profile-terms-preview li {
+  margin-bottom: 0.35rem;
+}
+
 .profile-value {
   font-weight: 500;
   word-break: break-word;
@@ -1128,6 +1140,11 @@ a {
   font-size: 0.9rem;
 }
 
+/* Screen: show per-section letterhead; hide the print-only repeater */
+.q-letterhead--print-repeat {
+  display: none;
+}
+
 .q-meta-row {
   display: flex;
   justify-content: space-between;
@@ -1165,13 +1182,22 @@ a {
   padding-bottom: 0.35rem;
 }
 
+.quotation-page--terms .q-page-title {
+  margin: 0 0 0.65rem;
+  font-size: 1.15rem;
+  padding-bottom: 0.3rem;
+}
+
 .q-terms {
-  line-height: 1.55;
-  padding-left: 1.25rem;
+  line-height: 1.38;
+  padding-left: 1.15rem;
+  margin: 0;
+  list-style: disc;
+  font-size: 0.88rem;
 }
 
 .q-terms li {
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.32rem;
 }
 
 .q-rates-meta {
@@ -1267,8 +1293,37 @@ a {
     border: none !important;
     max-width: none !important;
     margin: 0 !important;
-    padding: 12mm 12mm !important;
+    /* Extra top padding so content clears the fixed repeating letterhead */
+    padding: 34mm 12mm 12mm !important;
     box-shadow: none !important;
+  }
+
+  /* Letterhead on every printed sheet */
+  .q-letterhead--print-repeat {
+    display: block !important;
+    position: fixed;
+    top: 8mm;
+    left: 12mm;
+    right: 12mm;
+    margin: 0;
+    padding-bottom: 0.45rem;
+    background: #fff;
+    z-index: 10;
+  }
+
+  .q-letterhead--print-repeat h1 {
+    font-size: 1.2rem;
+    margin: 0 0 0.2rem;
+  }
+
+  .q-letterhead--print-repeat p {
+    font-size: 0.78rem;
+    margin: 0.08rem 0;
+  }
+
+  /* Avoid duplicating the in-flow letterheads under the fixed one */
+  .q-letterhead--inline {
+    display: none !important;
   }
 
   /* Letter + terms each take one sheet; rates may continue across sheets */
@@ -1276,6 +1331,22 @@ a {
   .quotation-page--terms {
     break-after: page;
     page-break-after: always;
+  }
+
+  .quotation-page--terms .q-page-title {
+    margin: 0 0 0.45rem;
+    font-size: 12pt;
+    padding-bottom: 0.25rem;
+  }
+
+  .q-terms {
+    font-size: 9.5pt;
+    line-height: 1.32;
+    padding-left: 1.05rem;
+  }
+
+  .q-terms li {
+    margin-bottom: 0.22rem;
   }
 
   .quotation-page--rates {

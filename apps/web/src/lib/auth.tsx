@@ -31,6 +31,12 @@ export interface UserInfoProfile {
   igstPercent: string | number | null;
   notes: string | null;
   bookingTabConfig?: { account: string[]; cash: string[] } | null;
+  /** Quotation T&C lines; null = system defaults with {{placeholders}} */
+  termsAndConditions?: string[] | null;
+  insurancePercent?: string | number | null;
+  paymentDays?: number | null;
+  volumetricDivisor?: number | null;
+  ewayBillThreshold?: string | number | null;
   isActive: boolean;
   /** Last day account may log in; view-only for branch managers */
   expiredOn?: string | null;

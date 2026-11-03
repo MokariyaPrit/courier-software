@@ -176,6 +176,11 @@ export class AuthService {
       igstPercent: dto.igstPercent,
       notes: dto.notes,
       bookingTabConfig: dto.bookingTabConfig,
+      termsAndConditions: dto.termsAndConditions,
+      insurancePercent: dto.insurancePercent,
+      paymentDays: dto.paymentDays,
+      volumetricDivisor: dto.volumetricDivisor,
+      ewayBillThreshold: dto.ewayBillThreshold,
     });
     return this.me(userId);
   }

@@ -13,6 +13,7 @@ import {
 } from '../common/dto/pagination.dto';
 import { UserInfo } from '../entities/user-info.entity';
 import { User } from '../entities/user.entity';
+import { normalizeTermsList } from '../common/utils/terms-and-conditions';
 import { normalizeBookingTabConfigDto } from './dto/booking-tab-config.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -77,6 +78,14 @@ export class UsersService {
         cgstPercent: String(dto.cgstPercent ?? 9),
         igstPercent: String(dto.igstPercent ?? 0),
         notes: dto.notes ?? null,
+        termsAndConditions:
+          dto.termsAndConditions !== undefined
+            ? normalizeTermsList(dto.termsAndConditions)
+            : null,
+        insurancePercent: String(dto.insurancePercent ?? 2),
+        paymentDays: dto.paymentDays ?? 10,
+        volumetricDivisor: dto.volumetricDivisor ?? 5000,
+        ewayBillThreshold: String(dto.ewayBillThreshold ?? 50000),
         isActive: dto.isActive ?? true,
         expiredOn: dto.expiredOn?.trim() ? dto.expiredOn.trim() : null,
       }),
@@ -196,6 +205,19 @@ export class UsersService {
       info.bookingTabConfig = normalizeBookingTabConfigDto(
         dto.bookingTabConfig,
       );
+    }
+    if (dto.termsAndConditions !== undefined) {
+      info.termsAndConditions = normalizeTermsList(dto.termsAndConditions);
+    }
+    if (dto.insurancePercent !== undefined) {
+      info.insurancePercent = String(dto.insurancePercent);
+    }
+    if (dto.paymentDays !== undefined) info.paymentDays = dto.paymentDays;
+    if (dto.volumetricDivisor !== undefined) {
+      info.volumetricDivisor = dto.volumetricDivisor;
+    }
+    if (dto.ewayBillThreshold !== undefined) {
+      info.ewayBillThreshold = String(dto.ewayBillThreshold);
     }
     if (dto.infoIsActive !== undefined) info.isActive = dto.infoIsActive;
     if (dto.expiredOn !== undefined) {

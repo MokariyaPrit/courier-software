@@ -1,10 +1,12 @@
 import { Role } from '@courier/shared';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -114,6 +116,35 @@ export class UpdateUserDto {
   @ValidateNested()
   @Type(() => BookingTabConfigDto)
   bookingTabConfig?: BookingTabConfigDto | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  termsAndConditions?: string[] | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  insurancePercent?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  paymentDays?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  volumetricDivisor?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  ewayBillThreshold?: number;
 
   @IsOptional()
   @IsBoolean()

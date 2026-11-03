@@ -39,6 +39,10 @@ type DocPayload = {
     fuelChargesExtraPercent: string;
     gstPercent: string;
     insurancePercent: string;
+    paymentDays?: string;
+    volumetricDivisor?: string;
+    ewayBillThreshold?: string;
+    lines: string[];
   };
   columns: RateColumnDef[];
   sections: Array<{
@@ -87,6 +91,30 @@ function printQuotation(docTitle: string) {
   window.setTimeout(() => {
     window.print();
   }, 50);
+}
+
+function QuotationLetterhead({
+  lh,
+  className = '',
+}: {
+  lh: DocPayload['letterhead'];
+  className?: string;
+}) {
+  return (
+    <header className={`q-letterhead ${className}`.trim()}>
+      <h1>{lh.companyName}</h1>
+      <p>{formatAddr([lh.address, lh.city, lh.state, lh.pincode])}</p>
+      <p>
+        {[
+          lh.phone ? `Tel: ${lh.phone}` : null,
+          lh.email,
+          lh.gstin ? `GSTIN: ${lh.gstin}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </p>
+    </header>
+  );
 }
 
 export default function QuotationPrintPage() {
@@ -139,21 +167,12 @@ export default function QuotationPrintPage() {
         />
       </div>
 
+      {/* Repeats on every printed sheet via position:fixed */}
+      <QuotationLetterhead lh={lh} className="q-letterhead--print-repeat" />
+
       {/* Page 1 — Cover letter */}
       <article className="quotation-page quotation-page--letter">
-        <header className="q-letterhead">
-          <h1>{lh.companyName}</h1>
-          <p>{formatAddr([lh.address, lh.city, lh.state, lh.pincode])}</p>
-          <p>
-            {[
-              lh.phone ? `Tel: ${lh.phone}` : null,
-              lh.email,
-              lh.gstin ? `GSTIN: ${lh.gstin}` : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        </header>
+        <QuotationLetterhead lh={lh} className="q-letterhead--inline" />
 
         <div className="q-meta-row">
           <div>
@@ -199,52 +218,18 @@ export default function QuotationPrintPage() {
 
       {/* Page 2 — Terms */}
       <article className="quotation-page quotation-page--terms">
+        <QuotationLetterhead lh={lh} className="q-letterhead--inline" />
         <h2 className="q-page-title">Terms &amp; Conditions</h2>
-        <ol className="q-terms">
-          <li>
-            F.O.V. (Freight on Value) charges @{' '}
-            <strong>{terms.fovPercent}%</strong> per thousand (or as applicable).
-          </li>
-          <li>
-            Fuel Charges Extra @ <strong>{terms.fuelChargesExtraPercent}%</strong>{' '}
-            on freight (subject to revision).
-          </li>
-          <li>
-            GST @ <strong>{terms.gstPercent}%</strong> will be charged extra as
-            applicable.
-          </li>
-          <li>
-            Optional insurance @ <strong>{terms.insurancePercent}%</strong> of
-            declared value (if opted).
-          </li>
-          <li>
-            Rates are exclusive of octroi / entry tax / other local levies unless
-            stated otherwise.
-          </li>
-          <li>
-            Weight is charged on actual or volumetric weight, whichever is higher.
-          </li>
-          <li>
-            Liability is limited as per company policy / carrier terms unless
-            separately insured.
-          </li>
-          <li>
-            Payment terms as mutually agreed; delayed payments may attract
-            interest.
-          </li>
-          <li>
-            This quotation is valid for 30 days from the date of issue unless
-            extended in writing.
-          </li>
-          <li>
-            All disputes are subject to the jurisdiction of the courts at the
-            franchisee&apos;s operating city.
-          </li>
-        </ol>
+        <ul className="q-terms">
+          {(terms.lines ?? []).map((line, index) => (
+            <li key={`${index}-${line.slice(0, 24)}`}>{line}</li>
+          ))}
+        </ul>
       </article>
 
       {/* Page 3+ — Contract rates (may span multiple sheets) */}
       <article className="quotation-page quotation-page--rates">
+        <QuotationLetterhead lh={lh} className="q-letterhead--inline" />
         <h2 className="q-page-title">Contract Rates</h2>
         <p className="q-rates-meta">
           Quotation {q.quotationCode || 'DRAFT'} · {c.name} ·{' '}

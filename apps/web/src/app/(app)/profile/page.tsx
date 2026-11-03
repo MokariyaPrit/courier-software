@@ -1,6 +1,13 @@
 'use client';
 
-import { Button, Dialog, InputNumber, InputText, Tag } from '@/components/ui';
+import {
+  Button,
+  Dialog,
+  InputNumber,
+  InputText,
+  Textarea,
+  Tag,
+} from '@/components/ui';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -10,6 +17,11 @@ import {
   validateEmail,
   validateFullName,
 } from '@/lib/form-validation';
+import {
+  TERM_PLACEHOLDER_HELP,
+  editorTextToTerms,
+  termsToEditorText,
+} from '@/lib/terms-and-conditions';
 import { trimFormData } from '@/lib/trim';
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
@@ -40,6 +52,11 @@ interface ProfileFormState {
   state: string;
   pincode: string;
   notes: string;
+  insurancePercent: number;
+  paymentDays: number;
+  volumetricDivisor: number;
+  ewayBillThreshold: number;
+  termsText: string;
 }
 
 type ProfileFieldKey = keyof ProfileFormState;
@@ -61,6 +78,11 @@ const OPTIONAL_FIELDS = new Set<ProfileFieldKey>([
   'state',
   'pincode',
   'notes',
+  'insurancePercent',
+  'paymentDays',
+  'volumetricDivisor',
+  'ewayBillThreshold',
+  'termsText',
 ]);
 
 function validateProfileField(key: ProfileFieldKey, value: string): string {
@@ -102,6 +124,11 @@ export default function ProfilePage() {
     state: '',
     pincode: '',
     notes: '',
+    insurancePercent: 2,
+    paymentDays: 10,
+    volumetricDivisor: 5000,
+    ewayBillThreshold: 50000,
+    termsText: '',
   });
 
   useEffect(() => {
@@ -125,6 +152,11 @@ export default function ProfilePage() {
       state: info?.state || '',
       pincode: info?.pincode || '',
       notes: info?.notes || '',
+      insurancePercent: Number(info?.insurancePercent ?? 2),
+      paymentDays: Number(info?.paymentDays ?? 10),
+      volumetricDivisor: Number(info?.volumetricDivisor ?? 5000),
+      ewayBillThreshold: Number(info?.ewayBillThreshold ?? 50000),
+      termsText: termsToEditorText(info?.termsAndConditions),
     });
   }, [user, info]);
 
@@ -175,6 +207,11 @@ export default function ProfilePage() {
         state: cleaned.state || null,
         pincode: cleaned.pincode || null,
         notes: cleaned.notes || null,
+        insurancePercent: Number(form.insurancePercent ?? 2),
+        paymentDays: Number(form.paymentDays ?? 10),
+        volumetricDivisor: Number(form.volumetricDivisor ?? 5000),
+        ewayBillThreshold: Number(form.ewayBillThreshold ?? 50000),
+        termsAndConditions: editorTextToTerms(form.termsText),
       });
       await refreshMe();
       setEditOpen(false);
@@ -205,6 +242,11 @@ export default function ProfilePage() {
     ['pincode', 'Pincode'],
     ['notes', 'Notes'],
   ] as const;
+
+  const termsPreview = info?.termsAndConditions?.length
+    ? info.termsAndConditions
+    : null;
+  const termsCount = termsPreview?.length ?? 'defaults';
 
   return (
     <div>
@@ -273,12 +315,69 @@ export default function ProfilePage() {
           <InfoRow label="Pincode" value={info?.pincode} />
           <InfoRow label="Notes" value={info?.notes} />
         </section>
+
+        <section className="panel profile-card" style={{ gridColumn: '1 / -1' }}>
+          <div className="profile-card-header">
+            <h2>Terms &amp; conditions</h2>
+            <Button
+              label="Edit"
+              icon="pi pi-pencil"
+              text
+              size="small"
+              onClick={openEdit}
+            />
+          </div>
+          <InfoRow
+            label="Payment days"
+            value={String(info?.paymentDays ?? 10)}
+          />
+          <InfoRow
+            label="Insurance %"
+            value={String(info?.insurancePercent ?? '2')}
+          />
+          <InfoRow
+            label="Volumetric divisor"
+            value={String(info?.volumetricDivisor ?? 5000)}
+          />
+          <InfoRow
+            label="E-way bill threshold"
+            value={
+              info?.ewayBillThreshold != null
+                ? Number(info.ewayBillThreshold).toLocaleString('en-IN')
+                : '50,000'
+            }
+          />
+          <InfoRow
+            label="Clauses"
+            value={
+              typeof termsCount === 'number'
+                ? `${termsCount} custom lines`
+                : 'Using system defaults'
+            }
+          />
+          {termsPreview ? (
+            <ul className="profile-terms-preview">
+              {termsPreview.slice(0, 4).map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+              {termsPreview.length > 4 ? (
+                <li className="muted">…and {termsPreview.length - 4} more</li>
+              ) : null}
+            </ul>
+          ) : (
+            <p className="muted" style={{ margin: '0.5rem 0 0' }}>
+              Defaults include payment, restricted items, volumetric weight,
+              GST, FOV, insurance, liability, and fuel surcharge — with
+              placeholders filled at print time.
+            </p>
+          )}
+        </section>
       </div>
 
       <Dialog
         header="Edit user information"
         visible={editOpen}
-        style={{ width: 'min(640px, 95vw)' }}
+        style={{ width: 'min(720px, 95vw)' }}
         onHide={() => setEditOpen(false)}
       >
         <div className="form-grid">
@@ -364,6 +463,93 @@ export default function ProfilePage() {
               suffix=" %"
               style={{ width: '100%' }}
               inputStyle={{ width: '100%' }}
+            />
+          </div>
+
+          <div className="field full">
+            <h3 style={{ margin: '0.5rem 0 0' }}>Terms &amp; conditions</h3>
+            <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.85rem' }}>
+              One clause per line. Placeholders: {TERM_PLACEHOLDER_HELP}. GST %
+              uses IGST when set, otherwise SGST+CGST. FOV / fuel % come from the
+              party / quotation.
+            </p>
+          </div>
+          <div className="field">
+            <label>Payment days</label>
+            <InputNumber
+              value={form.paymentDays}
+              onValueChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  paymentDays: Number(e.value ?? 10),
+                }))
+              }
+              min={1}
+              useGrouping={false}
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>Insurance %</label>
+            <InputNumber
+              value={form.insurancePercent}
+              onValueChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  insurancePercent: Number(e.value ?? 2),
+                }))
+              }
+              min={0}
+              minFractionDigits={0}
+              maxFractionDigits={2}
+              suffix=" %"
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>Volumetric divisor</label>
+            <InputNumber
+              value={form.volumetricDivisor}
+              onValueChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  volumetricDivisor: Number(e.value ?? 5000),
+                }))
+              }
+              min={1}
+              useGrouping={false}
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
+          <div className="field">
+            <label>E-way bill threshold (₹)</label>
+            <InputNumber
+              value={form.ewayBillThreshold}
+              onValueChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  ewayBillThreshold: Number(e.value ?? 50000),
+                }))
+              }
+              min={0}
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+          </div>
+          <div className="field full">
+            <label htmlFor="termsText">Clauses (one per line)</label>
+            <Textarea
+              id="termsText"
+              value={form.termsText}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, termsText: e.target.value }))
+              }
+              rows={14}
+              autoResize
+              style={{ width: '100%' }}
             />
           </div>
         </div>
