@@ -56,6 +56,11 @@ const NAV: NavGroup[] = [
           p === '/bookings/cash' || p.startsWith('/bookings/cash/'),
       },
       {
+        href: '/booking-list',
+        label: 'Booking list',
+        roles: [Role.ADMIN, Role.BRANCH_MANAGER],
+      },
+      {
         href: '/booking-cursor',
         label: 'Booking cursor',
         roles: [Role.ADMIN, Role.BRANCH_MANAGER],
