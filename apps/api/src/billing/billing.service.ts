@@ -15,7 +15,6 @@ import { In, Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import {
   paginateMeta,
-  PaginationDto,
   resolveSortPair,
 } from '../common/dto/pagination.dto';
 import { Consignment } from '../entities/consignment.entity';
@@ -25,8 +24,10 @@ import { User } from '../entities/user.entity';
 import { DocumentMailPdfService } from '../mail/document-mail-pdf.service';
 import { SendDocumentEmailDto } from '../mail/dto/send-document-email.dto';
 import { MailService } from '../mail/mail.service';
+import { BulkEmailInvoicesDto } from './dto/bulk-email-invoices.dto';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { GenerateInvoicesDto } from './dto/generate-invoices.dto';
+import { InvoiceQueryDto } from './dto/invoice-query.dto';
 
 const INVOICE_SORT = [
   'invoiceNumber',
@@ -79,6 +80,20 @@ function consignmentWeightLabel(c: Consignment) {
 
 function freightOf(c: Consignment) {
   return Number(c.price || 0);
+}
+
+function nestErrorMessage(err: unknown, fallback: string) {
+  if (err instanceof BadRequestException || err instanceof NotFoundException) {
+    const res = err.getResponse();
+    if (typeof res === 'string' && res.trim()) return res;
+    if (res && typeof res === 'object') {
+      const msg = (res as { message?: string | string[] }).message;
+      if (Array.isArray(msg)) return msg.join(', ');
+      if (typeof msg === 'string' && msg.trim()) return msg;
+    }
+  }
+  if (err instanceof Error && err.message.trim()) return err.message;
+  return fallback;
 }
 
 type GstRates = {
@@ -454,7 +469,7 @@ export class BillingService {
     };
   }
 
-  async findAll(query: PaginationDto, user: AuthUser) {
+  async findAll(query: InvoiceQueryDto, user: AuthUser) {
     const { sortBy, sortOrder } = resolveSortPair(query, INVOICE_SORT, {
       sortBy: 'createdAt',
       sortOrder: 'DESC',
@@ -469,6 +484,18 @@ export class BillingService {
 
     if (user.role !== Role.ADMIN) {
       qb.andWhere('inv.createdById = :uid', { uid: user.id });
+    }
+
+    const dateFrom = query.dateFrom?.trim();
+    const dateTo = query.dateTo?.trim();
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      throw new BadRequestException('dateFrom must be on or before dateTo');
+    }
+    if (dateFrom) {
+      qb.andWhere('inv.billDate >= :dateFrom', { dateFrom });
+    }
+    if (dateTo) {
+      qb.andWhere('inv.billDate <= :dateTo', { dateTo });
     }
 
     const [items, total] = await qb.getManyAndCount();
@@ -611,24 +638,102 @@ export class BillingService {
   }
 
   async sendEmail(id: string, dto: SendDocumentEmailDto, user: AuthUser) {
+    return this.sendOneInvoiceEmail(id, user, {
+      to: dto.to,
+      cc: dto.cc,
+      subject: dto.subject,
+      message: dto.message,
+      requireTo: Boolean(dto.to?.trim()),
+    });
+  }
+
+  /**
+   * Send selected invoices to each customer's primary email (sequential).
+   * Skips invoices without a customer email and continues the rest.
+   */
+  async sendEmailBulk(dto: BulkEmailInvoicesDto, user: AuthUser) {
+    const uniqueIds = [...new Set(dto.ids.map((id) => String(id)))];
+    const sent: Array<{
+      id: string;
+      invoiceNumber: string;
+      to: string;
+    }> = [];
+    const failed: Array<{
+      id: string;
+      invoiceNumber?: string;
+      reason: string;
+    }> = [];
+
+    for (const id of uniqueIds) {
+      try {
+        const result = await this.sendOneInvoiceEmail(id, user, {
+          message: dto.message,
+          requireTo: false,
+        });
+        sent.push({
+          id,
+          invoiceNumber: result.invoiceNumber,
+          to: result.to,
+        });
+      } catch (err: unknown) {
+        let invoiceNumber: string | undefined;
+        try {
+          const inv = await this.findOne(id, user);
+          invoiceNumber = inv.invoiceNumber;
+        } catch {
+          /* ignore */
+        }
+        failed.push({
+          id,
+          invoiceNumber,
+          reason: nestErrorMessage(err, 'Failed to send invoice email'),
+        });
+      }
+    }
+
+    return {
+      sent,
+      failed,
+      meta: {
+        requested: uniqueIds.length,
+        sent: sent.length,
+        failed: failed.length,
+      },
+    };
+  }
+
+  private async sendOneInvoiceEmail(
+    id: string,
+    user: AuthUser,
+    opts: {
+      to?: string;
+      cc?: string;
+      subject?: string;
+      message?: string;
+      /** When true, missing `to` is an error even if customer has email unset */
+      requireTo?: boolean;
+    },
+  ) {
     const invoice = await this.findOne(id, user);
     const doc = await this.findDocument(id, user);
     const company = doc.letterhead.companyName || 'Courier';
     const number = doc.invoice.invoiceNumber;
-    const to = dto.to?.trim() || doc.customer.email?.trim() || '';
+    const to = opts.to?.trim() || doc.customer.email?.trim() || '';
     if (!to) {
       throw new BadRequestException(
-        'Customer has no email. Enter a recipient address.',
+        opts.requireTo
+          ? 'Recipient email is required'
+          : `No email for ${doc.customer.name || 'customer'} (invoice ${number})`,
       );
     }
 
     const subject =
-      dto.subject?.trim() || `Tax Invoice ${number} — ${company}`;
+      opts.subject?.trim() || `Tax Invoice ${number} — ${company}`;
     const pdf = await this.documentMailPdf.buildInvoicePdf(doc);
     const html = this.documentMailPdf.buildEmailHtml({
       title: `Tax Invoice ${number}`,
       greetingName: doc.customer.name,
-      message: dto.message,
+      message: opts.message,
       companyName: company,
       details: [
         ['Invoice', number],
@@ -641,7 +746,7 @@ export class BillingService {
     const result = await this.mailService.sendMail({
       issuerUserId: invoice.createdById,
       to,
-      cc: dto.cc,
+      cc: opts.cc,
       subject,
       html,
       attachments: [
@@ -659,6 +764,7 @@ export class BillingService {
 
     return {
       ...result,
+      invoiceNumber: number,
       lastEmailedAt: invoice.lastEmailedAt,
       lastEmailedTo: invoice.lastEmailedTo,
     };

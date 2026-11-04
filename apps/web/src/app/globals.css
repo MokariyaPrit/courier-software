@@ -820,6 +820,33 @@ a {
   background: var(--main-primary) !important;
 }
 
+/* DataTable checkbox selection — keep text readable (theme paints solid primary) */
+.p-datatable .p-datatable-tbody > tr.p-highlight,
+.p-datatable .p-datatable-tbody > tr.p-highlight.p-selectable-row {
+  background: color-mix(in srgb, var(--main-primary) 14%, #fff) !important;
+  color: var(--main-text) !important;
+}
+
+.p-datatable .p-datatable-tbody > tr.p-highlight > td,
+.p-datatable .p-datatable-tbody > tr.p-highlight.p-selectable-row > td {
+  background: transparent !important;
+  color: var(--main-text) !important;
+  border-color: color-mix(in srgb, var(--main-primary) 22%, #e5e7eb) !important;
+}
+
+.p-datatable .p-datatable-tbody > tr.p-highlight:hover,
+.p-datatable .p-datatable-tbody > tr.p-highlight.p-selectable-row:hover {
+  background: color-mix(in srgb, var(--main-primary) 22%, #fff) !important;
+  color: var(--main-text) !important;
+}
+
+.p-datatable .p-datatable-tbody > tr.p-highlight a,
+.p-datatable .p-datatable-tbody > tr.p-highlight .p-button,
+.p-datatable .p-datatable-tbody > tr.p-highlight .p-button .p-button-label,
+.p-datatable .p-datatable-tbody > tr.p-highlight .p-button .p-button-icon {
+  color: inherit;
+}
+
 .p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight .sort-by-item .pi {
   opacity: 1;
   color: var(--main-primary-contrast);

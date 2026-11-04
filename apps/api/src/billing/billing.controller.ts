@@ -12,13 +12,14 @@ import { Role } from '@courier/shared';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
-import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { SendDocumentEmailDto } from '../mail/dto/send-document-email.dto';
 import { BillingService } from './billing.service';
+import { BulkEmailInvoicesDto } from './dto/bulk-email-invoices.dto';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { GenerateInvoicesDto } from './dto/generate-invoices.dto';
+import { InvoiceQueryDto } from './dto/invoice-query.dto';
 
 @Controller('billing')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -36,8 +37,16 @@ export class BillingController {
     return this.billingService.create(dto, user);
   }
 
+  @Post('invoices/email-bulk')
+  sendEmailBulk(
+    @Body() dto: BulkEmailInvoicesDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.billingService.sendEmailBulk(dto, user);
+  }
+
   @Get('invoices')
-  findAll(@Query() query: PaginationDto, @CurrentUser() user: AuthUser) {
+  findAll(@Query() query: InvoiceQueryDto, @CurrentUser() user: AuthUser) {
     return this.billingService.findAll(query, user);
   }
 
