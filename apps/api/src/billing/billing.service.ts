@@ -22,6 +22,9 @@ import { Consignment } from '../entities/consignment.entity';
 import { Customer } from '../entities/customer.entity';
 import { Invoice } from '../entities/invoice.entity';
 import { User } from '../entities/user.entity';
+import { DocumentMailPdfService } from '../mail/document-mail-pdf.service';
+import { SendDocumentEmailDto } from '../mail/dto/send-document-email.dto';
+import { MailService } from '../mail/mail.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { GenerateInvoicesDto } from './dto/generate-invoices.dto';
 
@@ -159,6 +162,8 @@ export class BillingService {
     @InjectRepository(Consignment)
     private readonly consignmentsRepo: Repository<Consignment>,
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
+    private readonly mailService: MailService,
+    private readonly documentMailPdf: DocumentMailPdfService,
   ) {}
 
   private async nextInvoiceNumber() {
@@ -582,6 +587,7 @@ export class BillingService {
         gstin: customer?.gstin || null,
         pan: customerPan,
         phone: customer?.primaryPhone || null,
+        email: customer?.primaryEmail || null,
       },
       lines: ordered.map((c) => {
         const bookingDate =
@@ -601,6 +607,60 @@ export class BillingService {
           amount: money(freightOf(c)),
         };
       }),
+    };
+  }
+
+  async sendEmail(id: string, dto: SendDocumentEmailDto, user: AuthUser) {
+    const invoice = await this.findOne(id, user);
+    const doc = await this.findDocument(id, user);
+    const company = doc.letterhead.companyName || 'Courier';
+    const number = doc.invoice.invoiceNumber;
+    const to = dto.to?.trim() || doc.customer.email?.trim() || '';
+    if (!to) {
+      throw new BadRequestException(
+        'Customer has no email. Enter a recipient address.',
+      );
+    }
+
+    const subject =
+      dto.subject?.trim() || `Tax Invoice ${number} — ${company}`;
+    const pdf = await this.documentMailPdf.buildInvoicePdf(doc);
+    const html = this.documentMailPdf.buildEmailHtml({
+      title: `Tax Invoice ${number}`,
+      greetingName: doc.customer.name,
+      message: dto.message,
+      companyName: company,
+      details: [
+        ['Invoice', number],
+        ['Bill date', String(doc.invoice.billDate || '—')],
+        ['Customer', String(doc.customer.name || '—')],
+        ['Total', `₹${doc.invoice.totalAmount}`],
+      ],
+    });
+
+    const result = await this.mailService.sendMail({
+      issuerUserId: invoice.createdById,
+      to,
+      cc: dto.cc,
+      subject,
+      html,
+      attachments: [
+        {
+          filename: `Invoice-${number}.pdf`,
+          content: pdf,
+          contentType: 'application/pdf',
+        },
+      ],
+    });
+
+    invoice.lastEmailedAt = new Date();
+    invoice.lastEmailedTo = to;
+    await this.invoicesRepo.save(invoice);
+
+    return {
+      ...result,
+      lastEmailedAt: invoice.lastEmailedAt,
+      lastEmailedTo: invoice.lastEmailedTo,
     };
   }
 

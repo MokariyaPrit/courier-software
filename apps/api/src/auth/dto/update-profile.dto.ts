@@ -1,13 +1,16 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsEmail,
   IsInt,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { BookingTabConfigDto } from '../../users/dto/booking-tab-config.dto';
@@ -126,4 +129,34 @@ export class UpdateProfileDto {
   @IsNumber()
   @Min(0)
   ewayBillThreshold?: number;
+
+  /** Blank host clears all SMTP settings */
+  @IsOptional()
+  @IsString()
+  smtpHost?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  smtpPort?: number | null;
+
+  @IsOptional()
+  @IsBoolean()
+  smtpSecure?: boolean;
+
+  @IsOptional()
+  @IsString()
+  smtpUser?: string | null;
+
+  /** Blank / omitted = keep existing password */
+  @IsOptional()
+  @IsString()
+  smtpPassword?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== '')
+  @IsEmail()
+  smtpFromEmail?: string | null;
 }

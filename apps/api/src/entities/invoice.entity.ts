@@ -90,6 +90,12 @@ export class Invoice {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  lastEmailedAt: Date | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  lastEmailedTo: string | null;
+
   @Column({ type: 'uuid' })
   createdById: string;
 

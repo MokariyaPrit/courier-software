@@ -10,6 +10,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   Min,
   MinLength,
   ValidateIf,
@@ -155,4 +156,34 @@ export class UpdateUserDto {
   @ValidateIf((_, v) => v !== null && v !== '')
   @IsDateString()
   expiredOn?: string | null;
+
+  /** Blank host clears all SMTP settings */
+  @IsOptional()
+  @IsString()
+  smtpHost?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  smtpPort?: number | null;
+
+  @IsOptional()
+  @IsBoolean()
+  smtpSecure?: boolean;
+
+  @IsOptional()
+  @IsString()
+  smtpUser?: string | null;
+
+  /** Blank / omitted = keep existing password */
+  @IsOptional()
+  @IsString()
+  smtpPassword?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== '')
+  @IsEmail()
+  smtpFromEmail?: string | null;
 }

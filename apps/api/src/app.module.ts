@@ -8,6 +8,7 @@ import { BillingModule } from './billing/billing.module';
 import { CitiesModule } from './cities/cities.module';
 import { GstReportsModule } from './gst-reports/gst-reports.module';
 import { LedgerModule } from './ledger/ledger.module';
+import { MailModule } from './mail/mail.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { ConsignmentsModule } from './consignments/consignments.module';
@@ -79,6 +80,7 @@ import { UsersModule } from './users/users.module';
       }),
     }),
     AuthModule,
+    MailModule,
     UsersModule,
     DashboardModule,
     CustomersModule,

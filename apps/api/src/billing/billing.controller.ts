@@ -15,6 +15,7 @@ import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { SendDocumentEmailDto } from '../mail/dto/send-document-email.dto';
 import { BillingService } from './billing.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { GenerateInvoicesDto } from './dto/generate-invoices.dto';
@@ -48,6 +49,15 @@ export class BillingController {
   @Get('invoices/:id')
   findOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.billingService.findOne(id, user);
+  }
+
+  @Post('invoices/:id/email')
+  sendEmail(
+    @Param('id') id: string,
+    @Body() dto: SendDocumentEmailDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.billingService.sendEmail(id, dto, user);
   }
 
   @Delete('invoices/:id')

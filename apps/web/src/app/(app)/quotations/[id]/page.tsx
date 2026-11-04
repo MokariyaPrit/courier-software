@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { RateMatrixEditor } from '@/components/RateMatrixEditor';
+import { SendDocumentEmailDialog } from '@/components/SendDocumentEmailDialog';
 import { api, unwrap } from '@/lib/api';
 import {
   matrixPayload,
@@ -60,12 +61,26 @@ export default function QuotationDetailPage() {
   const [quotationDate, setQuotationDate] = useState('');
   const [error, setError] = useState('');
   const [savedHint, setSavedHint] = useState('');
+  const [emailOpen, setEmailOpen] = useState(false);
 
   const detailQuery = useQuery({
     queryKey: ['quotation', id],
     queryFn: async () => {
       const res = await api.get(`/quotations/${id}`);
       return unwrap<QuotationDetail>(res.data);
+    },
+  });
+
+  const documentQuery = useQuery({
+    queryKey: ['quotation-document', id],
+    enabled: emailOpen,
+    queryFn: async () => {
+      const res = await api.get(`/quotations/${id}/document`);
+      return unwrap<{
+        quotation: { quotationCode: string | null; quotationDate: string };
+        letterhead: { companyName: string };
+        customer: { name?: string | null; email?: string | null };
+      }>(res.data);
     },
   });
 
@@ -164,8 +179,22 @@ export default function QuotationDetailPage() {
     );
   }
 
+  const emailDoc = documentQuery.data;
+  const emailCode =
+    emailDoc?.quotation.quotationCode || q.quotationCode || id.slice(0, 8);
+  const emailCompany = emailDoc?.letterhead.companyName || 'Courier';
+
   return (
     <div>
+      <SendDocumentEmailDialog
+        visible={emailOpen}
+        onHide={() => setEmailOpen(false)}
+        title="Send quotation email"
+        endpoint={`/quotations/${id}/email`}
+        defaultTo={emailDoc?.customer.email || ''}
+        defaultSubject={`Quotation ${emailCode} — ${emailCompany}`}
+        defaultMessage={`Please find attached quotation ${emailCode}.`}
+      />
       <div className="page-header">
         <div>
           <h1>
@@ -183,6 +212,13 @@ export default function QuotationDetailPage() {
           <Link href={`/quotations/${id}/print`} target="_blank">
             <Button label="Preview / Print" icon="pi pi-print" outlined />
           </Link>
+          <Button
+            label="Send email"
+            icon="pi pi-send"
+            outlined
+            disabled={!isIssued}
+            onClick={() => setEmailOpen(true)}
+          />
           <Button
             label="Save"
             icon="pi pi-save"

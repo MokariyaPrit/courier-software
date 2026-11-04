@@ -17,6 +17,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { SendDocumentEmailDto } from '../mail/dto/send-document-email.dto';
 import {
   CreateQuotationDto,
   IssueQuotationDto,
@@ -80,6 +81,15 @@ export class QuotationsController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.quotationsService.issue(id, dto, user);
+  }
+
+  @Post(':id/email')
+  sendEmail(
+    @Param('id') id: string,
+    @Body() dto: SendDocumentEmailDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.quotationsService.sendEmail(id, dto, user);
   }
 
   @Delete(':id')

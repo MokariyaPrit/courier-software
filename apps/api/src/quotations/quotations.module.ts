@@ -5,6 +5,7 @@ import { Quotation } from '../entities/quotation.entity';
 import { QuotationRateRow } from '../entities/quotation-rate-row.entity';
 import { QuotationRateTemplate } from '../entities/quotation-rate-template.entity';
 import { User } from '../entities/user.entity';
+import { MailModule } from '../mail/mail.module';
 import { RateColumnsModule } from '../rate-columns/rate-columns.module';
 import { QuotationTemplatesController } from './quotation-templates.controller';
 import { QuotationTemplatesService } from './quotation-templates.service';
@@ -21,6 +22,7 @@ import { QuotationsService } from './quotations.service';
       User,
     ]),
     forwardRef(() => RateColumnsModule),
+    MailModule,
   ],
   controllers: [QuotationTemplatesController, QuotationsController],
   providers: [QuotationTemplatesService, QuotationsService],

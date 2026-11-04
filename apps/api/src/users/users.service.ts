@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
@@ -13,6 +14,11 @@ import {
 } from '../common/dto/pagination.dto';
 import { UserInfo } from '../entities/user-info.entity';
 import { User } from '../entities/user.entity';
+import {
+  encryptSmtpPassword,
+  resolveSmtpCryptoSecret,
+} from '../mail/smtp-crypto';
+import { sanitizeUserInfo } from '../mail/sanitize-user-info';
 import { normalizeTermsList } from '../common/utils/terms-and-conditions';
 import { normalizeBookingTabConfigDto } from './dto/booking-tab-config.dto';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -33,11 +39,82 @@ export class UsersService {
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
     @InjectRepository(UserInfo)
     private readonly userInfoRepo: Repository<UserInfo>,
+    private readonly config: ConfigService,
   ) {}
 
   private sanitize(user: User) {
     const { passwordHash: _, ...rest } = user;
-    return rest;
+    return {
+      ...rest,
+      userInfo: sanitizeUserInfo(user.userInfo),
+    };
+  }
+
+  private smtpSecret() {
+    return resolveSmtpCryptoSecret(
+      this.config.get<string>('SMTP_CRYPTO_SECRET'),
+      this.config.get<string>('JWT_ACCESS_SECRET'),
+    );
+  }
+
+  private applySmtpSettings(info: UserInfo, dto: UpdateUserDto) {
+    const clearingHost =
+      dto.smtpHost !== undefined &&
+      (dto.smtpHost == null || String(dto.smtpHost).trim() === '');
+
+    if (clearingHost) {
+      info.smtpHost = null;
+      info.smtpPort = 587;
+      info.smtpSecure = false;
+      info.smtpUser = null;
+      info.smtpPasswordEnc = null;
+      info.smtpFromEmail = null;
+      return;
+    }
+
+    if (dto.smtpHost !== undefined) {
+      info.smtpHost = String(dto.smtpHost).trim() || null;
+    }
+    if (dto.smtpPort !== undefined) {
+      info.smtpPort = dto.smtpPort ?? 587;
+    }
+    if (dto.smtpSecure !== undefined) {
+      info.smtpSecure = Boolean(dto.smtpSecure);
+    }
+    if (dto.smtpUser !== undefined) {
+      info.smtpUser =
+        dto.smtpUser == null || String(dto.smtpUser).trim() === ''
+          ? null
+          : String(dto.smtpUser).trim();
+    }
+    if (dto.smtpFromEmail !== undefined) {
+      info.smtpFromEmail =
+        dto.smtpFromEmail == null || String(dto.smtpFromEmail).trim() === ''
+          ? null
+          : String(dto.smtpFromEmail).trim().toLowerCase();
+    }
+    // Blank / omitted password keeps existing encrypted value
+    if (
+      dto.smtpPassword !== undefined &&
+      dto.smtpPassword != null &&
+      String(dto.smtpPassword).trim() !== ''
+    ) {
+      // Gmail app passwords often include spaces when pasted
+      const password = String(dto.smtpPassword).replace(/\s+/g, '');
+      info.smtpPasswordEnc = encryptSmtpPassword(password, this.smtpSecret());
+    }
+
+    // App is Gmail-only: fill Google SMTP defaults when user/password present
+    if (info.smtpUser?.trim() && info.smtpPasswordEnc) {
+      if (!info.smtpHost?.trim() || /gmail\.com$/i.test(info.smtpHost)) {
+        info.smtpHost = 'smtp.gmail.com';
+        info.smtpPort = 587;
+        info.smtpSecure = false;
+      }
+      if (!info.smtpFromEmail?.trim()) {
+        info.smtpFromEmail = info.smtpUser.trim().toLowerCase();
+      }
+    }
   }
 
   async create(dto: CreateUserDto) {
@@ -226,6 +303,17 @@ export class UsersService {
         raw == null || String(raw).trim() === ''
           ? null
           : String(raw).trim().slice(0, 10);
+    }
+
+    if (
+      dto.smtpHost !== undefined ||
+      dto.smtpPort !== undefined ||
+      dto.smtpSecure !== undefined ||
+      dto.smtpUser !== undefined ||
+      dto.smtpPassword !== undefined ||
+      dto.smtpFromEmail !== undefined
+    ) {
+      this.applySmtpSettings(info, dto);
     }
 
     await this.userInfoRepo.save(info);

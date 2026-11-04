@@ -119,6 +119,27 @@ export class UserInfo {
   @Column({ type: 'date', nullable: true })
   expiredOn: string | null;
 
+  /** Outgoing SMTP — used to email quotations / invoices as this user */
+  @Column({ type: 'varchar', nullable: true })
+  smtpHost: string | null;
+
+  @Column({ type: 'int', nullable: true, default: 587 })
+  smtpPort: number | null;
+
+  @Column({ type: 'boolean', default: false })
+  smtpSecure: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  smtpUser: string | null;
+
+  /** AES-GCM ciphertext; never returned via API */
+  @Column({ type: 'text', nullable: true })
+  smtpPasswordEnc: string | null;
+
+  /** Optional From address override (else smtpUser / profile email) */
+  @Column({ type: 'varchar', nullable: true })
+  smtpFromEmail: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

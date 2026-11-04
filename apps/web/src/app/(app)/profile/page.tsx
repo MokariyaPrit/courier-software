@@ -17,12 +17,19 @@ import {
   validateEmail,
   validateFullName,
 } from '@/lib/form-validation';
+import { GMAIL_SMTP, normalizeGmailAppPassword } from '@/lib/gmail-smtp';
 import {
   TERM_PLACEHOLDER_HELP,
   editorTextToTerms,
   termsToEditorText,
 } from '@/lib/terms-and-conditions';
+import { apiErrorMessage } from '@/lib/toast';
 import { trimFormData } from '@/lib/trim';
+
+interface GmailFormState {
+  gmailEmail: string;
+  appPassword: string;
+}
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
@@ -102,9 +109,17 @@ export default function ProfilePage() {
   const { user, refreshMe } = useAuth();
   const info = user?.userInfo;
   const [editOpen, setEditOpen] = useState(false);
+  const [smtpOpen, setSmtpOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpTesting, setSmtpTesting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [smtpError, setSmtpError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [gmailForm, setGmailForm] = useState<GmailFormState>({
+    gmailEmail: '',
+    appPassword: '',
+  });
   const [form, setForm] = useState<ProfileFormState>({
     fullName: '',
     email: '',
@@ -158,6 +173,11 @@ export default function ProfilePage() {
       ewayBillThreshold: Number(info?.ewayBillThreshold ?? 50000),
       termsText: termsToEditorText(info?.termsAndConditions),
     });
+    setGmailForm({
+      gmailEmail:
+        info?.smtpUser || info?.smtpFromEmail || '',
+      appPassword: '',
+    });
   }, [user, info]);
 
   if (!user) {
@@ -168,6 +188,99 @@ export default function ProfilePage() {
     setErrorMessage('');
     setFieldErrors({});
     setEditOpen(true);
+  };
+
+  const openSmtpEdit = () => {
+    setSmtpError('');
+    setGmailForm({
+      gmailEmail: info?.smtpUser || info?.smtpFromEmail || '',
+      appPassword: '',
+    });
+    setSmtpOpen(true);
+  };
+
+  const saveGmail = async () => {
+    setSmtpSaving(true);
+    setSmtpError('');
+    try {
+      const email = gmailForm.gmailEmail.trim().toLowerCase();
+      const emailErr = validateEmail(email);
+      if (emailErr) {
+        setSmtpError(emailErr);
+        setSmtpSaving(false);
+        return;
+      }
+      const password = normalizeGmailAppPassword(gmailForm.appPassword);
+      if (!info?.smtpConfigured && !password) {
+        setSmtpError('Google App Password is required');
+        setSmtpSaving(false);
+        return;
+      }
+      if (password && password.length < 16) {
+        setSmtpError(
+          'Use a 16-character Google App Password (not your normal Gmail password)',
+        );
+        setSmtpSaving(false);
+        return;
+      }
+
+      const payload: Record<string, unknown> = {
+        smtpHost: GMAIL_SMTP.host,
+        smtpPort: GMAIL_SMTP.port,
+        smtpSecure: GMAIL_SMTP.secure,
+        smtpUser: email,
+        smtpFromEmail: email,
+      };
+      if (password) {
+        payload.smtpPassword = password;
+      }
+      await api.patch('/auth/profile', payload, {
+        toastSummary: 'Gmail saved',
+        toastDetail: 'Quotations and invoices can be emailed from this Gmail.',
+      });
+      await refreshMe();
+      setSmtpOpen(false);
+    } catch (err: unknown) {
+      setSmtpError(apiErrorMessage(err, 'Failed to save Gmail settings'));
+    } finally {
+      setSmtpSaving(false);
+    }
+  };
+
+  const clearGmail = async () => {
+    setSmtpSaving(true);
+    setSmtpError('');
+    try {
+      await api.patch(
+        '/auth/profile',
+        { smtpHost: null },
+        {
+          toastSummary: 'Gmail disconnected',
+          toastDetail: 'Outgoing email was removed from this profile.',
+        },
+      );
+      await refreshMe();
+      setSmtpOpen(false);
+    } catch (err: unknown) {
+      setSmtpError(apiErrorMessage(err, 'Failed to disconnect Gmail'));
+    } finally {
+      setSmtpSaving(false);
+    }
+  };
+
+  const testSmtp = async () => {
+    setSmtpTesting(true);
+    setSmtpError('');
+    try {
+      await api.post('/auth/profile/smtp/test', undefined, {
+        toastSummary: 'Test email sent',
+        toastDetail: 'Check your Gmail inbox for the test message.',
+      });
+    } catch (err: unknown) {
+      setSmtpError(apiErrorMessage(err, 'Gmail test failed'));
+    } finally {
+      setSmtpTesting(false);
+    }
   };
 
   const blurField = (key: ProfileFieldKey) => {
@@ -314,6 +427,52 @@ export default function ProfilePage() {
           <InfoRow label="State" value={info?.state} />
           <InfoRow label="Pincode" value={info?.pincode} />
           <InfoRow label="Notes" value={info?.notes} />
+        </section>
+
+        <section className="panel profile-card" style={{ gridColumn: '1 / -1' }}>
+          <div className="profile-card-header">
+            <h2>Gmail (send quotations &amp; invoices)</h2>
+            <div style={{ display: 'flex', gap: '0.35rem' }}>
+              <Button
+                label="Test"
+                icon="pi pi-send"
+                text
+                size="small"
+                disabled={!info?.smtpConfigured}
+                loading={smtpTesting}
+                onClick={() => void testSmtp()}
+              />
+              <Button
+                label={info?.smtpConfigured ? 'Change' : 'Connect Gmail'}
+                icon="pi pi-pencil"
+                text
+                size="small"
+                onClick={openSmtpEdit}
+              />
+            </div>
+          </div>
+          <div className="profile-row">
+            <span className="profile-label">Status</span>
+            <span className="profile-value">
+              <Tag severity={info?.smtpConfigured ? 'success' : 'warning'}>
+                {info?.smtpConfigured ? 'Gmail connected' : 'Not connected'}
+              </Tag>
+            </span>
+          </div>
+          <InfoRow label="Provider" value="Google Gmail" />
+          <InfoRow
+            label="Gmail address"
+            value={info?.smtpUser || info?.smtpFromEmail}
+          />
+          <p className="muted" style={{ margin: '0.75rem 0 0', fontSize: '0.85rem' }}>
+            Only your Google email and a Google App Password are needed.
+            Server settings (smtp.gmail.com : 587) are applied automatically.
+          </p>
+          {smtpError && !smtpOpen ? (
+            <p className="error-text" style={{ marginTop: '0.5rem' }}>
+              {smtpError}
+            </p>
+          ) : null}
         </section>
 
         <section className="panel profile-card" style={{ gridColumn: '1 / -1' }}>
@@ -562,6 +721,110 @@ export default function ProfilePage() {
             onClick={() => setEditOpen(false)}
           />
           <Button label="Save changes" loading={saving} onClick={saveProfile} />
+        </div>
+      </Dialog>
+
+      <Dialog
+        header="Connect Gmail"
+        visible={smtpOpen}
+        style={{ width: 'min(520px, 95vw)' }}
+        onHide={() => setSmtpOpen(false)}
+      >
+        <p className="muted" style={{ marginTop: 0 }}>
+          Enter your Google email and a Google App Password. Host and port are
+          fixed to Gmail ({GMAIL_SMTP.host}:{GMAIL_SMTP.port}).
+        </p>
+        <ol
+          className="muted"
+          style={{ margin: '0 0 1rem', paddingLeft: '1.25rem', fontSize: '0.9rem' }}
+        >
+          <li>Open Google Account → Security → 2-Step Verification (must be on).</li>
+          <li>
+            Create an{' '}
+            <a
+              href="https://myaccount.google.com/apppasswords"
+              target="_blank"
+              rel="noreferrer"
+            >
+              App Password
+            </a>{' '}
+            for “Mail”.
+          </li>
+          <li>Paste the 16-character password below (spaces are OK).</li>
+        </ol>
+        <div className="form-grid">
+          <div className="field full">
+            <label htmlFor="gmailEmail">Gmail address</label>
+            <InputText
+              id="gmailEmail"
+              value={gmailForm.gmailEmail}
+              placeholder="you@gmail.com"
+              autoComplete="off"
+              onChange={(e) =>
+                setGmailForm((prev) => ({
+                  ...prev,
+                  gmailEmail: e.target.value,
+                }))
+              }
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div className="field full">
+            <label htmlFor="gmailAppPassword">Google App Password</label>
+            <InputText
+              id="gmailAppPassword"
+              type="password"
+              value={gmailForm.appPassword}
+              placeholder={
+                info?.smtpConfigured
+                  ? 'Leave blank to keep current password'
+                  : 'xxxx xxxx xxxx xxxx'
+              }
+              autoComplete="new-password"
+              onChange={(e) =>
+                setGmailForm((prev) => ({
+                  ...prev,
+                  appPassword: e.target.value,
+                }))
+              }
+              style={{ width: '100%' }}
+            />
+          </div>
+        </div>
+        {smtpError ? <p className="error-text">{smtpError}</p> : null}
+        <div
+          style={{
+            marginTop: '1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          {info?.smtpConfigured ? (
+            <Button
+              label="Disconnect"
+              severity="danger"
+              text
+              loading={smtpSaving}
+              onClick={() => void clearGmail()}
+            />
+          ) : (
+            <span />
+          )}
+          <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
+            <Button
+              label="Cancel"
+              severity="secondary"
+              text
+              onClick={() => setSmtpOpen(false)}
+            />
+            <Button
+              label="Save Gmail"
+              loading={smtpSaving}
+              onClick={() => void saveGmail()}
+            />
+          </div>
         </div>
       </Dialog>
     </div>

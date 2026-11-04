@@ -97,6 +97,9 @@ function resolveResource(path: string): ResourceInfo {
   if (p.includes('/billing/invoices/generate')) {
     return { noun: 'Bill', createVerb: 'generated' };
   }
+  if (p.includes('/email') || p.includes('/smtp/test')) {
+    return { noun: 'Email', createVerb: 'sent' };
+  }
   if (p.includes('/billing') || p.includes('/invoices')) {
     return { noun: 'Invoice', createVerb: 'created' };
   }

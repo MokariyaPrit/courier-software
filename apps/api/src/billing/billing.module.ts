@@ -4,11 +4,15 @@ import { Consignment } from '../entities/consignment.entity';
 import { Customer } from '../entities/customer.entity';
 import { Invoice } from '../entities/invoice.entity';
 import { User } from '../entities/user.entity';
+import { MailModule } from '../mail/mail.module';
 import { BillingController } from './billing.controller';
 import { BillingService } from './billing.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Invoice, Customer, Consignment, User])],
+  imports: [
+    TypeOrmModule.forFeature([Invoice, Customer, Consignment, User]),
+    MailModule,
+  ],
   controllers: [BillingController],
   providers: [BillingService],
 })

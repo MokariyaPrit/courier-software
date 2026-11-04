@@ -40,6 +40,13 @@ export interface UserInfoProfile {
   isActive: boolean;
   /** Last day account may log in; view-only for branch managers */
   expiredOn?: string | null;
+  /** Outgoing SMTP (password never returned) */
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpSecure?: boolean;
+  smtpUser?: string | null;
+  smtpFromEmail?: string | null;
+  smtpConfigured?: boolean;
 }
 
 export interface SessionUser {

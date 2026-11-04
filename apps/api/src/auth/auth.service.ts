@@ -11,6 +11,7 @@ import type { Response } from 'express';
 import { Repository } from 'typeorm';
 import { isAccountExpired } from '../common/utils/account-expiry';
 import { User } from '../entities/user.entity';
+import { sanitizeUserInfo } from '../mail/sanitize-user-info';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -83,7 +84,7 @@ export class AuthService {
       role: user.role,
       isActive: user.isActive,
       fullName: user.userInfo?.fullName ?? user.email,
-      userInfo: user.userInfo ?? null,
+      userInfo: sanitizeUserInfo(user.userInfo),
     };
   }
 
@@ -181,6 +182,12 @@ export class AuthService {
       paymentDays: dto.paymentDays,
       volumetricDivisor: dto.volumetricDivisor,
       ewayBillThreshold: dto.ewayBillThreshold,
+      smtpHost: dto.smtpHost,
+      smtpPort: dto.smtpPort,
+      smtpSecure: dto.smtpSecure,
+      smtpUser: dto.smtpUser,
+      smtpPassword: dto.smtpPassword,
+      smtpFromEmail: dto.smtpFromEmail,
     });
     return this.me(userId);
   }

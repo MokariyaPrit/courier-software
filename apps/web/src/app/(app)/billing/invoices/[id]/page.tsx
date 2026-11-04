@@ -8,7 +8,8 @@ import {
 } from '@/components/ui';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { SendDocumentEmailDialog } from '@/components/SendDocumentEmailDialog';
 import { api, unwrap } from '@/lib/api';
 
 type InvoiceLine = {
@@ -72,6 +73,7 @@ type InvoiceDocument = {
     gstin: string | null;
     pan: string | null;
     phone: string | null;
+    email?: string | null;
   };
   lines: InvoiceLine[];
 };
@@ -248,6 +250,7 @@ export default function InvoiceViewPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const id = String(params.id);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   const docQuery = useQuery({
     queryKey: ['invoice-document', id],
@@ -316,6 +319,15 @@ export default function InvoiceViewPage() {
   return (
     <div className="invoice-print-root">
       <ConfirmDialog />
+      <SendDocumentEmailDialog
+        visible={emailOpen}
+        onHide={() => setEmailOpen(false)}
+        title="Send invoice email"
+        endpoint={`/billing/invoices/${id}/email`}
+        defaultTo={customer.email || ''}
+        defaultSubject={`Tax Invoice ${invoice.invoiceNumber} — ${letterhead.companyName}`}
+        defaultMessage={`Please find attached tax invoice ${invoice.invoiceNumber}.`}
+      />
       <div className="quotation-print-toolbar no-print">
         <div>
           <Link href="/billing/invoices" className="muted">
@@ -334,6 +346,12 @@ export default function InvoiceViewPage() {
             outlined
             loading={deleteMutation.isPending}
             onClick={askDelete}
+          />
+          <Button
+            label="Send email"
+            icon="pi pi-send"
+            outlined
+            onClick={() => setEmailOpen(true)}
           />
           <Button
             label="Print / PDF"

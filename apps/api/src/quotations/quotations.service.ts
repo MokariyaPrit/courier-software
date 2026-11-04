@@ -23,6 +23,9 @@ import { QuotationRateRow } from '../entities/quotation-rate-row.entity';
 import { QuotationRateTemplate } from '../entities/quotation-rate-template.entity';
 import { User } from '../entities/user.entity';
 import { UserInfo } from '../entities/user-info.entity';
+import { DocumentMailPdfService } from '../mail/document-mail-pdf.service';
+import { SendDocumentEmailDto } from '../mail/dto/send-document-email.dto';
+import { MailService } from '../mail/mail.service';
 import { RateColumnsService } from '../rate-columns/rate-columns.service';
 import {
   CreateQuotationDto,
@@ -60,6 +63,8 @@ export class QuotationsService {
     private readonly usersRepo: Repository<User>,
     @Inject(forwardRef(() => RateColumnsService))
     private readonly rateColumns: RateColumnsService,
+    private readonly mailService: MailService,
+    private readonly documentMailPdf: DocumentMailPdfService,
   ) {}
 
   private sanitize(q: Quotation) {
@@ -432,6 +437,68 @@ export class QuotationsService {
     await this.findOne(id, user);
     await this.quotationsRepo.softDelete(id);
     return { deleted: true };
+  }
+
+  async sendEmail(id: string, dto: SendDocumentEmailDto, user: AuthUser) {
+    const quotation = await this.findOne(id, user);
+    if (quotation.status !== QuotationStatus.ISSUED) {
+      throw new BadRequestException(
+        'Issue the quotation before sending it by email',
+      );
+    }
+
+    const doc = await this.document(id, user);
+    const company = doc.letterhead.companyName || 'Courier';
+    const code = doc.quotation.quotationCode || id.slice(0, 8);
+    const to =
+      dto.to?.trim() ||
+      doc.customer.email?.trim() ||
+      '';
+    if (!to) {
+      throw new BadRequestException(
+        'Customer has no email. Enter a recipient address.',
+      );
+    }
+
+    const subject =
+      dto.subject?.trim() || `Quotation ${code} — ${company}`;
+    const pdf = await this.documentMailPdf.buildQuotationPdf(doc);
+    const html = this.documentMailPdf.buildEmailHtml({
+      title: `Quotation ${code}`,
+      greetingName: doc.customer.name,
+      message: dto.message,
+      companyName: company,
+      details: [
+        ['Quotation', code],
+        ['Date', String(doc.quotation.quotationDate || '—')],
+        ['Customer', String(doc.customer.name || '—')],
+      ],
+    });
+
+    const result = await this.mailService.sendMail({
+      issuerUserId: quotation.createdById,
+      to,
+      cc: dto.cc,
+      subject,
+      html,
+      attachments: [
+        {
+          filename: `Quotation-${code}.pdf`,
+          content: pdf,
+          contentType: 'application/pdf',
+        },
+      ],
+    });
+
+    quotation.lastEmailedAt = new Date();
+    quotation.lastEmailedTo = to;
+    await this.quotationsRepo.save(quotation);
+
+    return {
+      ...result,
+      lastEmailedAt: quotation.lastEmailedAt,
+      lastEmailedTo: quotation.lastEmailedTo,
+    };
   }
 
   async document(id: string, user: AuthUser) {
