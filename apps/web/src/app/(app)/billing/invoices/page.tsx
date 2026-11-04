@@ -1,5 +1,6 @@
 'use client';
 
+import { Role } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -14,7 +15,9 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { ListFilterChrome } from '@/components/ListControls';
 import { api, unwrap } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
+import { ownerDisplayName } from '@/lib/owner-display';
 import { apiErrorMessage } from '@/lib/toast';
 
 interface Invoice {
@@ -28,6 +31,10 @@ interface Invoice {
   createdAt: string;
   lastEmailedAt?: string | null;
   customer?: { name: string; primaryEmail?: string | null };
+  createdBy?: {
+    email?: string | null;
+    userInfo?: { fullName?: string | null } | null;
+  } | null;
 }
 
 const SORT_OPTIONS: SortOption[] = [
@@ -65,6 +72,7 @@ function formatDate(value?: string | null) {
 
 export default function InvoicesPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const list = useListParams({ sortOptions: SORT_OPTIONS });
   const [dateFrom, setDateFrom] = useState(firstOfMonthIso);
@@ -76,6 +84,7 @@ export default function InvoicesPage() {
   const [bulkMessage, setBulkMessage] = useState('');
   const [bulkError, setBulkError] = useState('');
   const [bulkResult, setBulkResult] = useState('');
+  const isAdmin = user?.role === Role.ADMIN;
 
   const invoicesQuery = useQuery({
     queryKey: [
@@ -197,7 +206,7 @@ export default function InvoicesPage() {
   };
 
   const columns = useMemo((): AppColumn<Invoice>[] => {
-    return [
+    const cols: AppColumn<Invoice>[] = [
       { field: 'invoiceNumber', header: 'Bill No' },
       {
         header: 'Party',
@@ -227,31 +236,38 @@ export default function InvoicesPage() {
           }),
       },
       { field: 'status', header: 'Status' },
-      {
-        header: '',
-        body: (row) => (
-          <div style={{ display: 'flex', gap: '0.25rem' }}>
-            <Button
-              label="View"
-              icon="pi pi-eye"
-              text
-              size="small"
-              onClick={() => router.push(`/billing/invoices/${row.id}`)}
-            />
-            <Button
-              label="Delete"
-              icon="pi pi-trash"
-              text
-              severity="danger"
-              size="small"
-              loading={deleteMutation.isPending}
-              onClick={() => askDelete(row)}
-            />
-          </div>
-        ),
-      },
     ];
-  }, [deleteMutation.isPending, router]);
+    if (isAdmin) {
+      cols.push({
+        header: 'Branch Manager',
+        body: (row) => ownerDisplayName(row.createdBy),
+      });
+    }
+    cols.push({
+      header: '',
+      body: (row) => (
+        <div style={{ display: 'flex', gap: '0.25rem' }}>
+          <Button
+            label="View"
+            icon="pi pi-eye"
+            text
+            size="small"
+            onClick={() => router.push(`/billing/invoices/${row.id}`)}
+          />
+          <Button
+            label="Delete"
+            icon="pi pi-trash"
+            text
+            severity="danger"
+            size="small"
+            loading={deleteMutation.isPending}
+            onClick={() => askDelete(row)}
+          />
+        </div>
+      ),
+    });
+    return cols;
+  }, [deleteMutation.isPending, isAdmin, router]);
 
   return (
     <div>

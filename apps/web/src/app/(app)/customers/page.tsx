@@ -20,6 +20,7 @@ import { ListFilterChrome, ListSearch } from '@/components/ListControls';
 import { api, unwrap } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
+import { ownerDisplayName } from '@/lib/owner-display';
 import { trimFormData } from '@/lib/trim';
 
 interface CustomerOwner {
@@ -304,9 +305,8 @@ export default function CustomersPage() {
     ];
     if (user?.role === Role.ADMIN) {
       cols.push({
-        header: 'Owner',
-        body: (row) =>
-          row.createdBy?.userInfo?.fullName || row.createdBy?.email || '—',
+        header: 'Branch Manager',
+        body: (row) => ownerDisplayName(row.createdBy),
       });
     }
     cols.push({

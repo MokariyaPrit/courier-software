@@ -1,5 +1,6 @@
 'use client';
 
+import { Role } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, InputNumber, InputText } from '@/components/ui';
 import { useRouter } from 'next/navigation';
@@ -7,12 +8,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fetchPaginated } from '@/lib/list';
+import { ownerDisplayName } from '@/lib/owner-display';
 
 interface CustomerRow {
   id: string;
   name: string;
   city: string | null;
   isActive: boolean;
+  createdBy?: {
+    email?: string | null;
+    userInfo?: { fullName?: string | null } | null;
+  } | null;
 }
 
 function todayIso() {
@@ -42,6 +48,7 @@ export default function GenerateBillPage() {
   const [igstPercent, setIgstPercent] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
   const [message, setMessage] = useState('');
+  const isAdmin = user?.role === Role.ADMIN;
 
   useEffect(() => {
     const info = user?.userInfo;
@@ -264,6 +271,11 @@ export default function GenerateBillPage() {
                     {c.name}
                     {c.city ? (
                       <span className="muted"> — {c.city}</span>
+                    ) : null}
+                    {isAdmin ? (
+                      <span className="muted" style={{ display: 'block', fontSize: '0.85rem' }}>
+                        Branch Manager: {ownerDisplayName(c.createdBy)}
+                      </span>
                     ) : null}
                   </span>
                 </label>

@@ -1,6 +1,6 @@
 'use client';
 
-import { BOOKING_TYPE_LABELS, BookingType } from '@courier/shared';
+import { BOOKING_TYPE_LABELS, BookingType, Role } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -15,7 +15,9 @@ import { useMemo, useState } from 'react';
 import { BookingFormPanel } from '@/components/bookings/BookingFormPanel';
 import { ListFilterChrome, ListSearch } from '@/components/ListControls';
 import { api, unwrap } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
+import { ownerDisplayName } from '@/lib/owner-display';
 import { serviceTypeLabel } from '@/lib/quotations';
 
 interface BookingRow {
@@ -40,6 +42,10 @@ interface BookingRow {
   customer?: { name?: string | null } | null;
   courierCompany?: { name?: string | null } | null;
   createdAt: string;
+  createdBy?: {
+    email?: string | null;
+    userInfo?: { fullName?: string | null } | null;
+  } | null;
 }
 
 const SORT_OPTIONS: SortOption[] = [
@@ -100,6 +106,7 @@ function formatDate(value?: string | null) {
 }
 
 export default function BookingListPage() {
+  const { user } = useAuth();
   const qc = useQueryClient();
   const list = useListParams({ sortOptions: SORT_OPTIONS });
   const [bookingType, setBookingType] = useState('');
@@ -107,6 +114,7 @@ export default function BookingListPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<BookingType>(BookingType.ACCOUNT);
   const [editAwb, setEditAwb] = useState('');
+  const isAdmin = user?.role === Role.ADMIN;
 
   const openEdit = (row: Pick<BookingRow, 'id' | 'bookingType' | 'awb'>) => {
     setViewId(null);
@@ -121,12 +129,13 @@ export default function BookingListPage() {
   };
 
   const listQuery = useQuery({
-    queryKey: ['booking-list', list.queryParams, bookingType],
+    queryKey: ['booking-list', list.queryParams, bookingType, isAdmin],
     queryFn: () =>
       fetchPaginated<BookingRow>('/consignments', {
         ...list.queryParams,
         ...(bookingType ? { bookingType } : {}),
-        mine: true,
+        // Admin sees all bookings; BM scoped to own
+        ...(isAdmin ? {} : { mine: true }),
       }),
   });
 
@@ -178,7 +187,7 @@ export default function BookingListPage() {
 
   const detail = viewQuery.data;
   const columns = useMemo((): AppColumn<BookingRow>[] => {
-    return [
+    const cols: AppColumn<BookingRow>[] = [
       {
         field: 'awb',
         header: 'Doc No',
@@ -225,38 +234,45 @@ export default function BookingListPage() {
         header: 'Amount',
         body: (row) => `₹${money(bookingTotal(row))}`,
       },
-      {
-        header: '',
-        body: (row) => (
-          <div style={{ display: 'flex', gap: '0.25rem' }}>
-            <Button
-              icon="pi pi-eye"
-              text
-              rounded
-              aria-label="View"
-              onClick={() => setViewId(row.id)}
-            />
-            <Button
-              icon="pi pi-pencil"
-              text
-              rounded
-              aria-label="Edit"
-              onClick={() => openEdit(row)}
-            />
-            <Button
-              icon="pi pi-trash"
-              text
-              rounded
-              severity="danger"
-              aria-label="Delete"
-              disabled={deleteMutation.isPending}
-              onClick={() => askDelete(row)}
-            />
-          </div>
-        ),
-      },
     ];
-  }, [deleteMutation.isPending]);
+    if (isAdmin) {
+      cols.push({
+        header: 'Branch Manager',
+        body: (row) => ownerDisplayName(row.createdBy),
+      });
+    }
+    cols.push({
+      header: '',
+      body: (row) => (
+        <div style={{ display: 'flex', gap: '0.25rem' }}>
+          <Button
+            icon="pi pi-eye"
+            text
+            rounded
+            aria-label="View"
+            onClick={() => setViewId(row.id)}
+          />
+          <Button
+            icon="pi pi-pencil"
+            text
+            rounded
+            aria-label="Edit"
+            onClick={() => openEdit(row)}
+          />
+          <Button
+            icon="pi pi-trash"
+            text
+            rounded
+            severity="danger"
+            aria-label="Delete"
+            disabled={deleteMutation.isPending}
+            onClick={() => askDelete(row)}
+          />
+        </div>
+      ),
+    });
+    return cols;
+  }, [deleteMutation.isPending, isAdmin]);
 
   return (
     <div>

@@ -209,19 +209,36 @@ export class LedgerService {
   }
 
   async listCustomers(query: LedgerCustomerQueryDto, user: AuthUser) {
+    const isAdmin = user.role === Role.ADMIN;
     const qb = this.customersRepo
       .createQueryBuilder('c')
+      .leftJoinAndSelect('c.createdBy', 'createdBy')
+      .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
       .where('c.deletedAt IS NULL')
       .andWhere('c.isActive = true')
       .orderBy('c.name', 'ASC');
-    if (user.role !== Role.ADMIN) {
+    if (!isAdmin) {
       qb.andWhere('c.createdById = :uid', { uid: user.id });
     }
-    if (query.search?.trim()) {
-      qb.andWhere(
-        '(c.name ILIKE :q OR c.primaryPhone ILIKE :q OR c.gstin ILIKE :q)',
-        { q: `%${query.search.trim()}%` },
-      );
+    const rawSearch = query.search?.trim();
+    if (rawSearch) {
+      const q = `%${rawSearch}%`;
+      const qCompact = `%${rawSearch.replace(/\s+/g, '')}%`;
+      const clauses = [
+        'c.name ILIKE :q',
+        'REPLACE(c.name, \' \', \'\') ILIKE :qCompact',
+        'c.primaryPhone ILIKE :q',
+        'c.primaryEmail ILIKE :q',
+        'c.gstin ILIKE :q',
+        'c.city ILIKE :q',
+      ];
+      if (isAdmin) {
+        clauses.push(
+          'createdByInfo.fullName ILIKE :q',
+          'createdBy.email ILIKE :q',
+        );
+      }
+      qb.andWhere(`(${clauses.join(' OR ')})`, { q, qCompact });
     }
     const customers = await qb.getMany();
     if (!customers.length) return { data: [] };
@@ -234,7 +251,7 @@ export class LedgerService {
       .andWhere('i.status IN (:...st)', {
         st: [InvoiceStatus.ISSUED, InvoiceStatus.PAID],
       });
-    if (user.role !== Role.ADMIN) {
+    if (!isAdmin) {
       invQb.andWhere('i.createdById = :uid', { uid: user.id });
     }
     const invoices = await invQb.getMany();
@@ -243,7 +260,7 @@ export class LedgerService {
       .createQueryBuilder('p')
       .where('p.deletedAt IS NULL')
       .andWhere('p.customerId IN (:...ids)', { ids });
-    if (user.role !== Role.ADMIN) {
+    if (!isAdmin) {
       payQb.andWhere('p.createdById = :uid', { uid: user.id });
     }
     const payments = await payQb.getMany();
@@ -261,22 +278,33 @@ export class LedgerService {
       byCustomerPay.set(p.customerId, list);
     }
 
-    return customers.map((c) => {
-      const summary = this.summarize(
-        byCustomerInv.get(c.id) ?? [],
-        byCustomerPay.get(c.id) ?? [],
-      );
-      return {
-        id: c.id,
-        name: c.name,
-        primaryPhone: c.primaryPhone,
-        primaryEmail: c.primaryEmail,
-        gstin: c.gstin,
-        city: c.city,
-        state: c.state,
-        ...summary,
-      };
-    });
+    return {
+      data: customers.map((c) => {
+        const summary = this.summarize(
+          byCustomerInv.get(c.id) ?? [],
+          byCustomerPay.get(c.id) ?? [],
+        );
+        const createdBy = c.createdBy
+          ? {
+              email: c.createdBy.email,
+              userInfo: c.createdBy.userInfo
+                ? { fullName: c.createdBy.userInfo.fullName }
+                : null,
+            }
+          : null;
+        return {
+          id: c.id,
+          name: c.name,
+          primaryPhone: c.primaryPhone,
+          primaryEmail: c.primaryEmail,
+          gstin: c.gstin,
+          city: c.city,
+          state: c.state,
+          createdBy,
+          ...summary,
+        };
+      }),
+    };
   }
 
   async customerLedger(

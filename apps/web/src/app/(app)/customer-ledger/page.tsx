@@ -5,9 +5,10 @@ import {
   LedgerTxnType,
   PAYMENT_MODE_LABELS,
   PaymentMode,
+  Role,
 } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   ConfirmDialog,
@@ -19,6 +20,8 @@ import {
   Tag,
 } from '@/components/ui';
 import { api, unwrap } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { ownerDisplayName } from '@/lib/owner-display';
 
 type LedgerCustomer = {
   id: string;
@@ -31,6 +34,10 @@ type LedgerCustomer = {
   totalBilled: string;
   totalPaid: string;
   outstanding: string;
+  createdBy?: {
+    email?: string | null;
+    userInfo?: { fullName?: string | null } | null;
+  } | null;
 };
 
 type LedgerRow = {
@@ -112,8 +119,10 @@ function statusLabel(s: InvoicePaymentStatus) {
 }
 
 export default function CustomerLedgerPage() {
+  const { user } = useAuth();
   const qc = useQueryClient();
   const [customerSearch, setCustomerSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -130,12 +139,20 @@ export default function CustomerLedgerPage() {
   });
   const [allocIds, setAllocIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
+  const isAdmin = user?.role === Role.ADMIN;
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setDebouncedSearch(customerSearch.trim());
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [customerSearch]);
 
   const customersQuery = useQuery({
-    queryKey: ['ledger-customers', customerSearch],
+    queryKey: ['ledger-customers', debouncedSearch],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (customerSearch.trim()) params.set('search', customerSearch.trim());
+      if (debouncedSearch) params.set('search', debouncedSearch);
       const res = await api.get(`/ledger/customers?${params.toString()}`);
       const payload = unwrap<LedgerCustomer[]>(res.data);
       return Array.isArray(payload) ? payload : [];
@@ -321,7 +338,9 @@ export default function CustomerLedgerPage() {
           <InputText
             value={customerSearch}
             onChange={(e) => setCustomerSearch(e.target.value)}
-            placeholder="Search party…"
+            placeholder={
+              isAdmin ? 'Search party or branch manager…' : 'Search party…'
+            }
             style={{ width: '100%', marginBottom: '0.75rem' }}
           />
           {customersQuery.isLoading ? (
@@ -333,6 +352,7 @@ export default function CustomerLedgerPage() {
               {customers.map((c) => {
                 const active = c.id === selectedId;
                 const due = Number(c.outstanding);
+                const bm = isAdmin ? ownerDisplayName(c.createdBy) : null;
                 return (
                   <li key={c.id}>
                     <button
@@ -357,6 +377,11 @@ export default function CustomerLedgerPage() {
                       {c.primaryPhone ? (
                         <span className="muted ledger-customer-meta">
                           {c.primaryPhone}
+                        </span>
+                      ) : null}
+                      {bm && bm !== '—' ? (
+                        <span className="muted ledger-customer-meta">
+                          BM: {bm}
                         </span>
                       ) : null}
                     </button>

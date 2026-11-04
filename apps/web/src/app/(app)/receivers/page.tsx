@@ -1,5 +1,6 @@
 'use client';
 
+import { Role } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -16,7 +17,9 @@ import {
 import { useMemo, useState } from 'react';
 import { ListFilterChrome, ListSearch } from '@/components/ListControls';
 import { api, unwrap } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
+import { ownerDisplayName } from '@/lib/owner-display';
 import { trimFormData } from '@/lib/trim';
 
 interface Receiver {
@@ -32,6 +35,10 @@ interface Receiver {
   pincode: string | null;
   notes: string | null;
   isActive: boolean;
+  createdBy?: {
+    email?: string | null;
+    userInfo?: { fullName?: string | null } | null;
+  } | null;
 }
 
 type Form = {
@@ -70,12 +77,14 @@ const SORT_OPTIONS: SortOption[] = [
 ];
 
 export default function ReceiversPage() {
+  const { user } = useAuth();
   const qc = useQueryClient();
   const list = useListParams({ sortOptions: SORT_OPTIONS });
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Form>(EMPTY);
   const [error, setError] = useState('');
+  const isAdmin = user?.role === Role.ADMIN;
 
   const listQuery = useQuery({
     queryKey: ['receivers', list.queryParams],
@@ -188,7 +197,7 @@ export default function ReceiversPage() {
   };
 
   const columns = useMemo((): AppColumn<Receiver>[] => {
-    return [
+    const cols: AppColumn<Receiver>[] = [
       { field: 'name', header: 'Name' },
       { field: 'phone', header: 'Phone' },
       { field: 'city', header: 'City' },
@@ -202,33 +211,40 @@ export default function ReceiversPage() {
           </Tag>
         ),
       },
-      {
-        header: 'Actions',
-        body: (row) => (
-          <div style={{ display: 'flex', gap: '0.35rem' }}>
-            <Button size="small" text icon="pi pi-pencil" label="Edit" onClick={() => openEdit(row)} />
-            <Button
-              size="small"
-              text
-              severity="danger"
-              icon="pi pi-trash"
-              label="Delete"
-              onClick={() =>
-                confirmDialog({
-                  header: 'Delete receiver',
-                  message: `Remove "${row.name}"? Soft delete hides it from lists.`,
-                  acceptClassName: 'p-button-danger',
-                  acceptLabel: 'Delete',
-                  rejectLabel: 'Cancel',
-                  accept: () => deleteMutation.mutate(row.id),
-                })
-              }
-            />
-          </div>
-        ),
-      },
     ];
-  }, []);
+    if (isAdmin) {
+      cols.push({
+        header: 'Branch Manager',
+        body: (row) => ownerDisplayName(row.createdBy),
+      });
+    }
+    cols.push({
+      header: 'Actions',
+      body: (row) => (
+        <div style={{ display: 'flex', gap: '0.35rem' }}>
+          <Button size="small" text icon="pi pi-pencil" label="Edit" onClick={() => openEdit(row)} />
+          <Button
+            size="small"
+            text
+            severity="danger"
+            icon="pi pi-trash"
+            label="Delete"
+            onClick={() =>
+              confirmDialog({
+                header: 'Delete receiver',
+                message: `Remove "${row.name}"? Soft delete hides it from lists.`,
+                acceptClassName: 'p-button-danger',
+                acceptLabel: 'Delete',
+                rejectLabel: 'Cancel',
+                accept: () => deleteMutation.mutate(row.id),
+              })
+            }
+          />
+        </div>
+      ),
+    });
+    return cols;
+  }, [isAdmin, deleteMutation]);
 
   const meta = listQuery.data?.meta ?? {
     page: list.page,

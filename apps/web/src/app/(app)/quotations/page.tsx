@@ -1,6 +1,6 @@
 'use client';
 
-import { QuotationStatus } from '@courier/shared';
+import { QuotationStatus, Role } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -16,7 +16,9 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { ListFilterChrome, ListSearch } from '@/components/ListControls';
 import { api, unwrap } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { fetchPaginated, SortOption, useListParams } from '@/lib/list';
+import { ownerDisplayName } from '@/lib/owner-display';
 
 interface QuotationRow {
   id: string;
@@ -25,6 +27,10 @@ interface QuotationRow {
   status: QuotationStatus;
   customer?: { id?: string; name: string } | null;
   template?: { name: string } | null;
+  createdBy?: {
+    email?: string | null;
+    userInfo?: { fullName?: string | null } | null;
+  } | null;
 }
 
 const SORT_OPTIONS: SortOption[] = [
@@ -37,12 +43,14 @@ const SORT_OPTIONS: SortOption[] = [
 ];
 
 export default function QuotationsPage() {
+  const { user } = useAuth();
   const qc = useQueryClient();
   const list = useListParams({ sortOptions: SORT_OPTIONS });
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState('');
   const [templateId, setTemplateId] = useState('');
   const [error, setError] = useState('');
+  const isAdmin = user?.role === Role.ADMIN;
 
   const listQuery = useQuery({
     queryKey: ['quotations', list.queryParams],
@@ -141,7 +149,7 @@ export default function QuotationsPage() {
   };
 
   const tableColumns = useMemo((): AppColumn<QuotationRow>[] => {
-    return [
+    const cols: AppColumn<QuotationRow>[] = [
       {
         header: 'Code',
         body: (row) => row.quotationCode || '—',
@@ -163,26 +171,33 @@ export default function QuotationsPage() {
           </Tag>
         ),
       },
-      {
-        header: 'Actions',
-        body: (row) => (
-          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-            <Link href={`/quotations/${row.id}`}>
-              <Button size="small" text icon="pi pi-eye" label="Open" />
-            </Link>
-            <Button
-              size="small"
-              text
-              severity="danger"
-              icon="pi pi-trash"
-              label="Delete"
-              onClick={() => askDelete(row)}
-            />
-          </div>
-        ),
-      },
     ];
-  }, []);
+    if (isAdmin) {
+      cols.push({
+        header: 'Branch Manager',
+        body: (row) => ownerDisplayName(row.createdBy),
+      });
+    }
+    cols.push({
+      header: 'Actions',
+      body: (row) => (
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+          <Link href={`/quotations/${row.id}`}>
+            <Button size="small" text icon="pi pi-eye" label="Open" />
+          </Link>
+          <Button
+            size="small"
+            text
+            severity="danger"
+            icon="pi pi-trash"
+            label="Delete"
+            onClick={() => askDelete(row)}
+          />
+        </div>
+      ),
+    });
+    return cols;
+  }, [isAdmin]);
 
   const templateOptions = (templatesQuery.data?.data ?? [])
     .filter((t) => t.isActive)

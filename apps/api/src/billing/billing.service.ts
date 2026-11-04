@@ -477,6 +477,8 @@ export class BillingService {
     const qb = this.invoicesRepo
       .createQueryBuilder('inv')
       .leftJoinAndSelect('inv.customer', 'customer')
+      .leftJoinAndSelect('inv.createdBy', 'createdBy')
+      .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
       .where('inv.deletedAt IS NULL')
       .orderBy(`inv.${sortBy}`, sortOrder)
       .skip((query.page - 1) * query.pageSize)
@@ -499,6 +501,11 @@ export class BillingService {
     }
 
     const [items, total] = await qb.getManyAndCount();
+    for (const inv of items) {
+      if (inv.createdBy) {
+        delete (inv.createdBy as { passwordHash?: string }).passwordHash;
+      }
+    }
     return {
       data: items,
       meta: paginateMeta(query.page, query.pageSize, total),

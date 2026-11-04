@@ -36,6 +36,13 @@ export class ReceiversService {
     }
   }
 
+  private sanitize(row: Receiver) {
+    if (row.createdBy) {
+      delete (row.createdBy as { passwordHash?: string }).passwordHash;
+    }
+    return row;
+  }
+
   async create(dto: CreateReceiverDto, user: AuthUser) {
     const saved = await this.repo.save(
       this.repo.create({
@@ -104,6 +111,8 @@ export class ReceiversService {
     });
     const qb = this.repo
       .createQueryBuilder('receiver')
+      .leftJoinAndSelect('receiver.createdBy', 'createdBy')
+      .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
       .where('receiver.deletedAt IS NULL')
       .orderBy(`receiver.${sortBy}`, sortOrder)
       .skip((query.page - 1) * query.pageSize)
@@ -121,7 +130,10 @@ export class ReceiversService {
     }
 
     const [items, total] = await qb.getManyAndCount();
-    return { data: items, meta: paginateMeta(query.page, query.pageSize, total) };
+    return {
+      data: items.map((row) => this.sanitize(row)),
+      meta: paginateMeta(query.page, query.pageSize, total),
+    };
   }
 
   async findOne(id: string, user: AuthUser) {

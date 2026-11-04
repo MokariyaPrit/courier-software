@@ -204,7 +204,7 @@ export default function CaGstPage() {
       [
         'Invoice No',
         'Bill Date',
-        'Issuer',
+        'Branch Manager',
         'Issuer GSTIN',
         'Party',
         'Party GSTIN',
@@ -445,7 +445,7 @@ export default function CaGstPage() {
                     body: (row: GstRow) => formatDate(row.billDate),
                   },
                   {
-                    header: 'Issuer',
+                    header: 'Branch Manager',
                     body: (row: GstRow) => row.issuerName || '—',
                   },
                   { field: 'customerName', header: 'Party' },
