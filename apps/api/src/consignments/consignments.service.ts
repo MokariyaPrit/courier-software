@@ -233,6 +233,55 @@ export class ConsignmentsService {
     return consignment;
   }
 
+  async findDocument(id: string, user: AuthUser) {
+    const consignment = await this.findOne(id);
+    this.assertOwner(consignment, user);
+    const info = consignment.createdBy?.userInfo;
+    const companyName =
+      info?.companyName?.trim() ||
+      info?.fullName?.trim() ||
+      consignment.createdBy?.email ||
+      '—';
+
+    return {
+      consignment: {
+        id: consignment.id,
+        awb: consignment.awb,
+        bookingType: consignment.bookingType,
+        bookingDate: consignment.bookingDate,
+        createdAt: consignment.createdAt,
+        senderName: consignment.senderName,
+        senderPhone: consignment.senderPhone,
+        senderAddress: consignment.senderAddress,
+        receiverName: consignment.receiverName,
+        receiverPhone: consignment.receiverPhone,
+        receiverAddress: consignment.receiverAddress,
+        receiverCity: consignment.receiverCity,
+        receiverState: consignment.receiverState,
+        receiverPincode: consignment.receiverPincode,
+        rateSectionId: consignment.rateSectionId,
+        weightKg: consignment.weightKg,
+        price: consignment.price,
+        basePrice: consignment.basePrice,
+        cgst: consignment.cgst,
+        sgst: consignment.sgst,
+        igst: consignment.igst,
+        partyName: consignment.partyName,
+        customerName: consignment.customer?.name ?? null,
+        courierCompanyName: consignment.courierCompany?.name ?? null,
+      },
+      letterhead: {
+        companyName,
+        fullName: info?.fullName ?? null,
+        phone: info?.phone ?? null,
+        gstin: info?.gstin ?? null,
+        city: info?.city ?? null,
+        state: info?.state ?? null,
+        logoUrl: info?.logoUrl ?? null,
+      },
+    };
+  }
+
   async findByAwb(awb: string) {
     const consignment = await this.consignmentsRepo.findOne({
       where: { awb },

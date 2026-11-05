@@ -20,6 +20,8 @@ export interface UserInfoProfile {
   state: string | null;
   pincode: string | null;
   companyName: string | null;
+  /** Public path e.g. /uploads/logos/{userId}.png */
+  logoUrl?: string | null;
   gstin: string | null;
   panNumber: string | null;
   bankName: string | null;

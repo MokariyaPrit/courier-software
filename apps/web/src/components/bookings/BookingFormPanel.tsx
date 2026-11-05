@@ -461,7 +461,7 @@ export type BookingFormPanelProps = {
   variant?: 'page' | 'dialog';
   showRemember?: boolean;
   onCancel?: () => void;
-  onSaved?: (info: { created: boolean }) => void;
+  onSaved?: (info: { created: boolean; id?: string }) => void;
   onEditingChange?: (id: string | null) => void;
 };
 
@@ -1208,16 +1208,17 @@ export function BookingFormPanel({
           toastSummary: 'Success',
           toastDetail: `Booking ${editingAwb || ''} updated successfully.`.trim(),
         });
-        return { created: false as const };
+        return { created: false as const, id: editingId };
       }
-      await api.post('/consignments', payload, {
+      const res = await api.post('/consignments', payload, {
         toastSummary: 'Success',
         toastDetail:
           cleaned.bookingType === BookingType.ACCOUNT
             ? 'Account booking created successfully.'
             : 'Cash booking created successfully.',
       });
-      return { created: true as const };
+      const created = unwrap<{ id: string }>(res.data);
+      return { created: true as const, id: created.id };
     },
     onSuccess: async (result) => {
       if (result?.created) {
@@ -1229,11 +1230,11 @@ export function BookingFormPanel({
         saveRememberState(userId, mode, rememberFlags, nextValues);
         resetForm({ focusStart: !isDialog, rememberedOverride: nextValues });
         onEditingChange?.(null);
-        onSaved?.({ created: true });
+        onSaved?.({ created: true, id: result.id });
       } else {
         resetForm({ focusStart: false });
         onEditingChange?.(null);
-        onSaved?.({ created: false });
+        onSaved?.({ created: false, id: result?.id });
       }
       await qc.invalidateQueries({ queryKey: ['consignments-recent'] });
       await qc.invalidateQueries({ queryKey: ['consignments'] });

@@ -1,13 +1,18 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { TrimStringsPipe } from './common/pipes/trim-strings.pipe';
+import { UPLOADS_ROOT, ensureUploadsDirs } from './common/uploads';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
+
+  ensureUploadsDirs();
+  app.useStaticAssets(UPLOADS_ROOT, { prefix: '/uploads' });
 
   app.setGlobalPrefix('api/v1');
   app.use(cookieParser());

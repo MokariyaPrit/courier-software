@@ -46,6 +46,10 @@ export class UserInfo {
   @Column({ type: 'varchar', nullable: true })
   companyName: string | null;
 
+  /** Public path to company logo, e.g. /uploads/logos/{userId}.png */
+  @Column({ type: 'varchar', nullable: true })
+  logoUrl: string | null;
+
   @Column({ type: 'varchar', nullable: true })
   gstin: string | null;
 

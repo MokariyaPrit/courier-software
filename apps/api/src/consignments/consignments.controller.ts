@@ -51,6 +51,14 @@ export class ConsignmentsController {
     return this.consignmentsService.findByAwb(awb);
   }
 
+  @Get(':id/document')
+  findDocument(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.consignmentsService.findDocument(id, user);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.consignmentsService.findOne(id);

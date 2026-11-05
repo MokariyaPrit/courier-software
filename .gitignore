@@ -13,4 +13,5 @@ apps/web/.env.local
 .DS_Store
 Thumbs.db
 apps/api/.embedded-pg
+apps/api/uploads
 

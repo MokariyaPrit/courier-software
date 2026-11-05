@@ -12,6 +12,7 @@ import {
   type AppColumn,
 } from '@/components/ui';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BookingFormPanel } from '@/components/bookings/BookingFormPanel';
 import { ListFilterChrome, ListSearch } from '@/components/ListControls';
 import { api, unwrap } from '@/lib/api';
@@ -107,6 +108,7 @@ function formatDate(value?: string | null) {
 
 export default function BookingListPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const qc = useQueryClient();
   const list = useListParams({ sortOptions: SORT_OPTIONS });
   const [bookingType, setBookingType] = useState('');
@@ -253,6 +255,13 @@ export default function BookingListPage() {
             onClick={() => setViewId(row.id)}
           />
           <Button
+            icon="pi pi-print"
+            text
+            rounded
+            aria-label="Print receipt"
+            onClick={() => router.push(`/bookings/${row.id}/print`)}
+          />
+          <Button
             icon="pi pi-pencil"
             text
             rounded
@@ -272,7 +281,7 @@ export default function BookingListPage() {
       ),
     });
     return cols;
-  }, [deleteMutation.isPending, isAdmin]);
+  }, [deleteMutation.isPending, isAdmin, router]);
 
   return (
     <div>
@@ -405,8 +414,14 @@ export default function BookingListPage() {
               style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}
             >
               <Button
+                label="Print receipt"
+                icon="pi pi-print"
+                onClick={() => router.push(`/bookings/${detail.id}/print`)}
+              />
+              <Button
                 label="Edit"
                 icon="pi pi-pencil"
+                outlined
                 onClick={() => openEdit(detail)}
               />
               <Button

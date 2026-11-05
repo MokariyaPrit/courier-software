@@ -3,7 +3,7 @@
 import { BOOKING_TYPE_LABELS, BookingType } from '@courier/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ConfirmDialog, confirmDialog, Dialog } from '@/components/ui';
+import { Button, ConfirmDialog, confirmDialog, Dialog } from '@/components/ui';
 import { BookingFormPanel } from '@/components/bookings/BookingFormPanel';
 import { useEffect, useState } from 'react';
 import { api, unwrap } from '@/lib/api';
@@ -177,6 +177,16 @@ export function BookingsPageView({ mode }: { mode: BookingType }) {
           showRemember
           onEditingChange={setEditingId}
           onCancel={() => setEditingId(null)}
+          onSaved={(info) => {
+            if (!info.created || !info.id) return;
+            confirmDialog({
+              header: 'Print receipt?',
+              message: 'Open the booking receipt for printing?',
+              acceptLabel: 'Print',
+              rejectLabel: 'Not now',
+              accept: () => router.push(`/bookings/${info.id}/print`),
+            });
+          }}
         />
 
         <aside className="bookings-split-recent panel">
@@ -236,6 +246,17 @@ export function BookingsPageView({ mode }: { mode: BookingType }) {
                       onClick={() => setViewId(row.id)}
                     >
                       <i className="pi pi-eye" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="booking-recent-icon-btn"
+                      title="Print receipt"
+                      aria-label="Print receipt"
+                      onClick={() =>
+                        router.push(`/bookings/${row.id}/print`)
+                      }
+                    >
+                      <i className="pi pi-print" aria-hidden />
                     </button>
                     <button
                       type="button"
@@ -363,6 +384,25 @@ export function BookingsPageView({ mode }: { mode: BookingType }) {
             <div className="field full">
               <label>Remarks</label>
               <div>{detail.remarks || '—'}</div>
+            </div>
+            <div
+              className="field full"
+              style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}
+            >
+              <Button
+                label="Print receipt"
+                icon="pi pi-print"
+                onClick={() => router.push(`/bookings/${detail.id}/print`)}
+              />
+              <Button
+                label="Edit"
+                icon="pi pi-pencil"
+                outlined
+                onClick={() => {
+                  setViewId(null);
+                  setEditingId(detail.id);
+                }}
+              />
             </div>
           </div>
         ) : null}

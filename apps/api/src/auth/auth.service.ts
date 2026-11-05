@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
@@ -9,8 +10,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import type { Response } from 'express';
 import { Repository } from 'typeorm';
+import {
+  removeUserLogoFiles,
+  writeUserLogo,
+} from '../common/uploads';
 import { isAccountExpired } from '../common/utils/account-expiry';
 import { User } from '../entities/user.entity';
+import { UserInfo } from '../entities/user-info.entity';
 import { sanitizeUserInfo } from '../mail/sanitize-user-info';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
@@ -21,6 +27,8 @@ import { JwtPayload } from './jwt.strategy';
 export class AuthService {
   constructor(
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
+    @InjectRepository(UserInfo)
+    private readonly userInfoRepo: Repository<UserInfo>,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
@@ -189,6 +197,31 @@ export class AuthService {
       smtpPassword: dto.smtpPassword,
       smtpFromEmail: dto.smtpFromEmail,
     });
+    return this.me(userId);
+  }
+
+  async uploadLogo(userId: string, file?: Express.Multer.File) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Logo file is required');
+    }
+    const info = await this.userInfoRepo.findOne({ where: { userId } });
+    if (!info) {
+      throw new BadRequestException('Profile not found');
+    }
+    const logoUrl = writeUserLogo(userId, file.buffer, file.mimetype);
+    info.logoUrl = logoUrl;
+    await this.userInfoRepo.save(info);
+    return this.me(userId);
+  }
+
+  async removeLogo(userId: string) {
+    const info = await this.userInfoRepo.findOne({ where: { userId } });
+    if (!info) {
+      throw new BadRequestException('Profile not found');
+    }
+    removeUserLogoFiles(userId);
+    info.logoUrl = null;
+    await this.userInfoRepo.save(info);
     return this.me(userId);
   }
 }

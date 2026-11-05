@@ -8,7 +8,7 @@ import {
   Textarea,
   Tag,
 } from '@/components/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import {
@@ -18,6 +18,7 @@ import {
   validateFullName,
 } from '@/lib/form-validation';
 import { GMAIL_SMTP, normalizeGmailAppPassword } from '@/lib/gmail-smtp';
+import { mediaUrl } from '@/lib/media-url';
 import {
   TERM_PLACEHOLDER_HELP,
   editorTextToTerms,
@@ -108,9 +109,11 @@ function validateProfileForm(form: ProfileFormState): FieldErrors {
 export default function ProfilePage() {
   const { user, refreshMe } = useAuth();
   const info = user?.userInfo;
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [smtpOpen, setSmtpOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [logoBusy, setLogoBusy] = useState(false);
   const [smtpSaving, setSmtpSaving] = useState(false);
   const [smtpTesting, setSmtpTesting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -189,6 +192,44 @@ export default function ProfilePage() {
     setFieldErrors({});
     setEditOpen(true);
   };
+
+  const uploadLogo = async (file: File | null) => {
+    if (!file) return;
+    setLogoBusy(true);
+    try {
+      const body = new FormData();
+      body.append('logo', file);
+      await api.post('/auth/profile/logo', body, {
+        headers: { 'Content-Type': false as unknown as string },
+        toastSummary: 'Logo saved',
+        toastDetail: 'Company logo updated for booking receipts.',
+      });
+      await refreshMe();
+    } catch (err: unknown) {
+      toastErrorFrom(err);
+    } finally {
+      setLogoBusy(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
+  const removeLogo = async () => {
+    setLogoBusy(true);
+    try {
+      await api.delete('/auth/profile/logo', {
+        toastSummary: 'Logo removed',
+      });
+      await refreshMe();
+    } catch (err: unknown) {
+      toastErrorFrom(err);
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
+  function toastErrorFrom(err: unknown) {
+    setErrorMessage(apiErrorMessage(err, 'Logo update failed'));
+  }
 
   const openSmtpEdit = () => {
     setSmtpError('');
@@ -410,6 +451,71 @@ export default function ProfilePage() {
           </div>
           <InfoRow label="Phone" value={info?.phone} />
           <InfoRow label="Company name" value={info?.companyName} />
+          <div className="profile-row">
+            <span className="profile-label">Company logo</span>
+            <span className="profile-value">
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                }}
+              >
+                {info?.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={mediaUrl(info.logoUrl)}
+                    alt="Company logo"
+                    style={{
+                      maxHeight: 56,
+                      maxWidth: 180,
+                      objectFit: 'contain',
+                      border: '1px solid var(--surface-border, #ddd)',
+                      borderRadius: 4,
+                      background: '#fff',
+                      padding: 4,
+                    }}
+                  />
+                ) : (
+                  <span className="muted">No logo uploaded</span>
+                )}
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  style={{ display: 'none' }}
+                  onChange={(e) =>
+                    void uploadLogo(e.target.files?.[0] ?? null)
+                  }
+                />
+                <Button
+                  label={info?.logoUrl ? 'Replace' : 'Upload'}
+                  icon="pi pi-upload"
+                  size="small"
+                  outlined
+                  loading={logoBusy}
+                  disabled={logoBusy}
+                  onClick={() => logoInputRef.current?.click()}
+                />
+                {info?.logoUrl ? (
+                  <Button
+                    label="Remove"
+                    icon="pi pi-trash"
+                    size="small"
+                    text
+                    severity="danger"
+                    loading={logoBusy}
+                    disabled={logoBusy}
+                    onClick={() => void removeLogo()}
+                  />
+                ) : null}
+              </div>
+              <span className="muted" style={{ display: 'block', fontSize: '0.8rem', marginTop: 4 }}>
+                Shown on cash / account booking receipts
+              </span>
+            </span>
+          </div>
           <InfoRow label="GSTIN" value={info?.gstin} />
           <InfoRow label="PAN number" value={info?.panNumber} />
           <InfoRow label="Bank name" value={info?.bankName} />
