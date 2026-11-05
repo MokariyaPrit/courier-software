@@ -16,3 +16,4 @@ export { SenderLocation } from './sender-location.entity';
 export { UserRateCity } from './user-rate-city.entity';
 export { CourierCompany } from './courier-company.entity';
 export { UserCourierCompanyPref } from './user-courier-company-pref.entity';
+export { AnjaniBill } from './anjani-bill.entity';

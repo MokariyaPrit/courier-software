@@ -10,3 +10,5 @@ allowBuilds:
   '@embedded-postgres/windows-x64': true
   '@parcel/watcher': true
   unrs-resolver: true
+  tesseract.js: true
+  core-js: true

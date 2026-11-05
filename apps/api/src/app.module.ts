@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AnjaniBillsModule } from './anjani-bills/anjani-bills.module';
 import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
 import { CitiesModule } from './cities/cities.module';
@@ -34,6 +35,7 @@ import {
   UserCourierCompanyPref,
   UserInfo,
   UserRateCity,
+  AnjaniBill,
 } from './entities';
 import { HealthController } from './health/health.controller';
 import { QuotationsModule } from './quotations/quotations.module';
@@ -41,6 +43,7 @@ import { RateColumnsModule } from './rate-columns/rate-columns.module';
 import { ReceiversModule } from './receivers/receivers.module';
 import { SenderLocationsModule } from './sender-locations/sender-locations.module';
 import { StatesModule } from './states/states.module';
+import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -75,10 +78,12 @@ import { UsersModule } from './users/users.module';
           UserRateCity,
           CourierCompany,
           UserCourierCompanyPref,
+          AnjaniBill,
         ],
         synchronize: config.get<string>('NODE_ENV') !== 'production',
       }),
     }),
+    StorageModule,
     AuthModule,
     MailModule,
     UsersModule,
@@ -95,6 +100,7 @@ import { UsersModule } from './users/users.module';
     ReceiversModule,
     SenderLocationsModule,
     CourierCompaniesModule,
+    AnjaniBillsModule,
   ],
   controllers: [HealthController],
   providers: [

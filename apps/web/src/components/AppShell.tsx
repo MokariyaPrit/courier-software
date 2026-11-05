@@ -113,6 +113,20 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    id: 'edit-bill',
+    label: 'Edit bill',
+    roles: [Role.ADMIN, Role.BRANCH_MANAGER],
+    children: [
+      {
+        href: '/edit-bill/anjani',
+        label: 'Shree Anjani Courier',
+        roles: [Role.ADMIN, Role.BRANCH_MANAGER],
+        match: (p) =>
+          p === '/edit-bill/anjani' || p.startsWith('/edit-bill/anjani/'),
+      },
+    ],
+  },
+  {
     id: 'settings',
     label: 'Settings',
     roles: [Role.ADMIN, Role.BRANCH_MANAGER],

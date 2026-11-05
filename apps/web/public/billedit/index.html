@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shreeji Bill Editor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="top">
+  <header class="toolbar">
+    <div class="toolbar-lead">
+      <h1>Shreeji Bill Editor</h1>
+      <p>Upload a tax invoice in this same layout. Change the weight and the amount, then download the edited PDF. The amount is typed in directly. There is no rate.</p>
+    </div>
+    <div class="toolbar-actions">
+      <label class="upload-btn" id="uploadLabel">Upload PDF
+        <input id="pdfFile" type="file" accept="application/pdf,.pdf">
+      </label>
+      <button type="button" id="addRow">Add row</button>
+      <button type="button" id="download" class="primary" disabled>Download PDF</button>
+    </div>
+  </header>
+  <p id="uploadStatus" class="upload-status"></p>
+  <div id="billbar" class="billbar" hidden>
+    <span id="billMeta"></span>
+    <strong id="billLive"></strong>
+  </div>
+  </div>
+  <p id="calcNote" class="calc-note"></p>
+
+  <div class="page">
+    <section id="empty" class="empty">
+      <h2>Upload an invoice PDF</h2>
+      <p>Choose a tax invoice in this same layout. The original spacing stays on the downloaded PDF. You only change weight and amount.</p>
+      <button type="button" id="emptyUpload" class="primary">Upload PDF</button>
+    </section>
+    <div class="paper" id="editor" hidden>
+      <article id="sheet">
+        <div class="letterhead">
+          <img id="letterhead" alt="Shreeji Enterprise, franchisee of Shree Anjani Courier Services">
+        </div>
+
+        <h2 class="doc-title">Tax Invoice</h2>
+
+        <div class="meta">
+          <div class="meta-left">
+            <div class="pair"><label for="customerName">Customer Name</label><input id="customerName" autocomplete="off" spellcheck="false"></div>
+            <div class="pair"><label for="address1">Address</label><input id="address1" autocomplete="off" spellcheck="false"></div>
+            <div class="pair"><label for="address2"></label><input id="address2" autocomplete="off" spellcheck="false"></div>
+            <div class="pair"><label for="customerGst">GST No.</label><input id="customerGst" autocomplete="off" spellcheck="false"></div>
+            <div class="pair"><label for="customerCode">Customer Code</label><input id="customerCode" autocomplete="off" spellcheck="false"></div>
+            <div class="pair"><label for="customerPan">PAN No.</label><input id="customerPan" autocomplete="off" spellcheck="false"></div>
+          </div>
+          <div class="meta-right">
+            <div class="pair"><label for="billNo">Bill No</label><input id="billNo" autocomplete="off" spellcheck="false"></div>
+            <div class="pair"><label for="billDate">Date</label><input id="billDate" autocomplete="off" spellcheck="false"></div>
+            <div class="pair"><label for="billPeriod">Bill Period</label><input id="billPeriod" autocomplete="off" spellcheck="false"></div>
+            <div class="pair"><label for="hsn">HSN/SAC Code</label><input id="hsn" autocomplete="off" spellcheck="false"></div>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+        <table class="lines">
+          <colgroup>
+            <col class="c-date">
+            <col class="c-doc">
+            <col class="c-type">
+            <col class="c-party">
+            <col class="c-center">
+            <col class="c-weight">
+            <col class="c-amount">
+            <col class="c-remove no-print">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>DOC No.</th>
+              <th>Type</th>
+              <th>Party Name</th>
+              <th>Center</th>
+              <th class="num main-edit">Weight</th>
+              <th class="num main-edit">Amount</th>
+              <th class="no-print"></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        </div>
+
+        <section class="summary">
+          <div class="bank">
+            <h3>Bank Detail</h3>
+            <div class="pair"><label for="bankName">Bank Name</label><input id="bankName" autocomplete="off" spellcheck="false"></div>
+            <div class="pair"><label for="accountNo">Acc. No.</label><input id="accountNo" autocomplete="off" spellcheck="false"></div>
+            <div class="pair"><label for="ifsc">IFSC Code</label><input id="ifsc" autocomplete="off" spellcheck="false"></div>
+          </div>
+          <div class="totals">
+            <div class="total-line"><input id="grossLabel" class="total-label" value="Gross Amount" autocomplete="off" spellcheck="false"><input id="gross" class="total-num" inputmode="decimal" autocomplete="off" spellcheck="false"></div>
+            <div class="total-line"><input id="fuelLabel" class="total-label" value="Fuel Surcharge" autocomplete="off" spellcheck="false"><input id="fuel" class="total-num fuel" inputmode="decimal" autocomplete="off" spellcheck="false"></div>
+            <div class="total-line sub"><input id="subLabel" class="total-label" value="Sub Total" autocomplete="off" spellcheck="false"><input id="sub" class="total-num" inputmode="decimal" autocomplete="off" spellcheck="false"></div>
+            <div class="total-line"><input id="sgstLabel" class="total-label" value="SGST / UTGST : 9.00%" autocomplete="off" spellcheck="false"><input id="sgst" class="total-num" inputmode="decimal" autocomplete="off" spellcheck="false"></div>
+            <div class="total-line"><input id="cgstLabel" class="total-label" value="CGST : 9.00%" autocomplete="off" spellcheck="false"><input id="cgst" class="total-num" inputmode="decimal" autocomplete="off" spellcheck="false"></div>
+            <div class="total-line"><input id="igstLabel" class="total-label" value="IGST : 0.00%" autocomplete="off" spellcheck="false"><input id="igst" class="total-num" inputmode="decimal" autocomplete="off" spellcheck="false"></div>
+            <div class="total-line bill"><input id="billLabel" class="total-label" value="Bill Amount" autocomplete="off" spellcheck="false"><input id="bill" class="total-num" inputmode="decimal" autocomplete="off" spellcheck="false"></div>
+          </div>
+        </section>
+
+        <input id="words" class="words" autocomplete="off" spellcheck="false">
+
+        <footer class="closing">
+          <div class="notes">
+            <p><strong>Note :</strong> Cheque should be issued in the name of</p>
+            <p class="payee">SHREEJI ENTERPRISE</p>
+            <p>Please make the payment within 7 days from the receipt of the bill</p>
+            <p class="fine">This is a computer generated invoice. No signature is required.</p>
+          </div>
+          <div class="sign">
+            <p class="for">FOR, SHREEJI ENTERPRISE</p>
+            <p class="who">Proprietor</p>
+          </div>
+        </footer>
+      </article>
+    </div>
+  </div>
+
+  <div id="confirm" class="busy confirm" hidden>
+    <div class="busy-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <h2 id="confirmTitle">Remove this row?</h2>
+      <p id="confirmText"></p>
+      <div class="confirm-actions">
+        <button type="button" id="confirmCancel">Cancel</button>
+        <button type="button" id="confirmYes" class="danger">Remove row</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="busy" class="busy" hidden>
+    <div class="busy-card" role="status" aria-live="polite">
+      <h2 id="busyTitle">Please wait</h2>
+      <p id="busyDetail"></p>
+      <div class="busy-track"><div id="busyBar" class="busy-bar"></div></div>
+      <p class="busy-hint">Keep this tab open. A long invoice is prepared one page at a time so the computer does not freeze.</p>
+    </div>
+  </div>
+
+  <script src="vendor/pdf.min.js"></script>
+  <script src="vendor/tesseract.min.js"></script>
+  <script src="vendor/html2canvas.min.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,421 @@
+.anjani-page {
+  max-width: 1100px;
+}
+
+.anjani-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.anjani-status {
+  font-size: 0.9rem;
+  color: var(--text-muted, #666);
+  margin: 0 0 0.75rem;
+}
+
+.anjani-status.error {
+  color: #b42318;
+}
+
+.anjani-paper {
+  width: 210mm;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.14);
+}
+
+@media (min-width: 781px) {
+  .anjani-paper {
+    width: 85%;
+    padding: 15px;
+  }
+}
+
+.anjani-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 10mm 12mm 12mm;
+  background: #fff;
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.anjani-sheet .letterhead img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.anjani-sheet .doc-title {
+  margin: 0;
+  padding: 5px 0 6px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  border-bottom: 1.5px solid #111;
+}
+
+.anjani-sheet .meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 18px;
+  margin: 8px 0 10px;
+}
+
+.anjani-sheet .pair {
+  display: grid;
+  grid-template-columns: 122px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
+  min-height: 24px;
+}
+
+.anjani-sheet .meta-right .pair {
+  grid-template-columns: 136px minmax(0, 1fr);
+}
+
+.anjani-sheet .bank .pair {
+  grid-template-columns: 92px minmax(0, 1fr);
+}
+
+.anjani-sheet .pair label {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.anjani-sheet .pair label:not(:empty)::after {
+  content: " :";
+}
+
+.anjani-sheet input {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  min-width: 0;
+  border: none;
+  outline: none;
+  appearance: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 2px 3px;
+  border-radius: 3px;
+}
+
+.anjani-sheet input:focus {
+  outline: 2px solid #e87722;
+  background: #fff;
+}
+
+.anjani-sheet .table-scroll {
+  width: 100%;
+}
+
+.anjani-sheet .c-date { width: 13%; }
+.anjani-sheet .c-doc { width: 15%; }
+.anjani-sheet .c-type { width: 8%; }
+.anjani-sheet .c-party { width: 18%; }
+.anjani-sheet .c-center { width: 15%; }
+.anjani-sheet .c-weight { width: 13%; }
+.anjani-sheet .c-amount { width: 14%; }
+.anjani-sheet .c-remove { width: 28px; }
+
+.anjani-sheet table.lines {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.anjani-sheet table.lines th {
+  text-align: left;
+  font-size: 12px;
+  padding: 5px 4px;
+  border-top: 1.5px solid #111;
+  border-bottom: 1.5px solid #111;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.anjani-sheet table.lines td {
+  padding: 2px 4px;
+  border-bottom: 1px solid #222;
+  vertical-align: middle;
+}
+
+.anjani-sheet table.lines th.num,
+.anjani-sheet table.lines td.num {
+  text-align: right;
+}
+
+.anjani-sheet th.main-edit,
+.anjani-sheet td.main-edit {
+  background: #fff4df;
+}
+
+.anjani-sheet .weight-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.anjani-sheet .weight-wrap input {
+  width: 52px;
+  text-align: right;
+  font-weight: 700;
+}
+
+.anjani-sheet input.amount {
+  text-align: right;
+  font-weight: 700;
+}
+
+.anjani-sheet .row-actions {
+  text-align: center;
+  width: 28px;
+}
+
+.anjani-sheet .row-actions button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #888;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.anjani-sheet .row-actions button:hover:not(:disabled) {
+  background: #f3d2d2;
+  color: #8d1d1d;
+}
+
+.anjani-sheet .summary {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 18px 24px;
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.anjani-sheet .bank h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+.anjani-sheet .totals {
+  padding-top: 2px;
+}
+
+.anjani-sheet .total-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px;
+  align-items: center;
+  gap: 10px;
+  padding: 1px 0;
+}
+
+.anjani-sheet .total-label,
+.anjani-sheet .total-num {
+  text-align: right;
+  font-weight: 700;
+  background: #fff4df;
+}
+
+.anjani-sheet .total-line.bill {
+  margin-top: 4px;
+  padding: 5px 0;
+  border-top: 1.5px solid #111;
+  border-bottom: 1.5px solid #111;
+  font-size: 15px;
+}
+
+.anjani-sheet #bill {
+  font-size: 16px;
+}
+
+.anjani-sheet .words {
+  margin: 8px 0 0;
+  padding: 6px;
+  text-align: right;
+  font-weight: 700;
+  font-size: 14px;
+  border-bottom: 1.5px solid #111;
+  width: 100%;
+  background: #fff4df;
+}
+
+.anjani-sheet .closing {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 8px;
+}
+
+.anjani-sheet .notes {
+  max-width: 70%;
+}
+
+.anjani-sheet .notes p {
+  margin: 0 0 3px;
+}
+
+.anjani-sheet .payee {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.anjani-sheet .fine {
+  margin-top: 8px;
+}
+
+.anjani-sheet .sign {
+  text-align: right;
+  min-width: 190px;
+}
+
+.anjani-sheet .sign p {
+  margin: 0;
+}
+
+.anjani-sheet .sign .for {
+  font-weight: 700;
+}
+
+.anjani-sheet .sign .who {
+  margin-top: 36px;
+}
+
+.anjani-sheet.pdf-mode {
+  width: 210mm !important;
+  min-height: 297mm;
+  padding: 10mm 12mm 12mm;
+  font-size: 12.5px;
+}
+
+.anjani-sheet.pdf-mode .meta {
+  grid-template-columns: 1fr 1fr;
+}
+
+.anjani-sheet.pdf-mode .meta-right .pair {
+  grid-template-columns: 136px minmax(0, 1fr);
+}
+
+.anjani-sheet.pdf-mode .pair {
+  grid-template-columns: 122px minmax(0, 1fr);
+}
+
+.anjani-sheet.pdf-mode .summary {
+  grid-template-columns: 1.15fr 0.85fr;
+}
+
+.anjani-sheet.pdf-mode .closing {
+  flex-direction: row;
+}
+
+.anjani-sheet.pdf-mode .sign {
+  text-align: right;
+}
+
+.anjani-sheet.pdf-mode table.lines {
+  min-width: 0;
+  display: table;
+  width: 100%;
+}
+
+.anjani-sheet.pdf-mode table.lines thead {
+  display: table-header-group;
+}
+
+.anjani-sheet.pdf-mode table.lines tbody {
+  display: table-row-group;
+}
+
+.anjani-sheet.pdf-mode table.lines tr {
+  display: table-row;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.anjani-sheet.pdf-mode table.lines td,
+.anjani-sheet.pdf-mode table.lines th {
+  display: table-cell;
+}
+
+.anjani-sheet.pdf-mode table.lines td::before {
+  content: none;
+}
+
+.anjani-sheet.pdf-mode .weight-wrap {
+  justify-content: flex-end;
+}
+
+.anjani-sheet.pdf-mode .weight-wrap input,
+.anjani-sheet.pdf-mode input.amount {
+  text-align: right;
+}
+
+.anjani-sheet.pdf-mode .total-label,
+.anjani-sheet.pdf-mode .total-num,
+.anjani-sheet.pdf-mode .words,
+.anjani-sheet.pdf-mode #fuel,
+.anjani-sheet.pdf-mode th.main-edit,
+.anjani-sheet.pdf-mode td.main-edit {
+  background: transparent !important;
+}
+
+.anjani-sheet .frozen {
+  display: block;
+  min-height: 1em;
+  padding: 2px 3px;
+}
+
+.anjani-sheet .meta .frozen {
+  white-space: nowrap;
+}
+
+.anjani-sheet .weight-wrap .frozen {
+  display: inline;
+  width: auto;
+  padding: 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+.anjani-sheet td.num .frozen,
+.anjani-sheet .total-line .frozen {
+  text-align: right;
+  font-weight: 700;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .anjani-paper {
+    box-shadow: none;
+    width: auto;
+    padding: 0;
+  }
+
+  .anjani-sheet {
+    min-height: 0;
+  }
+
+  .anjani-sheet th.main-edit,
+  .anjani-sheet td.main-edit,
+  .anjani-sheet #fuel {
+    background: transparent !important;
+  }
+}
