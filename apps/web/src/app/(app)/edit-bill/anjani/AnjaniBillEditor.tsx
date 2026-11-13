@@ -48,6 +48,7 @@ export function AnjaniBillEditor({ billId }: { billId?: string }) {
     frame.postMessage(
       {
         type: 'anjani-load',
+        companyName: info?.companyName || 'Shree Anjani Courier',
         header,
         bank: {
           bankName: detailQuery.data?.bankName || info?.bankName || '',

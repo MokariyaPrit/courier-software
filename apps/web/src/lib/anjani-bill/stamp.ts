@@ -339,6 +339,7 @@ export async function downloadStampedPdf(
   sourcePages: SourcePage[],
   form: AnjaniBillForm,
   onProgress?: (message: string) => void,
+  companyName = 'Shree Anjani Courier',
 ) {
   const { jsPDF } = await import('jspdf');
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: false });
@@ -357,6 +358,11 @@ export async function downloadStampedPdf(
     canvas.width = 0;
     canvas.height = 0;
   }
+  const brand =
+    String(companyName || 'Shree Anjani Courier')
+      .trim()
+      .replace(/[^\w.-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'Anjani';
   const safe = (form.billNo || 'invoice').replace(/[^\w.-]+/g, '-');
-  pdf.save(`Shreeji-Invoice-${safe}.pdf`);
+  pdf.save(`${brand}-Invoice-${safe}.pdf`);
 }

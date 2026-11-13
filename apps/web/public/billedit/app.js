@@ -41,31 +41,7 @@ const FIELD_IDS = [
   "ifsc",
 ];
 
-const SAMPLE = {
-  customerName: "VIVA NX",
-  address1: "BUDHWAR PETH",
-  address2: "PUNE 411030 - MAHARASHTRA",
-  customerGst: "27BHYPS3166D1ZR",
-  customerCode: "75",
-  customerPan: "-",
-  billNo: "2388-345",
-  billDate: "03/09/2026",
-  billPeriod: "01/08/2026 To 31/08/2026",
-  hsn: "996812 / COURIER SERVICE",
-  fuel: "0.00",
-  bankName: "state bank of india",
-  accountNo: "62258599235",
-  ifsc: "SBIN0021493",
-  rows: [
-    { date: "01-08-2026", docNo: "1735770923", type: "ND", party: "GOVIND", center: "DELHI", weight: "2", amount: "320.00" },
-    { date: "03-08-2026", docNo: "1735770926", type: "ND", party: "NEW ARIHANT", center: "HYDERABAD", weight: "1", amount: "40.00" },
-    { date: "03-08-2026", docNo: "1735770927", type: "ND", party: "KUNWAR BIR", center: "LUCKNOW", weight: "7", amount: "600.00" },
-    { date: "06-08-2026", docNo: "1735770936", type: "ND", party: "CLASSIC", center: "MUMBAI", weight: "1", amount: "25.00" },
-    { date: "06-08-2026", docNo: "1735770937", type: "ND", party: "ALANKAR", center: "MUMBAI", weight: "1", amount: "25.00" },
-    { date: "06-08-2026", docNo: "1735770938", type: "ND", party: "CHARUN OPT", center: "AHMEDABAD", weight: "2", amount: "80.00" },
-    { date: "06-08-2026", docNo: "1735770939", type: "ND", party: "GOVIND", center: "DELHI", weight: "5", amount: "940.00" },
-  ],
-};
+
 
 const ONES = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
 const TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
@@ -74,8 +50,34 @@ let nextId = 1;
 let state = { rows: [] };
 let sourcePages = [];
 let sourcePdfFile = null;
-let companyProfile = { bankName: "", accountNo: "", ifsc: "", header: "" };
+let companyProfile = {
+  bankName: "",
+  accountNo: "",
+  ifsc: "",
+  header: "",
+  companyName: "Shree Anjani Courier",
+};
 let ocrStatusPrefix = "Reading the invoice… ";
+
+function brandName() {
+  return String(companyProfile.companyName || "Shree Anjani Courier").trim() || "Shree Anjani Courier";
+}
+
+function brandFilePrefix() {
+  return brandName().replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "") || "Anjani";
+}
+
+function invoiceFileName(billNo) {
+  const safe = String(billNo || "invoice").trim().replace(/[^\w.-]+/g, "-") || "invoice";
+  return brandFilePrefix() + "-Anjani-Invoice-" + safe + ".pdf";
+}
+
+function applyEditorTitle() {
+  const title = brandName() + " Bill Editor";
+  const heading = document.getElementById("editorTitle");
+  if (heading) heading.textContent = title;
+  document.title = title;
+}
 
 function applyTextStyle() {
   const bill = document.getElementById("bill");
@@ -477,9 +479,7 @@ async function downloadPdf() {
       }
       showBusy("Creating the PDF", "Saving the file…", 1);
       await pause(40);
-      const billNo = document.getElementById("billNo").value.trim() || "invoice";
-      const safe = billNo.replace(/[^\w.-]+/g, "-");
-      pdf.save("Shreeji-Invoice-" + safe + ".pdf");
+      pdf.save(invoiceFileName(document.getElementById("billNo").value));
       return;
     }
     showBusy("Creating the PDF", "Drawing the invoice…", null);
@@ -504,9 +504,7 @@ async function downloadPdf() {
     showBusy("Creating the PDF", "Saving the file…", 0.9);
     await addCanvasPages(pdf, canvas);
     releaseCanvas(canvas);
-    const billNo = document.getElementById("billNo").value.trim() || "invoice";
-    const safe = billNo.replace(/[^\w.-]+/g, "-");
-    pdf.save("Shreeji-Invoice-" + safe + ".pdf");
+    pdf.save(invoiceFileName(document.getElementById("billNo").value));
   } catch (error) {
     console.error(error);
     window.alert("Could not create the PDF. Keep this page open and try Download PDF again.");
@@ -1203,7 +1201,12 @@ function applyIncomingBill(message) {
     accountNo: message.bank && message.bank.accountNo || "",
     ifsc: message.bank && message.bank.ifsc || "",
     header: message.header || companyProfile.header || "",
+    companyName:
+      (message.companyName && String(message.companyName).trim()) ||
+      companyProfile.companyName ||
+      "Shree Anjani Courier",
   };
+  applyEditorTitle();
   if (companyProfile.header) setHeaderSrc(companyProfile.header);
   const bill = message.bill;
   const hasBill = bill && (Array.isArray(bill.rows) && bill.rows.length || bill.customerName || bill.billNo);
@@ -1240,6 +1243,7 @@ async function replyWithBill(requestId, source) {
 }
 
 function boot() {
+  applyEditorTitle();
   applyStoredHeader();
   showEditor(false);
   applyTextStyle();
