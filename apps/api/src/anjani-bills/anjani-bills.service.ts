@@ -96,21 +96,37 @@ export class AnjaniBillsService {
     return [`anjani/${userId}/${billId}/`, `archive/anjani/${userId}/${billId}/`];
   }
 
-  private async withFreshUrls(bill: AnjaniBill) {
+  private async withFreshUrls(
+    bill: AnjaniBill,
+    opts?: { includeDownloads?: boolean },
+  ) {
+    const includeDownloads = opts?.includeDownloads !== false;
     const [headerImage, sourcePdf, editedPdf] = await Promise.all([
       this.storage.toStoredFile(bill.headerImageKey, 'header'),
       this.storage.toStoredFile(bill.sourcePdfKey, bill.sourcePdfFileName),
       this.storage.toStoredFile(bill.editedPdfKey, bill.editedPdfFileName),
     ]);
 
+    // List views only need view URLs; skip downloadUrl payload noise.
+    const slim = (file: typeof headerImage) => {
+      if (!file) return null;
+      if (includeDownloads) return file;
+      return {
+        key: file.key,
+        fileLabel: file.fileLabel,
+        signedUrl: file.signedUrl,
+        downloadUrl: file.signedUrl,
+      };
+    };
+
     return {
       ...bill,
       headerImageUrl: headerImage?.signedUrl || null,
       sourcePdfUrl: sourcePdf?.signedUrl || null,
       editedPdfUrl: editedPdf?.signedUrl || null,
-      headerImage,
-      sourcePdf,
-      editedPdf,
+      headerImage: slim(headerImage),
+      sourcePdf: slim(sourcePdf),
+      editedPdf: slim(editedPdf),
     };
   }
 
@@ -176,7 +192,7 @@ export class AnjaniBillsService {
         if (item.createdBy) {
           delete (item.createdBy as { passwordHash?: string }).passwordHash;
         }
-        return this.withFreshUrls(item);
+        return this.withFreshUrls(item, { includeDownloads: false });
       }),
     );
     return { data, meta: paginateMeta(query.page, query.pageSize, total) };
@@ -192,7 +208,7 @@ export class AnjaniBillsService {
     if (bill.createdBy) {
       delete (bill.createdBy as { passwordHash?: string }).passwordHash;
     }
-    return this.withFreshUrls(bill);
+    return this.withFreshUrls(bill, { includeDownloads: true });
   }
 
   async create(dto: UpsertAnjaniBillDto, user: AuthUser) {
@@ -268,21 +284,30 @@ export class AnjaniBillsService {
     if (dto.headerImageKey) {
       const previous = bill.headerImageKey;
       let ext = 'jpg';
+      let headerMeta: Awaited<ReturnType<R2StorageService['headObject']>> | undefined;
       if (this.storage.isOwnedTempKey(dto.headerImageKey, user.id)) {
-        const meta = await this.storage.headObject(dto.headerImageKey);
-        ext = extensionFromMime(meta.contentType || 'image/jpeg');
+        headerMeta = await this.storage.headObject(dto.headerImageKey);
+        ext = extensionFromMime(headerMeta.contentType || 'image/jpeg');
       } else {
         const match = dto.headerImageKey.match(/\.([a-z0-9]+)$/i);
         if (match) ext = match[1].toLowerCase();
       }
       const finalKey = `anjani/${user.id}/${id}/header.${ext}`;
-      const key = await this.storage.resolveUploadKey(
-        dto.headerImageKey,
-        user.id,
-        finalKey,
-        prefixes,
-        { allowedMimePrefix: ['image/'] },
-      );
+      // If we already HEADed temp, promote with that meta (skip second HEAD).
+      const key = headerMeta
+        ? await this.storage.promoteTempToFinal(
+            dto.headerImageKey,
+            finalKey,
+            user.id,
+            { allowedMimePrefix: ['image/'], meta: headerMeta },
+          )
+        : await this.storage.resolveUploadKey(
+            dto.headerImageKey,
+            user.id,
+            finalKey,
+            prefixes,
+            { allowedMimePrefix: ['image/'] },
+          );
       if (key) {
         bill.headerImageKey = key;
         bill.headerImageUrl = null;

@@ -25,8 +25,10 @@ import {
   editorTextToTerms,
   termsToEditorText,
 } from '@/lib/terms-and-conditions';
-import { apiErrorMessage } from '@/lib/toast';
+import { apiErrorMessage, toastError } from '@/lib/toast';
 import { trimFormData } from '@/lib/trim';
+
+const LOGO_MAX_BYTES = 10 * 1024 * 1024;
 
 interface GmailFormState {
   gmailEmail: string;
@@ -115,6 +117,7 @@ export default function ProfilePage() {
   const [smtpOpen, setSmtpOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState('');
   const [smtpSaving, setSmtpSaving] = useState(false);
   const [smtpTesting, setSmtpTesting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -194,13 +197,22 @@ export default function ProfilePage() {
     setEditOpen(true);
   };
 
+  const openLogoPicker = () => {
+    const input = logoInputRef.current;
+    if (!input || logoBusy) return;
+    // Reset so picking the same file again still fires change.
+    input.value = '';
+    input.click();
+  };
+
   const uploadLogo = async (file: File | null) => {
     if (!file) return;
     setLogoBusy(true);
+    setLogoError('');
     try {
       const uploaded = await uploadFile(file, {
         allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-        maxFileSizeBytes: 2 * 1024 * 1024,
+        maxFileSizeBytes: LOGO_MAX_BYTES,
       });
       await api.post(
         '/auth/profile/logo',
@@ -212,7 +224,7 @@ export default function ProfilePage() {
       );
       await refreshMe();
     } catch (err: unknown) {
-      toastErrorFrom(err);
+      showLogoError(err);
     } finally {
       setLogoBusy(false);
       if (logoInputRef.current) logoInputRef.current.value = '';
@@ -221,20 +233,23 @@ export default function ProfilePage() {
 
   const removeLogo = async () => {
     setLogoBusy(true);
+    setLogoError('');
     try {
       await api.delete('/auth/profile/logo', {
         toastSummary: 'Logo removed',
       });
       await refreshMe();
     } catch (err: unknown) {
-      toastErrorFrom(err);
+      showLogoError(err);
     } finally {
       setLogoBusy(false);
     }
   };
 
-  function toastErrorFrom(err: unknown) {
-    setErrorMessage(apiErrorMessage(err, 'Logo update failed'));
+  function showLogoError(err: unknown) {
+    const message = apiErrorMessage(err, 'Logo update failed');
+    setLogoError(message);
+    toastError('Logo upload failed', message);
   }
 
   const openSmtpEdit = () => {
@@ -486,23 +501,42 @@ export default function ProfilePage() {
                 ) : (
                   <span className="muted">No logo uploaded</span>
                 )}
+                {/*
+                  Avoid display:none — on Windows it often breaks first-select /
+                  double-click in the native file dialog.
+                */}
                 <input
+                  id="profile-logo-input"
                   ref={logoInputRef}
                   type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  style={{ display: 'none' }}
-                  onChange={(e) =>
-                    void uploadLogo(e.target.files?.[0] ?? null)
-                  }
+                  accept="image/png,image/jpeg,image/jpg,image/webp,.png,.jpg,.jpeg,.webp"
+                  tabIndex={-1}
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    width: 1,
+                    height: 1,
+                    padding: 0,
+                    margin: -1,
+                    overflow: 'hidden',
+                    clip: 'rect(0, 0, 0, 0)',
+                    whiteSpace: 'nowrap',
+                    border: 0,
+                  }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    void uploadLogo(file);
+                  }}
                 />
                 <Button
+                  type="button"
                   label={info?.logoUrl ? 'Replace' : 'Upload'}
                   icon="pi pi-upload"
                   size="small"
                   outlined
                   loading={logoBusy}
                   disabled={logoBusy}
-                  onClick={() => logoInputRef.current?.click()}
+                  onClick={openLogoPicker}
                 />
                 {info?.logoUrl ? (
                   <Button
@@ -518,8 +552,13 @@ export default function ProfilePage() {
                 ) : null}
               </div>
               <span className="muted" style={{ display: 'block', fontSize: '0.8rem', marginTop: 4 }}>
-                Shown on cash / account booking receipts
+                Shown on cash / account booking receipts. Max 10 MB (PNG, JPG, WEBP).
               </span>
+              {logoError ? (
+                <p className="error-text" style={{ margin: '0.35rem 0 0' }}>
+                  {logoError}
+                </p>
+              ) : null}
             </span>
           </div>
           <InfoRow label="GSTIN" value={info?.gstin} />

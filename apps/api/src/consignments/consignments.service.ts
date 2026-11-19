@@ -11,6 +11,7 @@ import { AuthUser } from '../common/decorators/current-user.decorator';
 import { paginateMeta, resolveSortPair } from '../common/dto/pagination.dto';
 import { Consignment } from '../entities/consignment.entity';
 import { Invoice } from '../entities/invoice.entity';
+import { R2StorageService } from '../storage/r2.service';
 import {
   ConsignmentQueryDto,
   CreateConsignmentDto,
@@ -32,6 +33,7 @@ export class ConsignmentsService {
     private readonly consignmentsRepo: Repository<Consignment>,
     @InjectRepository(Invoice)
     private readonly invoicesRepo: Repository<Invoice>,
+    private readonly storage: R2StorageService,
   ) {}
 
   private todayIsoDate() {
@@ -243,6 +245,8 @@ export class ConsignmentsService {
       consignment.createdBy?.email ||
       '—';
 
+    const logoUrl = await this.storage.resolveMediaUrl(info?.logoUrl);
+
     return {
       consignment: {
         id: consignment.id,
@@ -277,7 +281,7 @@ export class ConsignmentsService {
         gstin: info?.gstin ?? null,
         city: info?.city ?? null,
         state: info?.state ?? null,
-        logoUrl: info?.logoUrl ?? null,
+        logoUrl,
       },
     };
   }

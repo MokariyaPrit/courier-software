@@ -26,6 +26,17 @@ const DEFAULT_ALLOWED = [
 
 const DEFAULT_MAX = 524288000;
 
+function inferContentType(file: File): string {
+  const typed = (file.type || '').toLowerCase().trim();
+  if (typed) return typed;
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.png')) return 'image/png';
+  if (name.endsWith('.webp')) return 'image/webp';
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
+  if (name.endsWith('.pdf')) return 'application/pdf';
+  return '';
+}
+
 async function mapPool<T, R>(
   items: T[],
   concurrency: number,
@@ -63,25 +74,35 @@ export async function uploadFiles(
   const allowed = options?.allowedTypes || DEFAULT_ALLOWED;
   const maxSize = options?.maxFileSizeBytes ?? DEFAULT_MAX;
   const concurrency = options?.concurrency ?? 3;
+  const maxMb = Math.round((maxSize / (1024 * 1024)) * 10) / 10;
 
-  for (const file of files) {
-    const type = (file.type || '').toLowerCase();
-    if (!allowed.includes(type)) {
-      throw new Error(`Unsupported file type: ${file.type || file.name}`);
+  const prepared = files.map((file) => ({
+    file,
+    contentType: inferContentType(file),
+  }));
+
+  for (const { file, contentType } of prepared) {
+    if (!allowed.includes(contentType)) {
+      throw new Error(
+        `Unsupported file type for ${file.name}. Use PNG, JPG, or WEBP.`,
+      );
     }
     if (file.size <= 0) {
       throw new Error(`Empty file: ${file.name}`);
     }
     if (file.size > maxSize) {
-      throw new Error(`File too large: ${file.name}`);
+      const sizeMb = Math.round((file.size / (1024 * 1024)) * 10) / 10;
+      throw new Error(
+        `${file.name} is ${sizeMb} MB. Maximum allowed size is ${maxMb} MB.`,
+      );
     }
   }
 
   const res = await api.post(
     '/storage/generate-presigned-urls',
-    files.map((file) => ({
+    prepared.map(({ file, contentType }) => ({
       filename: file.name,
-      contentType: file.type,
+      contentType,
       fileSize: file.size,
     })),
     { skipToast: true },
@@ -91,22 +112,31 @@ export async function uploadFiles(
     throw new Error('Failed to generate upload URLs');
   }
 
-  return mapPool(files, concurrency, async (file, index) => {
+  return mapPool(prepared, concurrency, async ({ file, contentType }, index) => {
     const slot = slots[index];
-    const putRes = await fetch(slot.uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type':
-          slot.requiredHeaders?.['Content-Type'] || file.type,
-      },
-      body: file,
-    });
+    let putRes: Response;
+    try {
+      putRes = await fetch(slot.uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type':
+            slot.requiredHeaders?.['Content-Type'] || contentType,
+        },
+        body: file,
+      });
+    } catch {
+      throw new Error(
+        `Could not upload ${file.name}. Check R2 CORS allows PUT from this site.`,
+      );
+    }
     if (!putRes.ok) {
-      throw new Error(`Upload failed for ${file.name} (${putRes.status})`);
+      throw new Error(
+        `Upload failed for ${file.name} (HTTP ${putRes.status}). Check R2 CORS / file size.`,
+      );
     }
     return {
       originalName: file.name,
-      contentType: file.type,
+      contentType,
       size: file.size,
       key: slot.key,
     };

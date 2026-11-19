@@ -86,12 +86,12 @@ Anjani bills and profile logos upload **directly to R2** via presigned URLs (`PO
 - `logos/...` → `archive/logos/...`
 - `anjani/...` → `archive/anjani/...`
 
-**Recommended bucket lifecycle rule** (Cloudflare → R2 → `courier-erp` → Settings → **Object Lifecycle Rules**):
+**Recommended bucket lifecycle rules** (Cloudflare → R2 → `courier-erp` → Settings → **Object Lifecycle Rules**):
 
-- Prefix: `archive/`
-- Action: Delete objects after **30 days** (or your preferred retention)
+- Prefix `archive/` → delete after **30 days**
+- Prefix `temp/` → delete after **1 day**
 
-That keeps active storage clean while all deleted Anjani/logo files stay recoverable under `archive/` until the rule expires them.
+That keeps active storage clean. Prefer lifecycle rules over API `ListObjects` sweeps (Class A ops). Keep **Standard** storage (not Infrequent Access) for this app. Disable **Basin Catalog** if you don’t use it (extra cost).
 
 ### Useful scripts
 

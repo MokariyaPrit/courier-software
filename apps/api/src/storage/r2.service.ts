@@ -2,8 +2,6 @@ import {
   BadRequestException,
   Injectable,
   Logger,
-  OnModuleDestroy,
-  OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -12,15 +10,12 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
-  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
-import * as fs from 'fs';
 import * as path from 'path';
-import { UPLOADS_ROOT, ensureUploadsDirs } from '../common/uploads';
 import {
   assertBatchSize,
   extensionFromMime,
@@ -28,12 +23,6 @@ import {
   sanitizeFileName,
 } from './file-validation';
 import type { StoredFileDto } from './stored-file';
-
-export type StoredObject = {
-  key: string;
-  /** Legacy public/local URL if available. */
-  url: string;
-};
 
 export type PresignUploadItem = {
   filename: string;
@@ -58,17 +47,14 @@ export type HeadObjectMeta = {
 };
 
 @Injectable()
-export class R2StorageService implements OnModuleInit, OnModuleDestroy {
+export class R2StorageService {
   private readonly logger = new Logger(R2StorageService.name);
   private readonly client: S3Client | null;
   private readonly bucket: string;
   private readonly publicBase: string;
-  private readonly localFallback: boolean;
   private readonly uploadExpirySeconds: number;
   private readonly viewExpirySeconds: number;
   private readonly maxFileSizeBytes: number;
-  private readonly tempCleanupAgeMs: number;
-  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly config: ConfigService) {
     const accountId = (config.get<string>('R2_ACCOUNT_ID') || '').trim();
@@ -99,11 +85,6 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
       1024,
       Number(config.get('R2_MAX_FILE_SIZE') || 524288000) || 524288000,
     );
-    const cleanupHours = Math.max(
-      1,
-      Number(config.get('R2_TEMP_CLEANUP_AGE_HOURS') || 24) || 24,
-    );
-    this.tempCleanupAgeMs = cleanupHours * 60 * 60 * 1000;
 
     if (accountId && accessKeyId && secretAccessKey && bucket && endpoint) {
       this.client = new S3Client({
@@ -111,39 +92,16 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
         endpoint,
         credentials: { accessKeyId, secretAccessKey },
         forcePathStyle: true,
+        // Avoid signing x-amz-checksum-* headers — they break browser PUT CORS on R2.
+        requestChecksumCalculation: 'WHEN_REQUIRED',
+        responseChecksumValidation: 'WHEN_REQUIRED',
       });
-      this.localFallback = false;
       this.logger.log(`R2 storage enabled (bucket=${bucket})`);
     } else {
       this.client = null;
-      this.localFallback = true;
-      ensureUploadsDirs();
       this.logger.warn(
-        'R2 env incomplete — using local uploads/ fallback for Anjani files',
+        'R2 env incomplete — uploads disabled until R2_* vars are set',
       );
-    }
-  }
-
-  onModuleInit() {
-    if (!this.client) return;
-    // Run shortly after boot, then every 6 hours.
-    void this.purgeExpiredTempObjects().catch((err) =>
-      this.logger.warn(`Temp cleanup failed: ${String(err)}`),
-    );
-    this.cleanupTimer = setInterval(
-      () => {
-        void this.purgeExpiredTempObjects().catch((err) =>
-          this.logger.warn(`Temp cleanup failed: ${String(err)}`),
-        );
-      },
-      6 * 60 * 60 * 1000,
-    );
-  }
-
-  onModuleDestroy() {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-      this.cleanupTimer = null;
     }
   }
 
@@ -193,7 +151,7 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
     const results: PresignUploadResult[] = [];
     for (const item of items) {
       const filename = (item.filename || '').trim();
-      const contentType = (item.contentType || '').trim().toLowerCase();
+      let contentType = (item.contentType || '').trim().toLowerCase();
       const fileSize = Number(item.fileSize);
 
       if (!filename) {
@@ -201,6 +159,15 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
       }
       if (filename.includes('..') || filename.includes('\0')) {
         throw new BadRequestException('Invalid filename');
+      }
+      // Some browsers send an empty MIME for .jpg — infer from extension.
+      if (!contentType) {
+        const lower = filename.toLowerCase();
+        if (lower.endsWith('.png')) contentType = 'image/png';
+        else if (lower.endsWith('.webp')) contentType = 'image/webp';
+        else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+          contentType = 'image/jpeg';
+        } else if (lower.endsWith('.pdf')) contentType = 'application/pdf';
       }
       if (!isAllowedUploadMime(contentType)) {
         throw new BadRequestException(
@@ -265,12 +232,17 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Verify a temp upload exists and belongs to the user, then move to final key.
+   * Pass `meta` when caller already HEADed the object to avoid a second Class B op.
    */
   async promoteTempToFinal(
     tempKey: string,
     finalKey: string,
     userId: string,
-    opts?: { maxBytes?: number; allowedMimePrefix?: string[] },
+    opts?: {
+      maxBytes?: number;
+      allowedMimePrefix?: string[];
+      meta?: HeadObjectMeta;
+    },
   ): Promise<string> {
     const from = (tempKey || '').replace(/^\/+/, '');
     const to = (finalKey || '').replace(/^\/+/, '');
@@ -281,7 +253,7 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Invalid temporary upload key');
     }
 
-    const meta = await this.headObject(from);
+    const meta = opts?.meta ?? (await this.headObject(from));
     if (opts?.maxBytes && meta.contentLength > opts.maxBytes) {
       throw new BadRequestException('Uploaded file is too large');
     }
@@ -341,18 +313,15 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
     }
 
     const expires = expiresInSeconds ?? this.viewExpirySeconds;
-    if (this.client) {
-      return getSignedUrl(
-        this.client,
-        new GetObjectCommand({
-          Bucket: this.bucket,
-          Key: normalized,
-        }),
-        { expiresIn: expires },
-      );
-    }
-
-    return `/uploads/${normalized}`;
+    const client = this.requireR2();
+    return getSignedUrl(
+      client,
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: normalized,
+      }),
+      { expiresIn: expires },
+    );
   }
 
   async getDownloadUrl(
@@ -372,19 +341,16 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
     }
 
     const expires = expiresInSeconds ?? this.viewExpirySeconds;
-    if (this.client) {
-      return getSignedUrl(
-        this.client,
-        new GetObjectCommand({
-          Bucket: this.bucket,
-          Key: normalized,
-          ResponseContentDisposition: disposition,
-        }),
-        { expiresIn: expires },
-      );
-    }
-
-    return `/uploads/${normalized}`;
+    const client = this.requireR2();
+    return getSignedUrl(
+      client,
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: normalized,
+        ResponseContentDisposition: disposition,
+      }),
+      { expiresIn: expires },
+    );
   }
 
   /** @deprecated Prefer getViewUrl for private objects. */
@@ -418,31 +384,6 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
     return `${this.publicBase}/${key.replace(/^\//, '')}`;
   }
 
-  async putObject(
-    key: string,
-    body: Buffer,
-    contentType: string,
-  ): Promise<StoredObject> {
-    const normalized = key.replace(/^\/+/, '');
-
-    if (this.client) {
-      await this.client.send(
-        new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: normalized,
-          Body: body,
-          ContentType: contentType,
-        }),
-      );
-      return { key: normalized, url: this.publicUrlFor(normalized) };
-    }
-
-    const abs = path.join(UPLOADS_ROOT, normalized);
-    fs.mkdirSync(path.dirname(abs), { recursive: true });
-    fs.writeFileSync(abs, body);
-    return { key: normalized, url: `/uploads/${normalized}` };
-  }
-
   /**
    * Move any live object under the single `archive/` prefix.
    * Examples:
@@ -471,23 +412,15 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
     if (from === to) return to;
 
     try {
-      if (this.client) {
-        await this.client.send(
-          new CopyObjectCommand({
-            Bucket: this.bucket,
-            Key: to,
-            CopySource: encodeURI(`${this.bucket}/${from}`),
-          }),
-        );
-        await this.deleteObject(from);
-        return to;
-      }
-
-      const src = path.join(UPLOADS_ROOT, from);
-      if (!fs.existsSync(src)) return null;
-      const dest = path.join(UPLOADS_ROOT, to);
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
-      fs.renameSync(src, dest);
+      const client = this.requireR2();
+      await client.send(
+        new CopyObjectCommand({
+          Bucket: this.bucket,
+          Key: to,
+          CopySource: encodeURI(`${this.bucket}/${from}`),
+        }),
+      );
+      await this.deleteObject(from);
       return to;
     } catch (err) {
       this.logger.warn(`Move failed ${from} -> ${to}: ${String(err)}`);
@@ -498,57 +431,18 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
   async deleteObject(key: string | null | undefined): Promise<void> {
     const normalized = (key || '').replace(/^\/+/, '');
     if (!normalized) return;
+    if (!this.client) return;
 
-    if (this.client) {
-      try {
-        await this.client.send(
-          new DeleteObjectCommand({
-            Bucket: this.bucket,
-            Key: normalized,
-          }),
-        );
-      } catch (err) {
-        this.logger.warn(`R2 delete failed for ${normalized}: ${String(err)}`);
-      }
-      return;
-    }
-
-    const abs = path.join(UPLOADS_ROOT, normalized);
-    if (fs.existsSync(abs)) fs.unlinkSync(abs);
-  }
-
-  async purgeExpiredTempObjects(): Promise<{ deleted: number }> {
-    if (!this.client) return { deleted: 0 };
-    const cutoff = Date.now() - this.tempCleanupAgeMs;
-    let deleted = 0;
-    let continuationToken: string | undefined;
-
-    do {
-      const page = await this.client.send(
-        new ListObjectsV2Command({
+    try {
+      await this.client.send(
+        new DeleteObjectCommand({
           Bucket: this.bucket,
-          Prefix: 'temp/',
-          ContinuationToken: continuationToken,
-          MaxKeys: 100,
+          Key: normalized,
         }),
       );
-
-      for (const obj of page.Contents || []) {
-        if (!obj.Key || !obj.LastModified) continue;
-        if (obj.LastModified.getTime() > cutoff) continue;
-        await this.deleteObject(obj.Key);
-        deleted += 1;
-      }
-
-      continuationToken = page.IsTruncated
-        ? page.NextContinuationToken
-        : undefined;
-    } while (continuationToken);
-
-    if (deleted > 0) {
-      this.logger.log(`Purged ${deleted} expired temp/ object(s)`);
+    } catch (err) {
+      this.logger.warn(`R2 delete failed for ${normalized}: ${String(err)}`);
     }
-    return { deleted };
   }
 
   logoFinalKey(userId: string, contentType: string): string {
@@ -560,12 +454,23 @@ export class R2StorageService implements OnModuleInit, OnModuleDestroy {
     const v = (value || '').trim();
     if (!v) return false;
     if (/^https?:\/\//i.test(v)) return false;
-    if (v.startsWith('/uploads/')) return false;
     return (
       v.startsWith('logos/') ||
       v.startsWith('anjani/') ||
       v.startsWith('temp/') ||
       v.startsWith('archive/')
     );
+  }
+
+  /** Resolve DB object key to a browser CDN/signed URL. */
+  async resolveMediaUrl(
+    value: string | null | undefined,
+  ): Promise<string | null> {
+    const raw = (value || '').trim();
+    if (!raw) return null;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (!this.isR2ObjectKey(raw)) return null;
+    const url = await this.getViewUrl(raw);
+    return url || null;
   }
 }

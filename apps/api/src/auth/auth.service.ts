@@ -10,7 +10,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import type { Response } from 'express';
 import { Repository } from 'typeorm';
-import { removeUserLogoFiles } from '../common/uploads';
 import { isAccountExpired } from '../common/utils/account-expiry';
 import { User } from '../entities/user.entity';
 import { UserInfo } from '../entities/user-info.entity';
@@ -90,15 +89,11 @@ export class AuthService {
     info: UserInfo | null | undefined,
   ): Promise<{ logoUrl: string | null; logo: StoredFileDto | null }> {
     const raw = info?.logoUrl?.trim() || null;
-    if (!raw) return { logoUrl: null, logo: null };
-
-    if (this.storage.isR2ObjectKey(raw)) {
-      const logo = await this.storage.toStoredFile(raw, 'logo');
-      return { logoUrl: logo?.signedUrl || null, logo };
+    if (!raw || !this.storage.isR2ObjectKey(raw)) {
+      return { logoUrl: null, logo: null };
     }
-
-    // Legacy local /uploads path or absolute URL
-    return { logoUrl: raw, logo: null };
+    const logo = await this.storage.toStoredFile(raw, 'logo');
+    return { logoUrl: logo?.signedUrl || null, logo };
   }
 
   async sanitize(user: User) {
@@ -234,15 +229,16 @@ export class AuthService {
       throw new BadRequestException('Invalid temporary upload key');
     }
 
+    const logoMaxBytes = 10 * 1024 * 1024;
     const meta = await this.storage.headObject(tempKey);
-    if (meta.contentLength > 2 * 1024 * 1024) {
-      throw new BadRequestException('Logo must be 2MB or smaller');
+    if (meta.contentLength > logoMaxBytes) {
+      throw new BadRequestException('Logo must be 10 MB or smaller');
     }
     if (
       meta.contentType &&
       !meta.contentType.toLowerCase().startsWith('image/')
     ) {
-      throw new BadRequestException('Logo must be an image');
+      throw new BadRequestException('Logo must be an image (PNG, JPG, or WEBP)');
     }
 
     const finalKey = this.storage.logoFinalKey(
@@ -254,8 +250,9 @@ export class AuthService {
       finalKey,
       userId,
       {
-        maxBytes: 2 * 1024 * 1024,
+        maxBytes: logoMaxBytes,
         allowedMimePrefix: ['image/'],
+        meta, // reuse HEAD — avoid a second Class B request
       },
     );
 
@@ -265,8 +262,6 @@ export class AuthService {
 
     if (previous && this.storage.isR2ObjectKey(previous) && previous !== key) {
       await this.storage.archiveObject(previous);
-    } else if (previous?.startsWith('/uploads/')) {
-      removeUserLogoFiles(userId);
     }
 
     return this.me(userId);
@@ -280,8 +275,6 @@ export class AuthService {
     const previous = info.logoUrl;
     if (previous && this.storage.isR2ObjectKey(previous)) {
       await this.storage.archiveObject(previous);
-    } else {
-      removeUserLogoFiles(userId);
     }
     info.logoUrl = null;
     await this.userInfoRepo.save(info);

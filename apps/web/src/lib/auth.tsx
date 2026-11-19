@@ -20,7 +20,7 @@ export interface UserInfoProfile {
   state: string | null;
   pincode: string | null;
   companyName: string | null;
-  /** Public path e.g. /uploads/logos/{userId}.png */
+  /** Resolved CDN URL for company logo */
   logoUrl?: string | null;
   gstin: string | null;
   panNumber: string | null;
