@@ -11,10 +11,10 @@ import { Invoice } from './invoice.entity';
 
 @Entity('payment_allocations')
 export class PaymentAllocation {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   paymentId: string;
 
   @ManyToOne(() => CustomerPayment, (p) => p.allocations, {
@@ -23,7 +23,7 @@ export class PaymentAllocation {
   @JoinColumn({ name: 'paymentId' })
   payment: CustomerPayment;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   invoiceId: string;
 
   @ManyToOne(() => Invoice, { onDelete: 'RESTRICT' })

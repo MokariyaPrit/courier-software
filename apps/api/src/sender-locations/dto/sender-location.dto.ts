@@ -4,22 +4,22 @@ import {
   IsArray,
   IsBoolean,
   IsOptional,
-  IsUUID,
+  IsNumberString,
 } from 'class-validator';
 
 export class SyncSenderLocationSelectionDto {
   @IsArray()
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  @IsNumberString({}, { each: true })
   cityIds: string[];
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   defaultCityId?: string | null;
 }
 
 export class SetDefaultSenderLocationDto {
-  @IsUUID()
+  @IsNumberString()
   cityId: string;
 
   @IsOptional()

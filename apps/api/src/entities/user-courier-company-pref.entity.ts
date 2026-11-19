@@ -15,17 +15,17 @@ import { User } from './user.entity';
 @Entity('user_courier_company_prefs')
 @Index(['userId', 'courierCompanyId'], { unique: true })
 export class UserCourierCompanyPref {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   userId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   courierCompanyId: string;
 
   @ManyToOne(() => CourierCompany, { onDelete: 'CASCADE' })

@@ -10,7 +10,7 @@ import { Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { paginateMeta, resolveSortPair } from '../common/dto/pagination.dto';
 import { Consignment } from '../entities/consignment.entity';
-import { Invoice } from '../entities/invoice.entity';
+import { InvoiceConsignment } from '../entities/invoice-consignment.entity';
 import { R2StorageService } from '../storage/r2.service';
 import {
   ConsignmentQueryDto,
@@ -31,8 +31,8 @@ export class ConsignmentsService {
   constructor(
     @InjectRepository(Consignment)
     private readonly consignmentsRepo: Repository<Consignment>,
-    @InjectRepository(Invoice)
-    private readonly invoicesRepo: Repository<Invoice>,
+    @InjectRepository(InvoiceConsignment)
+    private readonly invoiceConsignmentsRepo: Repository<InvoiceConsignment>,
     private readonly storage: R2StorageService,
   ) {}
 
@@ -42,22 +42,19 @@ export class ConsignmentsService {
 
   /** Active bill still references this booking — do not soft-delete. */
   private async assertNotOnActiveInvoice(consignment: Consignment) {
-    const invoices = await this.invoicesRepo
-      .createQueryBuilder('inv')
-      .select(['inv.id', 'inv.invoiceNumber', 'inv.consignmentIds', 'inv.status'])
-      .where('inv.deletedAt IS NULL')
+    const hit = await this.invoiceConsignmentsRepo
+      .createQueryBuilder('ic')
+      .innerJoinAndSelect('ic.invoice', 'inv')
+      .where('ic.consignmentId = :cid', { cid: consignment.id })
+      .andWhere('inv.deletedAt IS NULL')
       .andWhere('inv.status != :cancelled', {
         cancelled: InvoiceStatus.CANCELLED,
       })
-      .getMany();
-
-    const hit = invoices.find((inv) =>
-      (inv.consignmentIds ?? []).includes(consignment.id),
-    );
+      .getOne();
     if (!hit) return;
 
     throw new BadRequestException(
-      `Cannot delete AWB ${consignment.awb}: it is included in invoice ${hit.invoiceNumber}. Delete or cancel that invoice first.`,
+      `Cannot delete AWB ${consignment.awb}: it is included in invoice ${hit.invoice.invoiceNumber}. Delete or cancel that invoice first.`,
     );
   }
 
@@ -245,7 +242,7 @@ export class ConsignmentsService {
       consignment.createdBy?.email ||
       '—';
 
-    const logoUrl = await this.storage.resolveMediaUrl(info?.logoUrl);
+    const logoUrl = await this.storage.resolveMediaUrl(info?.logoKey);
 
     return {
       consignment: {

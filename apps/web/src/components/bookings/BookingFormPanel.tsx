@@ -1073,8 +1073,6 @@ export function BookingFormPanel({
         name: cleaned.receiverName,
         phone: cleaned.receiverPhone || undefined,
         address: cleaned.receiverAddress || undefined,
-        city: cleaned.receiverCity || undefined,
-        state: cleaned.receiverState || undefined,
         cityId: cleaned.receiverCityId || undefined,
         stateId: cleaned.receiverStateId || undefined,
       },

@@ -16,27 +16,7 @@ import { ConsignmentsModule } from './consignments/consignments.module';
 import { CourierCompaniesModule } from './courier-companies/courier-companies.module';
 import { CustomersModule } from './customers/customers.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import {
-  City,
-  Consignment,
-  CourierCompany,
-  Customer,
-  CustomerPayment,
-  Invoice,
-  PaymentAllocation,
-  Quotation,
-  QuotationRateRow,
-  QuotationRateTemplate,
-  Receiver,
-  SenderLocation,
-  State,
-  TrackingEvent,
-  User,
-  UserCourierCompanyPref,
-  UserInfo,
-  UserRateCity,
-  AnjaniBill,
-} from './entities';
+import { ALL_ENTITIES } from './database/entities';
 import { HealthController } from './health/health.controller';
 import { QuotationsModule } from './quotations/quotations.module';
 import { RateColumnsModule } from './rate-columns/rate-columns.module';
@@ -45,6 +25,7 @@ import { SenderLocationsModule } from './sender-locations/sender-locations.modul
 import { StatesModule } from './states/states.module';
 import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -59,28 +40,10 @@ import { UsersModule } from './users/users.module';
         username: config.get<string>('DATABASE_USER', 'courier'),
         password: config.get<string>('DATABASE_PASSWORD', 'courier'),
         database: config.get<string>('DATABASE_NAME', 'courier_erp'),
-        entities: [
-          User,
-          UserInfo,
-          Customer,
-          State,
-          City,
-          Consignment,
-          TrackingEvent,
-          Invoice,
-          CustomerPayment,
-          PaymentAllocation,
-          QuotationRateTemplate,
-          QuotationRateRow,
-          Quotation,
-          Receiver,
-          SenderLocation,
-          UserRateCity,
-          CourierCompany,
-          UserCourierCompanyPref,
-          AnjaniBill,
-        ],
-        synchronize: config.get<string>('NODE_ENV') !== 'production',
+        entities: ALL_ENTITIES,
+        migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
+        synchronize: false,
+        migrationsRun: config.get<string>('TYPEORM_MIGRATIONS_RUN') === 'true',
       }),
     }),
     StorageModule,

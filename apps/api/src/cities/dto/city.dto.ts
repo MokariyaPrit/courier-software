@@ -2,8 +2,8 @@ import {
   IsBoolean,
   IsOptional,
   IsString,
-  IsUUID,
   MinLength,
+  IsNumberString,
 } from 'class-validator';
 
 export class CreateCityDto {
@@ -11,7 +11,7 @@ export class CreateCityDto {
   @MinLength(2)
   name: string;
 
-  @IsUUID()
+  @IsNumberString()
   stateId: string;
 
   @IsOptional()
@@ -26,7 +26,7 @@ export class UpdateCityDto {
   name?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   stateId?: string;
 
   @IsOptional()

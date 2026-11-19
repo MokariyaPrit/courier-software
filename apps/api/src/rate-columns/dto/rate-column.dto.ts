@@ -1,8 +1,8 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsOptional, IsUUID } from 'class-validator';
+import { IsArray, IsOptional, IsNumberString } from 'class-validator';
 
 export class SyncRateColumnSelectionDto {
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsNumberString({}, { each: true })
   cityIds: string[];
 }

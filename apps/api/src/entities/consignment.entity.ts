@@ -6,7 +6,6 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -16,11 +15,10 @@ import { Quotation } from './quotation.entity';
 import { Receiver } from './receiver.entity';
 import { SenderLocation } from './sender-location.entity';
 import { User } from './user.entity';
-import { TrackingEvent } from './tracking-event.entity';
 
 @Entity('consignments')
 export class Consignment {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
   @Column({ type: 'varchar' })
@@ -70,35 +68,35 @@ export class Consignment {
   @Column({ type: 'varchar', nullable: true })
   partyEmail: string | null;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   customerId: string | null;
 
   @ManyToOne(() => Customer, { nullable: true })
   @JoinColumn({ name: 'customerId' })
   customer: Customer | null;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   courierCompanyId: string | null;
 
   @ManyToOne(() => CourierCompany, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'courierCompanyId' })
   courierCompany: CourierCompany | null;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   quotationId: string | null;
 
   @ManyToOne(() => Quotation, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'quotationId' })
   quotation: Quotation | null;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   senderLocationId: string | null;
 
   @ManyToOne(() => SenderLocation, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'senderLocationId' })
   senderLocation: SenderLocation | null;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   receiverId: string | null;
 
   @ManyToOne(() => Receiver, { nullable: true, onDelete: 'SET NULL' })
@@ -132,10 +130,10 @@ export class Consignment {
   @Column({ type: 'varchar', nullable: true })
   receiverPincode: string | null;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   receiverCityId: string | null;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   receiverStateId: string | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 3, default: 0 })
@@ -158,7 +156,7 @@ export class Consignment {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   igst: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   createdById: string;
 
   @ManyToOne(() => User)
@@ -167,11 +165,6 @@ export class Consignment {
 
   @Column({ type: 'text', nullable: true })
   remarks: string | null;
-
-  @OneToMany(() => TrackingEvent, (event) => event.consignment, {
-    cascade: true,
-  })
-  trackingEvents: TrackingEvent[];
 
   @CreateDateColumn()
   createdAt: Date;

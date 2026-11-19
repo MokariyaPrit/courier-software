@@ -20,10 +20,10 @@ import { User } from './user.entity';
 @Entity('user_rate_cities')
 @Index(['createdById', 'cityId'], { unique: true })
 export class UserRateCity {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   cityId: string;
 
   @ManyToOne(() => City, { onDelete: 'RESTRICT' })
@@ -33,14 +33,14 @@ export class UserRateCity {
   @Column({ type: 'varchar' })
   label: string;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   stateId: string | null;
 
   @ManyToOne(() => State, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'stateId' })
   state: State | null;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   createdById: string;
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })

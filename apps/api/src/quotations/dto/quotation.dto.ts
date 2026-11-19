@@ -4,9 +4,9 @@ import {
   IsDateString,
   IsOptional,
   IsString,
-  IsUUID,
   MinLength,
   ValidateNested,
+  IsNumberString,
 } from 'class-validator';
 import {
   RateColumnDto,
@@ -15,11 +15,11 @@ import {
 } from './quotation-template.dto';
 
 export class CreateQuotationDto {
-  @IsUUID()
+  @IsNumberString()
   customerId: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   templateId?: string;
 
   @IsOptional()

@@ -8,11 +8,13 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { City } from './city.entity';
+import { State } from './state.entity';
 import { User } from './user.entity';
 
 @Entity('customers')
 export class Customer {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
   @Column({ type: 'varchar' })
@@ -33,18 +35,20 @@ export class Customer {
   @Column({ type: 'text', nullable: true })
   address: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
-  city: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  state: string | null;
-
   /** Linked center / master city for booking sender */
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   cityId: string | null;
 
-  @Column({ type: 'uuid', nullable: true })
+  @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'cityId' })
+  cityRef: City | null;
+
+  @Column({ type: 'bigint', nullable: true })
   stateId: string | null;
+
+  @ManyToOne(() => State, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'stateId' })
+  stateRef: State | null;
 
   @Column({ type: 'varchar', nullable: true })
   pincode: string | null;
@@ -70,7 +74,7 @@ export class Customer {
   isActive: boolean;
 
   /** Owning user — customer is user-wise */
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   createdById: string;
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })

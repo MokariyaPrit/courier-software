@@ -152,11 +152,8 @@ export class AnjaniBillsService {
       }
       await this.repo.update(bill.id, {
         sourcePdfKey: null,
-        sourcePdfUrl: null,
         headerImageKey: null,
-        headerImageUrl: null,
         editedPdfKey: null,
-        editedPdfUrl: null,
       });
     }
   }
@@ -255,7 +252,6 @@ export class AnjaniBillsService {
       );
       if (key) {
         bill.sourcePdfKey = key;
-        bill.sourcePdfUrl = null;
         if (previous && previous !== key && !previous.startsWith('archive/')) {
           await this.storage.archiveObject(previous);
         }
@@ -274,7 +270,6 @@ export class AnjaniBillsService {
       );
       if (key) {
         bill.editedPdfKey = key;
-        bill.editedPdfUrl = null;
         if (previous && previous !== key && !previous.startsWith('archive/')) {
           await this.storage.archiveObject(previous);
         }
@@ -310,7 +305,6 @@ export class AnjaniBillsService {
           );
       if (key) {
         bill.headerImageKey = key;
-        bill.headerImageUrl = null;
         if (previous && previous !== key && !previous.startsWith('archive/')) {
           await this.storage.archiveObject(previous);
         }
@@ -329,17 +323,14 @@ export class AnjaniBillsService {
     const sourceMoved = await this.moveKeyToArchive(bill.sourcePdfKey);
     if (sourceMoved) {
       bill.sourcePdfKey = sourceMoved;
-      bill.sourcePdfUrl = null;
     }
     const headerMoved = await this.moveKeyToArchive(bill.headerImageKey);
     if (headerMoved) {
       bill.headerImageKey = headerMoved;
-      bill.headerImageUrl = null;
     }
     const editedMoved = await this.moveKeyToArchive(bill.editedPdfKey);
     if (editedMoved) {
       bill.editedPdfKey = editedMoved;
-      bill.editedPdfUrl = null;
     }
 
     await this.repo.save(bill);

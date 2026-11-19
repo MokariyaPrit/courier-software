@@ -88,7 +88,7 @@ export class AuthService {
   private async resolveLogo(
     info: UserInfo | null | undefined,
   ): Promise<{ logoUrl: string | null; logo: StoredFileDto | null }> {
-    const raw = info?.logoUrl?.trim() || null;
+    const raw = info?.logoKey?.trim() || null;
     if (!raw || !this.storage.isR2ObjectKey(raw)) {
       return { logoUrl: null, logo: null };
     }
@@ -100,6 +100,7 @@ export class AuthService {
     const userInfo = sanitizeUserInfo(user.userInfo);
     const { logoUrl, logo } = await this.resolveLogo(user.userInfo);
     if (userInfo) {
+      // API still exposes logoUrl as the signed URL for clients.
       userInfo.logoUrl = logoUrl;
     }
     return {
@@ -256,8 +257,8 @@ export class AuthService {
       },
     );
 
-    const previous = info.logoUrl;
-    info.logoUrl = key;
+    const previous = info.logoKey;
+    info.logoKey = key;
     await this.userInfoRepo.save(info);
 
     if (previous && this.storage.isR2ObjectKey(previous) && previous !== key) {
@@ -272,11 +273,11 @@ export class AuthService {
     if (!info) {
       throw new BadRequestException('Profile not found');
     }
-    const previous = info.logoUrl;
+    const previous = info.logoKey;
     if (previous && this.storage.isR2ObjectKey(previous)) {
       await this.storage.archiveObject(previous);
     }
-    info.logoUrl = null;
+    info.logoKey = null;
     await this.userInfoRepo.save(info);
     return this.me(userId);
   }

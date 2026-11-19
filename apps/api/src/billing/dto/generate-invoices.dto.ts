@@ -5,8 +5,8 @@ import {
   IsDateString,
   IsNumber,
   IsOptional,
-  IsUUID,
   Min,
+  IsNumberString,
 } from 'class-validator';
 
 export class GenerateInvoicesDto {
@@ -21,7 +21,7 @@ export class GenerateInvoicesDto {
 
   @IsArray()
   @ArrayMinSize(1)
-  @IsUUID('4', { each: true })
+  @IsNumberString({}, { each: true })
   customerIds: string[];
 
   @IsOptional()

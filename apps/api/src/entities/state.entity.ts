@@ -11,7 +11,7 @@ import { City } from './city.entity';
 
 @Entity('states')
 export class State {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
   @Column({ type: 'varchar', unique: true, length: 120 })

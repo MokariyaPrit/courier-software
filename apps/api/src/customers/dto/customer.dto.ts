@@ -4,10 +4,10 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Min,
   MinLength,
   ValidateIf,
+  IsNumberString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -39,19 +39,11 @@ export class CreateCustomerDto {
   address?: string;
 
   @IsOptional()
-  @IsString()
-  city?: string;
-
-  @IsOptional()
-  @IsString()
-  state?: string;
-
-  @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   cityId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   stateId?: string;
 
   @IsOptional()
@@ -116,19 +108,11 @@ export class UpdateCustomerDto {
   address?: string | null;
 
   @IsOptional()
-  @IsString()
-  city?: string | null;
-
-  @IsOptional()
-  @IsString()
-  state?: string | null;
-
-  @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   cityId?: string | null;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   stateId?: string | null;
 
   @IsOptional()

@@ -17,9 +17,11 @@ import {
   paginateMeta,
   resolveSortPair,
 } from '../common/dto/pagination.dto';
+import { locationNames } from '../common/utils/location-names';
 import { Consignment } from '../entities/consignment.entity';
 import { Customer } from '../entities/customer.entity';
 import { Invoice } from '../entities/invoice.entity';
+import { InvoiceConsignment } from '../entities/invoice-consignment.entity';
 import { User } from '../entities/user.entity';
 import { DocumentMailPdfService } from '../mail/document-mail-pdf.service';
 import { SendDocumentEmailDto } from '../mail/dto/send-document-email.dto';
@@ -173,6 +175,8 @@ export function amountInWords(amount: number): string {
 export class BillingService {
   constructor(
     @InjectRepository(Invoice) private readonly invoicesRepo: Repository<Invoice>,
+    @InjectRepository(InvoiceConsignment)
+    private readonly invoiceConsignmentsRepo: Repository<InvoiceConsignment>,
     @InjectRepository(Customer) private readonly customersRepo: Repository<Customer>,
     @InjectRepository(Consignment)
     private readonly consignmentsRepo: Repository<Consignment>,
@@ -187,10 +191,34 @@ export class BillingService {
     return `${year}-${String(count + 1).padStart(4, '0')}`;
   }
 
+  private async attachConsignmentLinks(
+    invoiceId: string,
+    consignmentIds: string[],
+  ) {
+    if (!consignmentIds.length) return;
+    await this.invoiceConsignmentsRepo.save(
+      consignmentIds.map((consignmentId, sortOrder) =>
+        this.invoiceConsignmentsRepo.create({
+          invoiceId,
+          consignmentId,
+          sortOrder,
+        }),
+      ),
+    );
+  }
+
+  private consignmentIdsOf(invoice: Invoice): string[] {
+    return (invoice.invoiceConsignments ?? [])
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((row) => row.consignmentId);
+  }
+
   private async billedConsignmentIdSet(excludeInvoiceId?: string) {
-    const qb = this.invoicesRepo
-      .createQueryBuilder('inv')
-      .select(['inv.id', 'inv.consignmentIds', 'inv.status'])
+    const qb = this.invoiceConsignmentsRepo
+      .createQueryBuilder('ic')
+      .innerJoin('ic.invoice', 'inv')
+      .select('ic.consignmentId', 'consignmentId')
       .where('inv.deletedAt IS NULL')
       .andWhere('inv.status != :cancelled', {
         cancelled: InvoiceStatus.CANCELLED,
@@ -198,14 +226,8 @@ export class BillingService {
     if (excludeInvoiceId) {
       qb.andWhere('inv.id != :excludeId', { excludeId: excludeInvoiceId });
     }
-    const invoices = await qb.getMany();
-    const set = new Set<string>();
-    for (const inv of invoices) {
-      for (const id of inv.consignmentIds ?? []) {
-        set.add(id);
-      }
-    }
-    return set;
+    const rows = await qb.getRawMany<{ consignmentId: string }>();
+    return new Set(rows.map((r) => String(r.consignmentId)));
   }
 
   /** Block reuse of the same booking / AWB on another active bill. */
@@ -331,20 +353,21 @@ export class BillingService {
     );
     const today = new Date().toISOString().slice(0, 10);
 
-    const invoice = this.invoicesRepo.create({
-      invoiceNumber: await this.nextInvoiceNumber(),
-      customerId: dto.customerId,
-      status: InvoiceStatus.ISSUED,
-      billDate: today,
-      periodStart: null,
-      periodEnd: null,
-      ...totals,
-      consignmentIds: dto.consignmentIds,
-      notes: dto.notes ?? null,
-      createdById: user.id,
-    });
-
-    return this.invoicesRepo.save(invoice);
+    const invoice = await this.invoicesRepo.save(
+      this.invoicesRepo.create({
+        invoiceNumber: await this.nextInvoiceNumber(),
+        customerId: dto.customerId,
+        status: InvoiceStatus.ISSUED,
+        billDate: today,
+        periodStart: null,
+        periodEnd: null,
+        ...totals,
+        notes: dto.notes ?? null,
+        createdById: user.id,
+      }),
+    );
+    await this.attachConsignmentLinks(invoice.id, dto.consignmentIds);
+    return this.findOne(invoice.id, user);
   }
 
   async generate(dto: GenerateInvoicesDto, user: AuthUser) {
@@ -437,21 +460,21 @@ export class BillingService {
       const totals = this.totalsFromConsignments(unbilled, fuelPercent, rates);
       const ids = unbilled.map((c) => c.id);
 
-      const invoice = this.invoicesRepo.create({
-        invoiceNumber: await this.nextInvoiceNumber(),
-        customerId: customer.id,
-        status: InvoiceStatus.ISSUED,
-        billDate: dto.billDate.slice(0, 10),
-        periodStart: dto.dateFrom.slice(0, 10),
-        periodEnd: dto.dateTo.slice(0, 10),
-        ...totals,
-        consignmentIds: ids,
-        notes: null,
-        createdById: user.id,
-      });
-
-      const saved = await this.invoicesRepo.save(invoice);
-      created.push(saved);
+      const saved = await this.invoicesRepo.save(
+        this.invoicesRepo.create({
+          invoiceNumber: await this.nextInvoiceNumber(),
+          customerId: customer.id,
+          status: InvoiceStatus.ISSUED,
+          billDate: dto.billDate.slice(0, 10),
+          periodStart: dto.dateFrom.slice(0, 10),
+          periodEnd: dto.dateTo.slice(0, 10),
+          ...totals,
+          notes: null,
+          createdById: user.id,
+        }),
+      );
+      await this.attachConsignmentLinks(saved.id, ids);
+      created.push(await this.findOne(saved.id, user));
       for (const id of ids) billed.add(id);
     }
 
@@ -516,8 +539,9 @@ export class BillingService {
     const invoice = await this.invoicesRepo.findOne({
       where: { id },
       relations: {
-        customer: true,
+        customer: { cityRef: true, stateRef: true },
         createdBy: true,
+        invoiceConsignments: true,
       },
     });
     if (!invoice) {
@@ -526,7 +550,10 @@ export class BillingService {
     if (user.role !== Role.ADMIN && invoice.createdById !== user.id) {
       throw new NotFoundException('Invoice not found');
     }
-    return invoice;
+    return {
+      ...invoice,
+      consignmentIds: this.consignmentIdsOf(invoice),
+    };
   }
 
   async findDocument(id: string, user: AuthUser) {
@@ -536,10 +563,11 @@ export class BillingService {
       relations: { userInfo: true },
     });
     const info = issuer?.userInfo;
+    const consignmentIds = invoice.consignmentIds;
 
-    const consignments = invoice.consignmentIds?.length
+    const consignments = consignmentIds.length
       ? await this.consignmentsRepo.find({
-          where: { id: In(invoice.consignmentIds) },
+          where: { id: In(consignmentIds) },
           order: { bookingDate: 'ASC', createdAt: 'ASC' },
           // Keep billed lines even if a booking was soft-deleted earlier
           withDeleted: true,
@@ -548,11 +576,12 @@ export class BillingService {
 
     // Keep line order as stored on invoice when possible
     const byId = new Map(consignments.map((c) => [c.id, c]));
-    const ordered = (invoice.consignmentIds ?? [])
+    const ordered = consignmentIds
       .map((cid) => byId.get(cid))
       .filter((c): c is Consignment => Boolean(c));
 
     const customer = invoice.customer;
+    const custLoc = locationNames(customer);
     const gstin = info?.gstin || null;
     const companyPan =
       info?.panNumber || panFromGstin(gstin) || null;
@@ -615,8 +644,8 @@ export class BillingService {
         id: customer?.id,
         name: customer?.name || '—',
         address: customer?.address || null,
-        city: customer?.city || null,
-        state: customer?.state || null,
+        city: custLoc.city,
+        state: custLoc.state,
         pincode: customer?.pincode || null,
         gstin: customer?.gstin || null,
         pan: customerPan,

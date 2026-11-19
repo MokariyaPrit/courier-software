@@ -136,7 +136,7 @@ function downloadCsv(filename: string, headers: string[], rows: string[][]) {
 
 const ALL_CUSTOMERS = '__all__';
 
-/** PrimeReact can return '' / null / option object — normalize to UUID or ''. */
+/** PrimeReact can return '' / null / option object — normalize to id string or ''. */
 function normalizeCustomerId(value: unknown): string {
   if (value == null || value === '' || value === ALL_CUSTOMERS) return '';
   if (typeof value === 'string') {

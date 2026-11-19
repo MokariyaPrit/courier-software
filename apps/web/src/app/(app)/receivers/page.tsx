@@ -127,8 +127,6 @@ export default function ReceiversPage() {
         phone: cleaned.phone || null,
         email: cleaned.email || null,
         address: cleaned.address || null,
-        city: cleaned.city || null,
-        state: cleaned.state || null,
         cityId: cleaned.cityId || null,
         stateId: cleaned.stateId || null,
         pincode: cleaned.pincode || null,

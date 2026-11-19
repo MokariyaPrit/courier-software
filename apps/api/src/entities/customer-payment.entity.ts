@@ -16,10 +16,10 @@ import { User } from './user.entity';
 
 @Entity('customer_payments')
 export class CustomerPayment {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   customerId: string;
 
   @ManyToOne(() => Customer, { onDelete: 'RESTRICT' })
@@ -41,7 +41,7 @@ export class CustomerPayment {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   createdById: string;
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })

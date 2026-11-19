@@ -12,7 +12,7 @@ import { User } from './user.entity';
 
 @Entity('courier_companies')
 export class CourierCompany {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
   @Column({ type: 'varchar', length: 200 })
@@ -28,12 +28,11 @@ export class CourierCompany {
   /**
    * Admin-created companies are shared with every user (read-only for
    * non-admins). User-created companies stay private to that user.
-   * Default true so existing catalog rows remain visible after the column is added.
    */
   @Column({ type: 'boolean', default: true })
   isShared: boolean;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   createdById: string | null;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })

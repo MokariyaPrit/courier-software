@@ -5,15 +5,15 @@ import {
   IsArray,
   IsOptional,
   IsString,
-  IsUUID,
   MaxLength,
+  IsNumberString,
 } from 'class-validator';
 
 export class BulkEmailInvoicesDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(100)
-  @IsUUID('4', { each: true })
+  @IsNumberString({}, { each: true })
   @Type(() => String)
   ids: string[];
 

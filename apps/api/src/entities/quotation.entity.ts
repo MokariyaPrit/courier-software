@@ -35,27 +35,27 @@ export type QuotationSnapshot = {
 
 @Entity('quotations')
 export class Quotation {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
   @Column({ type: 'varchar', unique: true, nullable: true })
   quotationCode: string | null;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   customerId: string;
 
   @ManyToOne(() => Customer, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'customerId' })
   customer: Customer;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   templateId: string | null;
 
   @ManyToOne(() => QuotationRateTemplate, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'templateId' })
   template: QuotationRateTemplate | null;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   createdById: string;
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })

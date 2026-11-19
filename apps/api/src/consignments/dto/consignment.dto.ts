@@ -7,10 +7,10 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Min,
   MinLength,
   ValidateIf,
+  IsNumberString,
 } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
@@ -20,23 +20,23 @@ export class CreateConsignmentDto {
   bookingType?: BookingType;
 
   @ValidateIf((o: CreateConsignmentDto) => o.bookingType === BookingType.ACCOUNT)
-  @IsUUID()
+  @IsNumberString()
   customerId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   courierCompanyId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   quotationId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   senderLocationId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   receiverId?: string;
 
   @IsOptional()
@@ -127,11 +127,11 @@ export class CreateConsignmentDto {
   receiverPincode?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   receiverCityId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   receiverStateId?: string;
 
   @IsOptional()
@@ -185,23 +185,23 @@ export class UpdateConsignmentDto {
   awb?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   customerId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   courierCompanyId?: string | null;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   quotationId?: string | null;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   senderLocationId?: string | null;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   receiverId?: string | null;
 
   @IsOptional()
@@ -283,11 +283,11 @@ export class UpdateConsignmentDto {
   receiverPincode?: string | null;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   receiverCityId?: string | null;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   receiverStateId?: string | null;
 
   @IsOptional()
@@ -335,11 +335,11 @@ export class ConsignmentQueryDto extends PaginationDto {
   bookingType?: BookingType;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   receiverId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   customerId?: string;
 
   /** Exact/partial party name filter for cash bookings */

@@ -47,6 +47,8 @@ export class GstReportsService {
     const qb = this.invoicesRepo
       .createQueryBuilder('inv')
       .leftJoinAndSelect('inv.customer', 'customer')
+      .leftJoinAndSelect('customer.cityRef', 'customerCity')
+      .leftJoinAndSelect('customer.stateRef', 'customerState')
       .leftJoinAndSelect('inv.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
       .where('inv.deletedAt IS NULL')
@@ -95,8 +97,8 @@ export class GstReportsService {
         customerName: customer?.name || '—',
         customerGstin: customer?.gstin || null,
         customerPan: customer?.panNumber || null,
-        customerState: customer?.state || null,
-        customerCity: customer?.city || null,
+        customerState: customer?.stateRef?.name || null,
+        customerCity: customer?.cityRef?.name || null,
         issuerUserId: issuer.userId,
         issuerName: issuer.companyName,
         issuerGstin: issuer.gstin,

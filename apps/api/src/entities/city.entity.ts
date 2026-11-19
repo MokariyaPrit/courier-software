@@ -14,10 +14,10 @@ import { State } from './state.entity';
 @Entity('cities')
 @Index(['stateId', 'name'], { unique: true })
 export class City {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   stateId: string;
 
   @ManyToOne(() => State, (state) => state.cities, { onDelete: 'RESTRICT' })

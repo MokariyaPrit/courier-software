@@ -6,21 +6,23 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Customer } from './customer.entity';
+import { InvoiceConsignment } from './invoice-consignment.entity';
 import { User } from './user.entity';
 
 @Entity('invoices')
 export class Invoice {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
   @Column({ type: 'varchar', unique: true })
   invoiceNumber: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   customerId: string;
 
   @ManyToOne(() => Customer)
@@ -80,12 +82,17 @@ export class Invoice {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   totalAmount: string;
 
-  /** Sum of payment allocations against this invoice */
+  /**
+   * Cached sum of payment allocations against this invoice.
+   * Maintained by ledger; not derived on every read.
+   */
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   amountPaid: string;
 
-  @Column({ type: 'simple-json', nullable: true })
-  consignmentIds: string[] | null;
+  @OneToMany(() => InvoiceConsignment, (row) => row.invoice, {
+    cascade: true,
+  })
+  invoiceConsignments: InvoiceConsignment[];
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;
@@ -96,7 +103,7 @@ export class Invoice {
   @Column({ type: 'varchar', nullable: true })
   lastEmailedTo: string | null;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   createdById: string;
 
   @ManyToOne(() => User)

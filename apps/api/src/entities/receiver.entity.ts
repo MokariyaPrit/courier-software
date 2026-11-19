@@ -8,11 +8,13 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { City } from './city.entity';
+import { State } from './state.entity';
 import { User } from './user.entity';
 
 @Entity('receivers')
 export class Receiver {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
   @Column({ type: 'varchar' })
@@ -27,17 +29,19 @@ export class Receiver {
   @Column({ type: 'text', nullable: true })
   address: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
-  city: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  state: string | null;
-
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   cityId: string | null;
 
-  @Column({ type: 'uuid', nullable: true })
+  @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'cityId' })
+  cityRef: City | null;
+
+  @Column({ type: 'bigint', nullable: true })
   stateId: string | null;
+
+  @ManyToOne(() => State, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'stateId' })
+  stateRef: State | null;
 
   @Column({ type: 'varchar', nullable: true })
   pincode: string | null;
@@ -48,7 +52,7 @@ export class Receiver {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   createdById: string;
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })

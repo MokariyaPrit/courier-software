@@ -12,10 +12,10 @@ import { QuotationRateTemplate } from './quotation-rate-template.entity';
 
 @Entity('quotation_rate_rows')
 export class QuotationRateRow {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   templateId: string;
 
   @ManyToOne(() => QuotationRateTemplate, (t) => t.rows, {

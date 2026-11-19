@@ -8,10 +8,10 @@ import {
   IsObject,
   IsOptional,
   IsString,
-  IsUUID,
   Min,
   MinLength,
   ValidateNested,
+  IsNumberString,
 } from 'class-validator';
 
 export class RateColumnDto {
@@ -48,7 +48,7 @@ export class RateSectionDto {
 
 export class RateRowDto {
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   id?: string;
 
   @IsString()

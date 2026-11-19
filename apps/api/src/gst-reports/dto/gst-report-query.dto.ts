@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsOptional, IsUUID } from 'class-validator';
+import { IsDateString, IsOptional, IsNumberString } from 'class-validator';
 
 export class GstReportQueryDto {
   @IsDateString()
@@ -9,6 +9,6 @@ export class GstReportQueryDto {
   dateTo: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   customerId?: string;
 }

@@ -12,10 +12,10 @@ import { User } from './user.entity';
 
 @Entity('user_info')
 export class UserInfo {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ type: 'uuid', unique: true })
+  @Column({ type: 'bigint', unique: true })
   userId: string;
 
   @OneToOne(() => User, (user) => user.userInfo, { onDelete: 'CASCADE' })
@@ -48,7 +48,7 @@ export class UserInfo {
 
   /** R2 object key for company logo, e.g. logos/{userId}/logo-{uuid}.png */
   @Column({ type: 'varchar', nullable: true })
-  logoUrl: string | null;
+  logoKey: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   gstin: string | null;

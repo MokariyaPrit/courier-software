@@ -24,13 +24,13 @@ Single-company courier ERP (modular monolith).
 
 ### Data model (current)
 
-- **No `branches` table** (removed completely)
-- **`users`** — login (`email`, `password`, `role`, `isActive`)
-- **`user_info`** — profile: fullName, phone, email, address, city, state, pincode, companyName, gstin, notes, isActive
-- **Soft delete:** all main tables use `deletedAt` (TypeORM). Delete actions hide records from lists; rows stay in the DB.
-- **Roles:** `ADMIN` (full) and `BRANCH_MANAGER` (ops; cannot manage Users/Pincodes)
+- **IDs:** Postgres `bigint` identity (API returns them as strings)
+- **Schema:** TypeORM migrations (`pnpm migration:run`); `synchronize` is off
+- **`users` / `user_info`** — auth + profile (logo stored as R2 `logoKey`)
+- Soft delete on main tables via `deletedAt`
+- **Roles:** `ADMIN` (full) and `BRANCH_MANAGER` (scoped to own records)
 
-After login you are redirected to the dashboard. Use the left sidebar for Bookings, Tracking, Delivery, Masters, Billing, and Users (Admin only).
+After login you are redirected to the dashboard. Use the left sidebar for Bookings, Masters, Billing, Quotations, and Users (Admin only).
 
 ---
 
@@ -68,7 +68,8 @@ pnpm db:embedded
 In a **second** terminal:
 
 ```bash
-# 5) Create Admin + Branch Manager + sample branches
+# 5) Apply schema + seed Admin / Branch Manager + cities/states
+pnpm migration:run
 pnpm seed
 
 # 6) Start API + Web together
@@ -102,7 +103,9 @@ That keeps active storage clean. Prefer lifecycle rules over API `ListObjects` s
 | `pnpm dev:web` | Web only |
 | `pnpm db:embedded` | Local Postgres without Docker |
 | `pnpm db:up` / `pnpm db:down` | Docker Postgres start/stop |
-| `pnpm seed` | Seed users + sample branches |
+| `pnpm db:reset` | Drop/recreate public schema (dev wipe) |
+| `pnpm migration:run` | Apply TypeORM migrations |
+| `pnpm seed` | Seed users + sample cities/states |
 
 ---
 
@@ -113,27 +116,22 @@ That keeps active storage clean. Prefer lifecycle rules over API `ListObjects` s
 | Admin | `admin@courier.local` | `Admin@12345` |
 | Branch Manager | `manager@courier.local` | `Manager@12345` |
 
-- **Admin** — all branches, users, pincodes, billing, bookings, tracking.
-- **Branch Manager** — bookings / tracking / delivery / customers for **their branch only**.
+- **Admin** — users, masters, billing, bookings, quotations.
+- **Branch Manager** — bookings / customers / billing for **their own records**.
 
 ---
 
 ## How to use the app (daily flow)
 
 1. Open http://localhost:3000 → sign in.
-2. **Masters**
-   - Admin: create **Branches**, **Pincodes**, **Customers**.
-   - Branch Manager: view branches, manage **Customers**.
-3. **Bookings** → **New booking** → create a consignment (AWB is generated, e.g. `CN260000001`).
-4. **Tracking** → enter AWB → see timeline → update status  
-   (`BOOKED` → `IN_TRANSIT` → `AT_HUB` → `OUT_FOR_DELIVERY` → `DELIVERED` / `FAILED_ATTEMPT` / `RTO`).
-5. **Delivery** → list of Out-For-Delivery consignments → mark **Delivered** or **Failed**.
-6. **Billing** → create a light invoice from selected consignments.
-7. **Quotations**
+2. **Masters** — manage **Customers**, receivers, centers, courier companies, rate columns.
+3. **Bookings** → **New booking** → create a consignment (enter AWB / document no.).
+4. **Billing** → generate invoices from account bookings.
+5. **Quotations**
    - Set customer **FOV %** and **Fuel charges extra %** on the customer form.
    - **Rate templates** → create a template (auto bands for DOX / PARCEL / DOX BY AIR / PARCEL BY AIR / TATKAL) → fill zone rates.
    - **Quotations** → New quotation → pick customer + template → edit rates if needed → **Issue** → **Preview / Print** (browser Save as PDF).
-8. **Users** (Admin only) → create `ADMIN` or `BRANCH_MANAGER` users.
+6. **Users** (Admin only) → create `ADMIN` or `BRANCH_MANAGER` users.
 
 ---
 
@@ -145,7 +143,7 @@ courier-software/
     api/                 # NestJS backend  → http://localhost:3001
     web/                 # Next.js UI      → http://localhost:3000
   packages/
-    shared/              # Shared Role / status enums
+    shared/              # Shared roles / enums / API types
   docker-compose.yml     # Optional Postgres 16
   README.md
 ```
@@ -221,11 +219,11 @@ Do not commit real production secrets.
 
 ## MVP modules included
 
-- Masters: branches, customers, pincodes  
-- Bookings + AWB generation + charge lines  
-- Tracking timeline + status updates  
-- Delivery OFD / POD  
-- Light invoicing + customer statement API  
-- Admin user management (`ADMIN` / `BRANCH_MANAGER` only)
+- Masters: customers, receivers, cities/states, courier companies  
+- Bookings (account / cash) + receipts  
+- Billing / ledger / GST report  
+- Quotations + rate templates  
+- Anjani bills + R2 uploads  
+- Admin user management (`ADMIN` / `BRANCH_MANAGER`)
 
 **Not in MVP yet:** Redis, job queues, franchise portal, public tracking site, SMS/WhatsApp, native mobile apps.

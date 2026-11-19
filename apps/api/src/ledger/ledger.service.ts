@@ -12,6 +12,7 @@ import {
 } from '@courier/shared';
 import { In, Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
+import { locationNames } from '../common/utils/location-names';
 import { CustomerPayment } from '../entities/customer-payment.entity';
 import { Customer } from '../entities/customer.entity';
 import { Invoice } from '../entities/invoice.entity';
@@ -79,6 +80,7 @@ export class LedgerService {
   private async getCustomerOrThrow(customerId: string, user: AuthUser) {
     const customer = await this.customersRepo.findOne({
       where: { id: customerId, ...this.customerScope(user) },
+      relations: { cityRef: true, stateRef: true },
     });
     if (!customer) throw new NotFoundException('Customer not found');
     return customer;
@@ -212,6 +214,8 @@ export class LedgerService {
     const isAdmin = user.role === Role.ADMIN;
     const qb = this.customersRepo
       .createQueryBuilder('c')
+      .leftJoinAndSelect('c.cityRef', 'cityRef')
+      .leftJoinAndSelect('c.stateRef', 'stateRef')
       .leftJoinAndSelect('c.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
       .where('c.deletedAt IS NULL')
@@ -230,7 +234,7 @@ export class LedgerService {
         'c.primaryPhone ILIKE :q',
         'c.primaryEmail ILIKE :q',
         'c.gstin ILIKE :q',
-        'c.city ILIKE :q',
+        'cityRef.name ILIKE :q',
       ];
       if (isAdmin) {
         clauses.push(
@@ -292,14 +296,15 @@ export class LedgerService {
                 : null,
             }
           : null;
+        const loc = locationNames(c);
         return {
           id: c.id,
           name: c.name,
           primaryPhone: c.primaryPhone,
           primaryEmail: c.primaryEmail,
           gstin: c.gstin,
-          city: c.city,
-          state: c.state,
+          city: loc.city,
+          state: loc.state,
           createdBy,
           ...summary,
         };
@@ -317,6 +322,7 @@ export class LedgerService {
     const payments = await this.loadPayments(customerId, user);
     const summary = this.summarize(invoices, payments);
     const ledger = this.buildLedgerRows(invoices, payments, query);
+    const loc = locationNames(customer);
 
     return {
       customer: {
@@ -326,8 +332,8 @@ export class LedgerService {
         secondaryPhone: customer.secondaryPhone,
         primaryEmail: customer.primaryEmail,
         address: customer.address,
-        city: customer.city,
-        state: customer.state,
+        city: loc.city,
+        state: loc.state,
         pincode: customer.pincode,
         gstin: customer.gstin,
         panNumber: customer.panNumber,

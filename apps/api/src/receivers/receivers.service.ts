@@ -15,7 +15,7 @@ import {
 import { Receiver } from '../entities/receiver.entity';
 import { CreateReceiverDto, UpdateReceiverDto } from './dto/receiver.dto';
 
-const RECEIVER_SORT = ['name', 'city', 'phone', 'createdAt'] as const;
+const RECEIVER_SORT = ['name', 'phone', 'createdAt'] as const;
 
 @Injectable()
 export class ReceiversService {
@@ -40,7 +40,12 @@ export class ReceiversService {
     if (row.createdBy) {
       delete (row.createdBy as { passwordHash?: string }).passwordHash;
     }
-    return row;
+    const { cityRef, stateRef, ...rest } = row;
+    return {
+      ...rest,
+      city: cityRef?.name ?? null,
+      state: stateRef?.name ?? null,
+    };
   }
 
   async create(dto: CreateReceiverDto, user: AuthUser) {
@@ -50,8 +55,6 @@ export class ReceiversService {
         phone: this.emptyToNull(dto.phone) ?? null,
         email: this.emptyToNull(dto.email)?.toLowerCase() ?? null,
         address: this.emptyToNull(dto.address) ?? null,
-        city: this.emptyToNull(dto.city) ?? null,
-        state: this.emptyToNull(dto.state) ?? null,
         cityId: dto.cityId ?? null,
         stateId: dto.stateId ?? null,
         pincode: this.emptyToNull(dto.pincode) ?? null,
@@ -84,12 +87,6 @@ export class ReceiversService {
       if (dto.address !== undefined) {
         existing.address = this.emptyToNull(dto.address) ?? existing.address;
       }
-      if (dto.city !== undefined) {
-        existing.city = this.emptyToNull(dto.city) ?? existing.city;
-      }
-      if (dto.state !== undefined) {
-        existing.state = this.emptyToNull(dto.state) ?? existing.state;
-      }
       if (dto.cityId !== undefined) existing.cityId = dto.cityId ?? existing.cityId;
       if (dto.stateId !== undefined) {
         existing.stateId = dto.stateId ?? existing.stateId;
@@ -111,6 +108,8 @@ export class ReceiversService {
     });
     const qb = this.repo
       .createQueryBuilder('receiver')
+      .leftJoinAndSelect('receiver.cityRef', 'cityRef')
+      .leftJoinAndSelect('receiver.stateRef', 'stateRef')
       .leftJoinAndSelect('receiver.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
       .where('receiver.deletedAt IS NULL')
@@ -124,7 +123,7 @@ export class ReceiversService {
     if (query.search) {
       qb.andWhere(
         `(receiver.name ILIKE :q OR receiver.phone ILIKE :q
-          OR receiver.city ILIKE :q OR receiver.pincode ILIKE :q)`,
+          OR cityRef.name ILIKE :q OR receiver.pincode ILIKE :q)`,
         { q: `%${query.search}%` },
       );
     }
@@ -137,14 +136,23 @@ export class ReceiversService {
   }
 
   async findOne(id: string, user: AuthUser) {
-    const row = await this.repo.findOne({ where: { id } });
+    const row = await this.repo.findOne({
+      where: { id },
+      relations: {
+        cityRef: true,
+        stateRef: true,
+        createdBy: { userInfo: true },
+      },
+    });
     if (!row) throw new NotFoundException('Receiver not found');
     this.assertOwner(row, user);
-    return row;
+    return this.sanitize(row);
   }
 
   async update(id: string, dto: UpdateReceiverDto, user: AuthUser) {
-    const row = await this.findOne(id, user);
+    await this.findOne(id, user);
+    const row = await this.repo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Receiver not found');
     if (dto.name !== undefined) row.name = dto.name.trim();
     if (dto.phone !== undefined) row.phone = this.emptyToNull(dto.phone) ?? null;
     if (dto.email !== undefined) {
@@ -153,8 +161,6 @@ export class ReceiversService {
     if (dto.address !== undefined) {
       row.address = this.emptyToNull(dto.address) ?? null;
     }
-    if (dto.city !== undefined) row.city = this.emptyToNull(dto.city) ?? null;
-    if (dto.state !== undefined) row.state = this.emptyToNull(dto.state) ?? null;
     if (dto.cityId !== undefined) row.cityId = dto.cityId;
     if (dto.stateId !== undefined) row.stateId = dto.stateId;
     if (dto.pincode !== undefined) {

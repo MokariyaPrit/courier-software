@@ -1,12 +1,12 @@
-import { IsArray, IsOptional, IsString, IsUUID, ArrayMinSize } from 'class-validator';
+import { IsArray, IsOptional, IsString, ArrayMinSize, IsNumberString } from 'class-validator';
 
 export class CreateInvoiceDto {
-  @IsUUID()
+  @IsNumberString()
   customerId: string;
 
   @IsArray()
   @ArrayMinSize(1)
-  @IsUUID('4', { each: true })
+  @IsNumberString({}, { each: true })
   consignmentIds: string[];
 
   @IsOptional()

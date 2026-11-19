@@ -24,10 +24,10 @@ export type AnjaniBillRow = {
 
 @Entity('anjani_bills')
 export class AnjaniBill {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   createdById: string;
 
   @ManyToOne(() => User)
@@ -104,13 +104,7 @@ export class AnjaniBill {
   headerImageKey: string | null;
 
   @Column({ type: 'varchar', nullable: true })
-  headerImageUrl: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
   sourcePdfKey: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  sourcePdfUrl: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   sourcePdfFileName: string | null;
@@ -120,9 +114,6 @@ export class AnjaniBill {
 
   @Column({ type: 'varchar', nullable: true })
   editedPdfKey: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  editedPdfUrl: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   editedPdfFileName: string | null;

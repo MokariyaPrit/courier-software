@@ -120,8 +120,8 @@ export class QuotationsService {
       fovPercent: String(customer.fovPercent ?? 0),
       customerName: customer.name,
       customerAddress: customer.address,
-      customerCity: customer.city,
-      customerState: customer.state,
+      customerCity: customer.cityRef?.name ?? null,
+      customerState: customer.stateRef?.name ?? null,
       customerPincode: customer.pincode,
       customerPhone: customer.primaryPhone,
       customerEmail: customer.primaryEmail,
@@ -143,6 +143,7 @@ export class QuotationsService {
   private async loadCustomer(customerId: string, user: AuthUser) {
     const customer = await this.customersRepo.findOne({
       where: { id: customerId },
+      relations: { cityRef: true, stateRef: true },
     });
     if (!customer) {
       throw new BadRequestException('Customer not found');
@@ -305,7 +306,7 @@ export class QuotationsService {
     const quotation = await this.quotationsRepo.findOne({
       where: { id },
       relations: {
-        customer: true,
+        customer: { cityRef: true, stateRef: true },
         template: true,
         createdBy: { userInfo: true },
       },
@@ -327,7 +328,7 @@ export class QuotationsService {
       },
       order: { quotationDate: 'DESC', createdAt: 'DESC' },
       relations: {
-        customer: true,
+        customer: { cityRef: true, stateRef: true },
         template: true,
       },
     });
@@ -340,7 +341,7 @@ export class QuotationsService {
       where: { customerId },
       order: { quotationDate: 'DESC', createdAt: 'DESC' },
       relations: {
-        customer: true,
+        customer: { cityRef: true, stateRef: true },
         template: true,
       },
     });
@@ -555,8 +556,14 @@ export class QuotationsService {
       customer: {
         name: snapshot?.customerName || quotation.customer?.name,
         address: snapshot?.customerAddress ?? quotation.customer?.address,
-        city: snapshot?.customerCity ?? quotation.customer?.city,
-        state: snapshot?.customerState ?? quotation.customer?.state,
+        city:
+          snapshot?.customerCity ??
+          quotation.customer?.cityRef?.name ??
+          null,
+        state:
+          snapshot?.customerState ??
+          quotation.customer?.stateRef?.name ??
+          null,
         pincode: snapshot?.customerPincode ?? quotation.customer?.pincode,
         phone: snapshot?.customerPhone ?? quotation.customer?.primaryPhone,
         email: snapshot?.customerEmail ?? quotation.customer?.primaryEmail,

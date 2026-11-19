@@ -17,10 +17,10 @@ import { User } from './user.entity';
 @Entity('sender_locations')
 @Index(['createdById', 'cityId'], { unique: true })
 export class SenderLocation {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   cityId: string;
 
   @ManyToOne(() => City, { onDelete: 'RESTRICT' })
@@ -31,7 +31,7 @@ export class SenderLocation {
   @Column({ type: 'varchar' })
   label: string;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   stateId: string | null;
 
   @ManyToOne(() => State, { nullable: true, onDelete: 'SET NULL' })
@@ -48,7 +48,7 @@ export class SenderLocation {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   createdById: string;
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })

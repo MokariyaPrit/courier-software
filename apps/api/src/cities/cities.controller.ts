@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@courier/shared';
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsNumberString } from 'class-validator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -24,7 +24,7 @@ class CityQueryDto extends PaginationDto {
   search?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsNumberString()
   stateId?: string;
 }
 

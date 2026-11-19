@@ -19,7 +19,7 @@ import { User } from './user.entity';
 
 @Entity('quotation_rate_templates')
 export class QuotationRateTemplate {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
   @Column({ type: 'varchar' })
@@ -43,7 +43,7 @@ export class QuotationRateTemplate {
   @Column({ type: 'jsonb', default: [] })
   sections: RateSectionDef[];
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'bigint' })
   createdById: string;
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })

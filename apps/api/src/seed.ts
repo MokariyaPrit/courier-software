@@ -5,12 +5,9 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
+import { ALL_ENTITIES } from './database/entities';
 import { City } from './entities/city.entity';
-import { Consignment } from './entities/consignment.entity';
-import { Customer } from './entities/customer.entity';
-import { Invoice } from './entities/invoice.entity';
 import { State } from './entities/state.entity';
-import { TrackingEvent } from './entities/tracking-event.entity';
 import { User } from './entities/user.entity';
 import { UserInfo } from './entities/user-info.entity';
 
@@ -115,23 +112,19 @@ async function seedLocations(ds: DataSource) {
   for (const [stateName, cities] of byState) {
     const stateId = stateIdByName.get(stateName.toLowerCase());
     if (!stateId) continue;
-    // Include state name itself as a city entry under that state
     const cityNames = new Set(cities);
     cityNames.add(stateName);
     const existing = await citiesRepo.find({ where: { stateId } });
     const existingNames = new Set(existing.map((c) => c.name.toLowerCase()));
     const toInsert = [...cityNames]
       .filter((name) => !existingNames.has(name.toLowerCase()))
-      .map((name) =>
-        citiesRepo.create({ name, stateId, isActive: true }),
-      );
+      .map((name) => citiesRepo.create({ name, stateId, isActive: true }));
     if (toInsert.length) {
       await citiesRepo.save(toInsert, { chunk: 200 });
       cityInserted += toInsert.length;
     }
   }
 
-  // Also ensure every DB state has a same-named city (covers states already present)
   const allStates = await statesRepo.find();
   let stateNamedCities = 0;
   for (const state of allStates) {
@@ -163,17 +156,8 @@ async function run() {
     username: process.env.DATABASE_USER || 'courier',
     password: process.env.DATABASE_PASSWORD || 'courier',
     database: process.env.DATABASE_NAME || 'courier_erp',
-    entities: [
-      User,
-      UserInfo,
-      Customer,
-      State,
-      City,
-      Consignment,
-      TrackingEvent,
-      Invoice,
-    ],
-    synchronize: true,
+    entities: ALL_ENTITIES,
+    synchronize: false,
   });
 
   await ds.initialize();

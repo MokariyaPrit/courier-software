@@ -17,7 +17,6 @@ import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 
 const CUSTOMER_SORT = [
   'name',
-  'city',
   'primaryPhone',
   'primaryEmail',
   'createdAt',
@@ -29,18 +28,34 @@ export class CustomersService {
     @InjectRepository(Customer) private readonly repo: Repository<Customer>,
   ) {}
 
-  private sanitize(customer: Customer) {
-    if (customer.createdBy) {
-      delete (customer.createdBy as { passwordHash?: string }).passwordHash;
-    }
-    return customer;
-  }
-
   private emptyToNull(value?: string | null) {
     if (value === undefined) return undefined;
     if (value === null) return null;
     const trimmed = value.trim();
     return trimmed ? trimmed : null;
+  }
+
+  /** Expose city/state names for API clients (resolved from FKs). */
+  private sanitize(customer: Customer) {
+    if (customer.createdBy) {
+      delete (customer.createdBy as { passwordHash?: string }).passwordHash;
+    }
+    const { cityRef, stateRef, ...rest } = customer;
+    return {
+      ...rest,
+      city: cityRef?.name ?? null,
+      state: stateRef?.name ?? null,
+    };
+  }
+
+  private locationRelations() {
+    return {
+      cityRef: true,
+      stateRef: true,
+      createdBy: {
+        userInfo: true,
+      },
+    } as const;
   }
 
   async create(dto: CreateCustomerDto, user: AuthUser) {
@@ -53,8 +68,6 @@ export class CustomersService {
         secondaryEmail:
           this.emptyToNull(dto.secondaryEmail)?.toLowerCase() ?? null,
         address: this.emptyToNull(dto.address) ?? null,
-        city: this.emptyToNull(dto.city) ?? null,
-        state: this.emptyToNull(dto.state) ?? null,
         cityId: dto.cityId ?? null,
         stateId: dto.stateId ?? null,
         pincode: this.emptyToNull(dto.pincode) ?? null,
@@ -78,6 +91,8 @@ export class CustomersService {
 
     const qb = this.repo
       .createQueryBuilder('customer')
+      .leftJoinAndSelect('customer.cityRef', 'cityRef')
+      .leftJoinAndSelect('customer.stateRef', 'stateRef')
       .leftJoinAndSelect('customer.createdBy', 'createdBy')
       .leftJoinAndSelect('createdBy.userInfo', 'createdByInfo')
       .where('customer.deletedAt IS NULL')
@@ -85,7 +100,6 @@ export class CustomersService {
       .skip((query.page - 1) * query.pageSize)
       .take(query.pageSize);
 
-    // Branch managers only see their own customers; Admin sees all
     if (user.role !== Role.ADMIN) {
       qb.andWhere('customer.createdById = :uid', { uid: user.id });
     }
@@ -96,7 +110,9 @@ export class CustomersService {
           OR customer.primaryPhone ILIKE :q
           OR customer.secondaryPhone ILIKE :q
           OR customer.primaryEmail ILIKE :q
-          OR customer.secondaryEmail ILIKE :q)`,
+          OR customer.secondaryEmail ILIKE :q
+          OR cityRef.name ILIKE :q
+          OR stateRef.name ILIKE :q)`,
         { q: `%${query.search}%` },
       );
     }
@@ -111,11 +127,7 @@ export class CustomersService {
   async findOne(id: string, user: AuthUser) {
     const customer = await this.repo.findOne({
       where: { id },
-      relations: {
-        createdBy: {
-          userInfo: true,
-        },
-      },
+      relations: this.locationRelations(),
     });
     if (!customer) {
       throw new NotFoundException('Customer not found');
@@ -127,7 +139,9 @@ export class CustomersService {
   }
 
   async update(id: string, dto: UpdateCustomerDto, user: AuthUser) {
-    const customer = await this.findOne(id, user);
+    await this.findOne(id, user);
+    const customer = await this.repo.findOne({ where: { id } });
+    if (!customer) throw new NotFoundException('Customer not found');
 
     if (dto.name !== undefined) customer.name = dto.name.trim();
     if (dto.primaryPhone !== undefined) {
@@ -146,10 +160,6 @@ export class CustomersService {
     }
     if (dto.address !== undefined) {
       customer.address = this.emptyToNull(dto.address) ?? null;
-    }
-    if (dto.city !== undefined) customer.city = this.emptyToNull(dto.city) ?? null;
-    if (dto.state !== undefined) {
-      customer.state = this.emptyToNull(dto.state) ?? null;
     }
     if (dto.cityId !== undefined) customer.cityId = dto.cityId;
     if (dto.stateId !== undefined) customer.stateId = dto.stateId;

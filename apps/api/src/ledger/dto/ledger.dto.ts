@@ -12,9 +12,9 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Min,
   ValidateNested,
+  IsNumberString,
 } from 'class-validator';
 
 export class LedgerCustomerQueryDto {
@@ -42,7 +42,7 @@ export class LedgerDetailQueryDto {
 }
 
 export class PaymentAllocationInputDto {
-  @IsUUID()
+  @IsNumberString()
   invoiceId: string;
 
   @Type(() => Number)
@@ -52,7 +52,7 @@ export class PaymentAllocationInputDto {
 }
 
 export class CreatePaymentDto {
-  @IsUUID()
+  @IsNumberString()
   customerId: string;
 
   @IsDateString()
