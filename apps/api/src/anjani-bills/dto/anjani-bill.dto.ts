@@ -162,4 +162,19 @@ export class UpsertAnjaniBillDto {
   @IsOptional()
   @IsString()
   editedPdfFileName?: string | null;
+
+  /** Temp or final R2 object key for source PDF. */
+  @IsOptional()
+  @IsString()
+  sourcePdfKey?: string | null;
+
+  /** Temp or final R2 object key for header image. */
+  @IsOptional()
+  @IsString()
+  headerImageKey?: string | null;
+
+  /** Temp or final R2 object key for edited PDF. */
+  @IsOptional()
+  @IsString()
+  editedPdfKey?: string | null;
 }

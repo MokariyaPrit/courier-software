@@ -77,6 +77,22 @@ pnpm dev
 
 Then open: **http://localhost:3000**
 
+### Cloudflare R2 (file uploads)
+
+Anjani bills and profile logos upload **directly to R2** via presigned URLs (`POST /api/v1/storage/generate-presigned-urls`). Configure `R2_*` in `apps/api/.env` (see `apps/api/.env.example`). Set `R2_PUBLIC_BASE_URL=https://cdn.couriersync.in` so read URLs hide the bucket name. Set R2 bucket CORS for `PUT`/`GET`/`HEAD` from the web origin.
+
+**Deletes** never hard-remove live objects immediately. They move under one prefix:
+
+- `logos/...` → `archive/logos/...`
+- `anjani/...` → `archive/anjani/...`
+
+**Recommended bucket lifecycle rule** (Cloudflare → R2 → `courier-erp` → Settings → **Object Lifecycle Rules**):
+
+- Prefix: `archive/`
+- Action: Delete objects after **30 days** (or your preferred retention)
+
+That keeps active storage clean while all deleted Anjani/logo files stay recoverable under `archive/` until the rule expires them.
+
 ### Useful scripts
 
 | Command | What it does |

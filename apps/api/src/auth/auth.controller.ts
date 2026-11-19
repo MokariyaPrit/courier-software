@@ -7,20 +7,17 @@ import {
   Post,
   Req,
   Res,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
-import { memoryStorage } from 'multer';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { MailService } from '../mail/mail.service';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UploadLogoDto } from './dto/upload-logo.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
@@ -71,17 +68,8 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('profile/logo')
-  @UseInterceptors(
-    FileInterceptor('logo', {
-      storage: memoryStorage(),
-      limits: { fileSize: 2 * 1024 * 1024 },
-    }),
-  )
-  uploadLogo(
-    @CurrentUser() user: AuthUser,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    return this.authService.uploadLogo(user.id, file);
+  uploadLogo(@CurrentUser() user: AuthUser, @Body() dto: UploadLogoDto) {
+    return this.authService.uploadLogo(user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)

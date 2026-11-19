@@ -6,6 +6,7 @@ import { api, unwrap } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { dataUrlToBlob, type AnjaniBillRecord } from '@/lib/anjani-bill';
 import { mediaUrl } from '@/lib/media-url';
+import { uploadFile } from '@/lib/r2-upload';
 import { apiErrorMessage } from '@/lib/toast';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -124,42 +125,75 @@ export function AnjaniBillEditor({ billId }: { billId?: string }) {
         throw new Error('Edited PDF was not created');
       }
 
-      const body = new FormData();
-      body.append(
-        'payload',
-        JSON.stringify({
-          ...saved.bill,
-          sourcePdfFileName: saved.pdfName || null,
-          sourcePdfBytes: saved.pdfBuffer?.byteLength ?? null,
-          editedPdfFileName: saved.editedPdfName || null,
-        }),
+      const uploads: File[] = [];
+      const editedPdfFile = new File(
+        [saved.editedPdfBuffer],
+        saved.editedPdfName || 'edited-invoice.pdf',
+        { type: 'application/pdf' },
       );
+      uploads.push(editedPdfFile);
+
+      let sourcePdfFile: File | null = null;
+      if (saved.pdfBuffer?.byteLength) {
+        sourcePdfFile = new File(
+          [saved.pdfBuffer],
+          saved.pdfName || 'invoice.pdf',
+          { type: 'application/pdf' },
+        );
+        uploads.push(sourcePdfFile);
+      }
+
+      let headerFile: File | null = null;
       if (saved.headerDataUrl) {
         const blob = dataUrlToBlob(saved.headerDataUrl);
-        if (blob) body.append('headerImage', blob, 'header.jpg');
+        if (blob) {
+          headerFile = new File([blob], 'header.jpg', {
+            type: blob.type || 'image/jpeg',
+          });
+          uploads.push(headerFile);
+        }
       }
-      if (saved.pdfBuffer) {
-        body.append(
-          'sourcePdf',
-          new Blob([saved.pdfBuffer], { type: 'application/pdf' }),
-          saved.pdfName || 'invoice.pdf',
-        );
-      }
-      body.append(
-        'editedPdf',
-        new Blob([saved.editedPdfBuffer], { type: 'application/pdf' }),
-        saved.editedPdfName || 'edited-invoice.pdf',
+
+      const uploaded = await Promise.all(
+        uploads.map((file) =>
+          uploadFile(file, {
+            allowedTypes: [
+              'application/pdf',
+              'image/jpeg',
+              'image/jpg',
+              'image/png',
+              'image/webp',
+            ],
+          }),
+        ),
       );
 
+      let uploadIndex = 0;
+      const editedPdfKey = uploaded[uploadIndex++]?.key || null;
+      const sourcePdfKey = sourcePdfFile
+        ? uploaded[uploadIndex++]?.key || null
+        : null;
+      const headerImageKey = headerFile
+        ? uploaded[uploadIndex++]?.key || null
+        : null;
+
+      const payload = {
+        ...saved.bill,
+        sourcePdfFileName: saved.pdfName || null,
+        sourcePdfBytes: saved.pdfBuffer?.byteLength ?? null,
+        editedPdfFileName: saved.editedPdfName || null,
+        editedPdfKey,
+        sourcePdfKey,
+        headerImageKey,
+      };
+
       if (isNew) {
-        const res = await api.post('/anjani-bills', body, {
-          headers: { 'Content-Type': false as unknown as string },
+        const res = await api.post('/anjani-bills', payload, {
           toastSummary: 'Bill saved',
         });
         return unwrap<AnjaniBillRecord>(res.data);
       }
-      const res = await api.patch(`/anjani-bills/${billId}`, body, {
-        headers: { 'Content-Type': false as unknown as string },
+      const res = await api.patch(`/anjani-bills/${billId}`, payload, {
         toastSummary: 'Bill updated',
       });
       return unwrap<AnjaniBillRecord>(res.data);

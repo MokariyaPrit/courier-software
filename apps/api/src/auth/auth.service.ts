@@ -10,17 +10,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import type { Response } from 'express';
 import { Repository } from 'typeorm';
-import {
-  removeUserLogoFiles,
-  writeUserLogo,
-} from '../common/uploads';
+import { removeUserLogoFiles } from '../common/uploads';
 import { isAccountExpired } from '../common/utils/account-expiry';
 import { User } from '../entities/user.entity';
 import { UserInfo } from '../entities/user-info.entity';
 import { sanitizeUserInfo } from '../mail/sanitize-user-info';
+import { R2StorageService } from '../storage/r2.service';
+import type { StoredFileDto } from '../storage/stored-file';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UploadLogoDto } from './dto/upload-logo.dto';
 import { JwtPayload } from './jwt.strategy';
 
 @Injectable()
@@ -32,6 +32,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
+    private readonly storage: R2StorageService,
   ) {}
 
   private cookieOptions() {
@@ -85,14 +86,35 @@ export class AuthService {
     res.clearCookie('refresh_token', base);
   }
 
-  sanitize(user: User) {
+  private async resolveLogo(
+    info: UserInfo | null | undefined,
+  ): Promise<{ logoUrl: string | null; logo: StoredFileDto | null }> {
+    const raw = info?.logoUrl?.trim() || null;
+    if (!raw) return { logoUrl: null, logo: null };
+
+    if (this.storage.isR2ObjectKey(raw)) {
+      const logo = await this.storage.toStoredFile(raw, 'logo');
+      return { logoUrl: logo?.signedUrl || null, logo };
+    }
+
+    // Legacy local /uploads path or absolute URL
+    return { logoUrl: raw, logo: null };
+  }
+
+  async sanitize(user: User) {
+    const userInfo = sanitizeUserInfo(user.userInfo);
+    const { logoUrl, logo } = await this.resolveLogo(user.userInfo);
+    if (userInfo) {
+      userInfo.logoUrl = logoUrl;
+    }
     return {
       id: user.id,
       email: user.email,
       role: user.role,
       isActive: user.isActive,
       fullName: user.userInfo?.fullName ?? user.email,
-      userInfo: sanitizeUserInfo(user.userInfo),
+      userInfo,
+      logo,
     };
   }
 
@@ -121,7 +143,7 @@ export class AuthService {
       );
     }
     this.setAuthCookies(res, user);
-    return this.sanitize(user);
+    return await this.sanitize(user);
   }
 
   async refresh(refreshToken: string | undefined, res: Response) {
@@ -145,7 +167,7 @@ export class AuthService {
         throw new UnauthorizedException('Account expired');
       }
       this.setAuthCookies(res, user);
-      return this.sanitize(user);
+      return await this.sanitize(user);
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -161,7 +183,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException();
     }
-    return this.sanitize(user);
+    return await this.sanitize(user);
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
@@ -200,17 +222,53 @@ export class AuthService {
     return this.me(userId);
   }
 
-  async uploadLogo(userId: string, file?: Express.Multer.File) {
-    if (!file?.buffer?.length) {
-      throw new BadRequestException('Logo file is required');
-    }
+  async uploadLogo(userId: string, dto: UploadLogoDto) {
+    this.storage.requireR2();
     const info = await this.userInfoRepo.findOne({ where: { userId } });
     if (!info) {
       throw new BadRequestException('Profile not found');
     }
-    const logoUrl = writeUserLogo(userId, file.buffer, file.mimetype);
-    info.logoUrl = logoUrl;
+
+    const tempKey = (dto.tempKey || '').replace(/^\/+/, '');
+    if (!this.storage.isOwnedTempKey(tempKey, userId)) {
+      throw new BadRequestException('Invalid temporary upload key');
+    }
+
+    const meta = await this.storage.headObject(tempKey);
+    if (meta.contentLength > 2 * 1024 * 1024) {
+      throw new BadRequestException('Logo must be 2MB or smaller');
+    }
+    if (
+      meta.contentType &&
+      !meta.contentType.toLowerCase().startsWith('image/')
+    ) {
+      throw new BadRequestException('Logo must be an image');
+    }
+
+    const finalKey = this.storage.logoFinalKey(
+      userId,
+      meta.contentType || 'image/jpeg',
+    );
+    const key = await this.storage.promoteTempToFinal(
+      tempKey,
+      finalKey,
+      userId,
+      {
+        maxBytes: 2 * 1024 * 1024,
+        allowedMimePrefix: ['image/'],
+      },
+    );
+
+    const previous = info.logoUrl;
+    info.logoUrl = key;
     await this.userInfoRepo.save(info);
+
+    if (previous && this.storage.isR2ObjectKey(previous) && previous !== key) {
+      await this.storage.archiveObject(previous);
+    } else if (previous?.startsWith('/uploads/')) {
+      removeUserLogoFiles(userId);
+    }
+
     return this.me(userId);
   }
 
@@ -219,7 +277,12 @@ export class AuthService {
     if (!info) {
       throw new BadRequestException('Profile not found');
     }
-    removeUserLogoFiles(userId);
+    const previous = info.logoUrl;
+    if (previous && this.storage.isR2ObjectKey(previous)) {
+      await this.storage.archiveObject(previous);
+    } else {
+      removeUserLogoFiles(userId);
+    }
     info.logoUrl = null;
     await this.userInfoRepo.save(info);
     return this.me(userId);

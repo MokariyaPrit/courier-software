@@ -19,6 +19,7 @@ import {
 } from '@/lib/form-validation';
 import { GMAIL_SMTP, normalizeGmailAppPassword } from '@/lib/gmail-smtp';
 import { mediaUrl } from '@/lib/media-url';
+import { uploadFile } from '@/lib/r2-upload';
 import {
   TERM_PLACEHOLDER_HELP,
   editorTextToTerms,
@@ -197,13 +198,18 @@ export default function ProfilePage() {
     if (!file) return;
     setLogoBusy(true);
     try {
-      const body = new FormData();
-      body.append('logo', file);
-      await api.post('/auth/profile/logo', body, {
-        headers: { 'Content-Type': false as unknown as string },
-        toastSummary: 'Logo saved',
-        toastDetail: 'Company logo updated for booking receipts.',
+      const uploaded = await uploadFile(file, {
+        allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
+        maxFileSizeBytes: 2 * 1024 * 1024,
       });
+      await api.post(
+        '/auth/profile/logo',
+        { tempKey: uploaded.key, fileLabel: uploaded.originalName },
+        {
+          toastSummary: 'Logo saved',
+          toastDetail: 'Company logo updated for booking receipts.',
+        },
+      );
       await refreshMe();
     } catch (err: unknown) {
       toastErrorFrom(err);

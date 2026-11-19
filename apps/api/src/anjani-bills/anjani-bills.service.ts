@@ -15,6 +15,7 @@ import {
   AnjaniBill,
   AnjaniBillRow,
 } from '../entities/anjani-bill.entity';
+import { extensionFromMime } from '../storage/file-validation';
 import { R2StorageService } from '../storage/r2.service';
 import {
   AnjaniBillQueryDto,
@@ -91,38 +92,37 @@ export class AnjaniBillsService {
     }
   }
 
-  private async withFreshUrls(bill: AnjaniBill) {
-    const [headerImageUrl, sourcePdfUrl, editedPdfUrl] = await Promise.all([
-      bill.headerImageKey
-        ? this.storage.getSignedDownloadUrl(bill.headerImageKey)
-        : Promise.resolve(bill.headerImageUrl || ''),
-      bill.sourcePdfKey
-        ? this.storage.getSignedDownloadUrl(bill.sourcePdfKey)
-        : Promise.resolve(bill.sourcePdfUrl || ''),
-      bill.editedPdfKey
-        ? this.storage.getSignedDownloadUrl(bill.editedPdfKey)
-        : Promise.resolve(bill.editedPdfUrl || ''),
-    ]);
-    return {
-      ...bill,
-      headerImageUrl: headerImageUrl || null,
-      sourcePdfUrl: sourcePdfUrl || null,
-      editedPdfUrl: editedPdfUrl || null,
-    };
+  private ownedPrefixes(userId: string, billId: string) {
+    return [`anjani/${userId}/${billId}/`, `archive/anjani/${userId}/${billId}/`];
   }
 
-  private archiveKey(key: string) {
-    const normalized = key.replace(/^\/+/, '');
-    if (normalized.startsWith('archive/')) return normalized;
-    return `archive/${normalized}`;
+  private async withFreshUrls(bill: AnjaniBill) {
+    const [headerImage, sourcePdf, editedPdf] = await Promise.all([
+      this.storage.toStoredFile(bill.headerImageKey, 'header'),
+      this.storage.toStoredFile(bill.sourcePdfKey, bill.sourcePdfFileName),
+      this.storage.toStoredFile(bill.editedPdfKey, bill.editedPdfFileName),
+    ]);
+
+    return {
+      ...bill,
+      headerImageUrl: headerImage?.signedUrl || null,
+      sourcePdfUrl: sourcePdf?.signedUrl || null,
+      editedPdfUrl: editedPdf?.signedUrl || null,
+      headerImage,
+      sourcePdf,
+      editedPdf,
+    };
   }
 
   private async moveKeyToArchive(key: string | null | undefined) {
     if (!key) return null;
-    return this.storage.moveObject(key, this.archiveKey(key));
+    return this.storage.archiveObject(key);
   }
 
-  /** Drop archived files whose bill was deleted more than 30 days ago. */
+  /**
+   * Clear DB file refs on soft-deleted bills older than 30 days.
+   * R2 objects under `archive/` are deleted by the bucket lifecycle rule.
+   */
   async purgeExpiredArchives() {
     const cutoff = new Date(Date.now() - ARCHIVE_MS);
     const old = await this.repo.find({
@@ -134,9 +134,6 @@ export class AnjaniBillsService {
       if (!bill.sourcePdfKey && !bill.headerImageKey && !bill.editedPdfKey) {
         continue;
       }
-      await this.storage.deleteObject(bill.sourcePdfKey);
-      await this.storage.deleteObject(bill.headerImageKey);
-      await this.storage.deleteObject(bill.editedPdfKey);
       await this.repo.update(bill.id, {
         sourcePdfKey: null,
         sourcePdfUrl: null,
@@ -198,97 +195,101 @@ export class AnjaniBillsService {
     return this.withFreshUrls(bill);
   }
 
-  async create(
-    dto: UpsertAnjaniBillDto,
-    user: AuthUser,
-    files?: {
-      sourcePdf?: Express.Multer.File;
-      headerImage?: Express.Multer.File;
-      editedPdf?: Express.Multer.File;
-    },
-  ) {
+  async create(dto: UpsertAnjaniBillDto, user: AuthUser) {
+    this.storage.requireR2();
     const bill = this.repo.create({
       createdById: user.id,
       rows: [],
     });
     this.applyDto(bill, dto);
     const saved = await this.repo.save(bill);
-    return this.attachFiles(saved.id, user, files);
+    return this.attachFileKeys(saved.id, user, dto);
   }
 
-  async update(
-    id: string,
-    dto: UpsertAnjaniBillDto,
-    user: AuthUser,
-    files?: {
-      sourcePdf?: Express.Multer.File;
-      headerImage?: Express.Multer.File;
-      editedPdf?: Express.Multer.File;
-    },
-  ) {
+  async update(id: string, dto: UpsertAnjaniBillDto, user: AuthUser) {
+    this.storage.requireR2();
     const bill = await this.repo.findOne({ where: { id } });
     if (!bill) throw new NotFoundException('Bill not found');
     this.assertOwner(bill, user);
     this.applyDto(bill, dto);
     await this.repo.save(bill);
-    return this.attachFiles(id, user, files);
+    return this.attachFileKeys(id, user, dto);
   }
 
-  private async attachFiles(
+  private async attachFileKeys(
     id: string,
     user: AuthUser,
-    files?: {
-      sourcePdf?: Express.Multer.File;
-      headerImage?: Express.Multer.File;
-      editedPdf?: Express.Multer.File;
-    },
+    dto: UpsertAnjaniBillDto,
   ) {
     const bill = await this.repo.findOne({ where: { id } });
     if (!bill) throw new NotFoundException('Bill not found');
     this.assertOwner(bill, user);
 
-    if (files?.sourcePdf?.buffer?.length) {
-      const key = `anjani/${user.id}/${id}/source.pdf`;
-      const stored = await this.storage.putObject(
-        key,
-        files.sourcePdf.buffer,
-        files.sourcePdf.mimetype || 'application/pdf',
+    const prefixes = this.ownedPrefixes(user.id, id);
+
+    if (dto.sourcePdfKey) {
+      const previous = bill.sourcePdfKey;
+      const finalKey = `anjani/${user.id}/${id}/source.pdf`;
+      const key = await this.storage.resolveUploadKey(
+        dto.sourcePdfKey,
+        user.id,
+        finalKey,
+        prefixes,
+        { allowedMimePrefix: ['application/pdf'] },
       );
-      bill.sourcePdfKey = stored.key;
-      bill.sourcePdfUrl = stored.url || null;
-      bill.sourcePdfFileName =
-        files.sourcePdf.originalname || bill.sourcePdfFileName;
-      bill.sourcePdfBytes = files.sourcePdf.size;
+      if (key) {
+        bill.sourcePdfKey = key;
+        bill.sourcePdfUrl = null;
+        if (previous && previous !== key && !previous.startsWith('archive/')) {
+          await this.storage.archiveObject(previous);
+        }
+      }
     }
 
-    if (files?.editedPdf?.buffer?.length) {
-      const key = `anjani/${user.id}/${id}/edited.pdf`;
-      const stored = await this.storage.putObject(
-        key,
-        files.editedPdf.buffer,
-        files.editedPdf.mimetype || 'application/pdf',
+    if (dto.editedPdfKey) {
+      const previous = bill.editedPdfKey;
+      const finalKey = `anjani/${user.id}/${id}/edited.pdf`;
+      const key = await this.storage.resolveUploadKey(
+        dto.editedPdfKey,
+        user.id,
+        finalKey,
+        prefixes,
+        { allowedMimePrefix: ['application/pdf'] },
       );
-      bill.editedPdfKey = stored.key;
-      bill.editedPdfUrl = stored.url || null;
-      bill.editedPdfFileName =
-        files.editedPdf.originalname || bill.editedPdfFileName;
+      if (key) {
+        bill.editedPdfKey = key;
+        bill.editedPdfUrl = null;
+        if (previous && previous !== key && !previous.startsWith('archive/')) {
+          await this.storage.archiveObject(previous);
+        }
+      }
     }
 
-    if (files?.headerImage?.buffer?.length) {
-      const mime = files.headerImage.mimetype || 'image/jpeg';
-      const ext = mime.includes('png')
-        ? 'png'
-        : mime.includes('webp')
-          ? 'webp'
-          : 'jpg';
-      const key = `anjani/${user.id}/${id}/header.${ext}`;
-      const stored = await this.storage.putObject(
-        key,
-        files.headerImage.buffer,
-        mime,
+    if (dto.headerImageKey) {
+      const previous = bill.headerImageKey;
+      let ext = 'jpg';
+      if (this.storage.isOwnedTempKey(dto.headerImageKey, user.id)) {
+        const meta = await this.storage.headObject(dto.headerImageKey);
+        ext = extensionFromMime(meta.contentType || 'image/jpeg');
+      } else {
+        const match = dto.headerImageKey.match(/\.([a-z0-9]+)$/i);
+        if (match) ext = match[1].toLowerCase();
+      }
+      const finalKey = `anjani/${user.id}/${id}/header.${ext}`;
+      const key = await this.storage.resolveUploadKey(
+        dto.headerImageKey,
+        user.id,
+        finalKey,
+        prefixes,
+        { allowedMimePrefix: ['image/'] },
       );
-      bill.headerImageKey = stored.key;
-      bill.headerImageUrl = stored.url || null;
+      if (key) {
+        bill.headerImageKey = key;
+        bill.headerImageUrl = null;
+        if (previous && previous !== key && !previous.startsWith('archive/')) {
+          await this.storage.archiveObject(previous);
+        }
+      }
     }
 
     await this.repo.save(bill);

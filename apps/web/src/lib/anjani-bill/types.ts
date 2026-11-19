@@ -46,6 +46,13 @@ export type AnjaniParsedInvoice = Omit<
   rows: Array<Omit<AnjaniLineRow, 'id'>>;
 };
 
+export type AnjaniStoredFile = {
+  key: string;
+  fileLabel: string | null;
+  signedUrl: string;
+  downloadUrl: string;
+};
+
 export type AnjaniBillRecord = Omit<
   AnjaniBillForm,
   'headerImageDataUrl' | 'sourcePdfFile'
@@ -60,6 +67,9 @@ export type AnjaniBillRecord = Omit<
   editedPdfUrl?: string | null;
   editedPdfKey?: string | null;
   editedPdfFileName?: string | null;
+  headerImage?: AnjaniStoredFile | null;
+  sourcePdf?: AnjaniStoredFile | null;
+  editedPdf?: AnjaniStoredFile | null;
   layoutJson?: {
     pages: unknown[];
   } | null;
