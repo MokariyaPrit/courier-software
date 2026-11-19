@@ -13,10 +13,13 @@ import { useEffect, useRef, useState } from 'react';
 type EditorSave = {
   type: 'anjani-save';
   requestId: string;
-  bill: Record<string, string | null> & { rows?: unknown[] };
+  bill?: Record<string, string | null> & { rows?: unknown[] };
   headerDataUrl?: string;
   pdfName?: string;
   pdfBuffer?: ArrayBuffer;
+  editedPdfName?: string;
+  editedPdfBuffer?: ArrayBuffer;
+  error?: string;
 };
 
 export function AnjaniBillEditor({ billId }: { billId?: string }) {
@@ -95,7 +98,7 @@ export function AnjaniBillEditor({ billId }: { billId?: string }) {
         const timer = window.setTimeout(() => {
           window.removeEventListener('message', onMessage);
           reject(new Error('Editor did not respond'));
-        }, 8000);
+        }, 120000);
         function onMessage(event: MessageEvent) {
           const data = event.data as EditorSave;
           if (event.origin !== window.location.origin) return;
@@ -111,9 +114,14 @@ export function AnjaniBillEditor({ billId }: { billId?: string }) {
         );
       });
 
-      const rows = saved.bill.rows || [];
+      if (saved.error) throw new Error(saved.error);
+
+      const rows = saved.bill?.rows || [];
       if (!Array.isArray(rows) || rows.length === 0) {
         throw new Error('Upload an invoice before saving');
+      }
+      if (!saved.editedPdfBuffer?.byteLength) {
+        throw new Error('Edited PDF was not created');
       }
 
       const body = new FormData();
@@ -123,6 +131,7 @@ export function AnjaniBillEditor({ billId }: { billId?: string }) {
           ...saved.bill,
           sourcePdfFileName: saved.pdfName || null,
           sourcePdfBytes: saved.pdfBuffer?.byteLength ?? null,
+          editedPdfFileName: saved.editedPdfName || null,
         }),
       );
       if (saved.headerDataUrl) {
@@ -136,6 +145,11 @@ export function AnjaniBillEditor({ billId }: { billId?: string }) {
           saved.pdfName || 'invoice.pdf',
         );
       }
+      body.append(
+        'editedPdf',
+        new Blob([saved.editedPdfBuffer], { type: 'application/pdf' }),
+        saved.editedPdfName || 'edited-invoice.pdf',
+      );
 
       if (isNew) {
         const res = await api.post('/anjani-bills', body, {

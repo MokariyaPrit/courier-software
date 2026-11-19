@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Role } from '@courier/shared';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import {
   paginateMeta,
@@ -22,6 +22,7 @@ import {
 } from './dto/anjani-bill.dto';
 
 const SORT = ['createdAt', 'billNo', 'billDate', 'customerName', 'bill'] as const;
+const ARCHIVE_MS = 30 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AnjaniBillsService {
@@ -78,6 +79,7 @@ export class AnjaniBillsService {
       'layoutJson',
       'sourcePdfFileName',
       'sourcePdfBytes',
+      'editedPdfFileName',
     ];
     for (const key of fields) {
       if (dto[key] !== undefined) {
@@ -90,22 +92,64 @@ export class AnjaniBillsService {
   }
 
   private async withFreshUrls(bill: AnjaniBill) {
-    const [headerImageUrl, sourcePdfUrl] = await Promise.all([
+    const [headerImageUrl, sourcePdfUrl, editedPdfUrl] = await Promise.all([
       bill.headerImageKey
         ? this.storage.getSignedDownloadUrl(bill.headerImageKey)
         : Promise.resolve(bill.headerImageUrl || ''),
       bill.sourcePdfKey
         ? this.storage.getSignedDownloadUrl(bill.sourcePdfKey)
         : Promise.resolve(bill.sourcePdfUrl || ''),
+      bill.editedPdfKey
+        ? this.storage.getSignedDownloadUrl(bill.editedPdfKey)
+        : Promise.resolve(bill.editedPdfUrl || ''),
     ]);
     return {
       ...bill,
       headerImageUrl: headerImageUrl || null,
       sourcePdfUrl: sourcePdfUrl || null,
+      editedPdfUrl: editedPdfUrl || null,
     };
   }
 
+  private archiveKey(key: string) {
+    const normalized = key.replace(/^\/+/, '');
+    if (normalized.startsWith('archive/')) return normalized;
+    return `archive/${normalized}`;
+  }
+
+  private async moveKeyToArchive(key: string | null | undefined) {
+    if (!key) return null;
+    return this.storage.moveObject(key, this.archiveKey(key));
+  }
+
+  /** Drop archived files whose bill was deleted more than 30 days ago. */
+  async purgeExpiredArchives() {
+    const cutoff = new Date(Date.now() - ARCHIVE_MS);
+    const old = await this.repo.find({
+      withDeleted: true,
+      where: { deletedAt: LessThan(cutoff) },
+      take: 50,
+    });
+    for (const bill of old) {
+      if (!bill.sourcePdfKey && !bill.headerImageKey && !bill.editedPdfKey) {
+        continue;
+      }
+      await this.storage.deleteObject(bill.sourcePdfKey);
+      await this.storage.deleteObject(bill.headerImageKey);
+      await this.storage.deleteObject(bill.editedPdfKey);
+      await this.repo.update(bill.id, {
+        sourcePdfKey: null,
+        sourcePdfUrl: null,
+        headerImageKey: null,
+        headerImageUrl: null,
+        editedPdfKey: null,
+        editedPdfUrl: null,
+      });
+    }
+  }
+
   async findAll(query: AnjaniBillQueryDto, user: AuthUser) {
+    await this.purgeExpiredArchives();
     const { sortBy, sortOrder } = resolveSortPair(query, SORT, {
       sortBy: 'createdAt',
       sortOrder: 'DESC',
@@ -160,6 +204,7 @@ export class AnjaniBillsService {
     files?: {
       sourcePdf?: Express.Multer.File;
       headerImage?: Express.Multer.File;
+      editedPdf?: Express.Multer.File;
     },
   ) {
     const bill = this.repo.create({
@@ -178,6 +223,7 @@ export class AnjaniBillsService {
     files?: {
       sourcePdf?: Express.Multer.File;
       headerImage?: Express.Multer.File;
+      editedPdf?: Express.Multer.File;
     },
   ) {
     const bill = await this.repo.findOne({ where: { id } });
@@ -194,6 +240,7 @@ export class AnjaniBillsService {
     files?: {
       sourcePdf?: Express.Multer.File;
       headerImage?: Express.Multer.File;
+      editedPdf?: Express.Multer.File;
     },
   ) {
     const bill = await this.repo.findOne({ where: { id } });
@@ -212,6 +259,19 @@ export class AnjaniBillsService {
       bill.sourcePdfFileName =
         files.sourcePdf.originalname || bill.sourcePdfFileName;
       bill.sourcePdfBytes = files.sourcePdf.size;
+    }
+
+    if (files?.editedPdf?.buffer?.length) {
+      const key = `anjani/${user.id}/${id}/edited.pdf`;
+      const stored = await this.storage.putObject(
+        key,
+        files.editedPdf.buffer,
+        files.editedPdf.mimetype || 'application/pdf',
+      );
+      bill.editedPdfKey = stored.key;
+      bill.editedPdfUrl = stored.url || null;
+      bill.editedPdfFileName =
+        files.editedPdf.originalname || bill.editedPdfFileName;
     }
 
     if (files?.headerImage?.buffer?.length) {
@@ -239,7 +299,26 @@ export class AnjaniBillsService {
     const bill = await this.repo.findOne({ where: { id } });
     if (!bill) throw new NotFoundException('Bill not found');
     this.assertOwner(bill, user);
+
+    const sourceMoved = await this.moveKeyToArchive(bill.sourcePdfKey);
+    if (sourceMoved) {
+      bill.sourcePdfKey = sourceMoved;
+      bill.sourcePdfUrl = null;
+    }
+    const headerMoved = await this.moveKeyToArchive(bill.headerImageKey);
+    if (headerMoved) {
+      bill.headerImageKey = headerMoved;
+      bill.headerImageUrl = null;
+    }
+    const editedMoved = await this.moveKeyToArchive(bill.editedPdfKey);
+    if (editedMoved) {
+      bill.editedPdfKey = editedMoved;
+      bill.editedPdfUrl = null;
+    }
+
+    await this.repo.save(bill);
     await this.repo.softDelete(id);
+    await this.purgeExpiredArchives();
     return { ok: true };
   }
 }

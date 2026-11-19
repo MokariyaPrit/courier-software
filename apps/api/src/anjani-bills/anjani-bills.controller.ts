@@ -28,6 +28,7 @@ import {
 type UploadFields = {
   sourcePdf?: Express.Multer.File[];
   headerImage?: Express.Multer.File[];
+  editedPdf?: Express.Multer.File[];
 };
 
 function resolveDto(body: Record<string, unknown>): UpsertAnjaniBillDto {
@@ -46,6 +47,7 @@ const uploadInterceptor = FileFieldsInterceptor(
   [
     { name: 'sourcePdf', maxCount: 1 },
     { name: 'headerImage', maxCount: 1 },
+    { name: 'editedPdf', maxCount: 1 },
   ],
   {
     storage: memoryStorage(),
@@ -82,6 +84,7 @@ export class AnjaniBillsController {
     return this.service.create(resolveDto(body), user, {
       sourcePdf: files?.sourcePdf?.[0],
       headerImage: files?.headerImage?.[0],
+      editedPdf: files?.editedPdf?.[0],
     });
   }
 
@@ -96,6 +99,7 @@ export class AnjaniBillsController {
     return this.service.update(id, resolveDto(body), user, {
       sourcePdf: files?.sourcePdf?.[0],
       headerImage: files?.headerImage?.[0],
+      editedPdf: files?.editedPdf?.[0],
     });
   }
 

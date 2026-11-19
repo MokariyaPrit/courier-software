@@ -448,6 +448,69 @@ async function addCanvasPages(pdf, canvas) {
   }
 }
 
+async function buildEditedPdf(onProgress) {
+  if (typeof html2canvas !== "function" || !window.jspdf) {
+    throw new Error("PDF library failed to load");
+  }
+  const sheet = document.getElementById("sheet");
+  const fileName = invoiceFileName(document.getElementById("billNo").value);
+  const pageRowCount = sourcePages.reduce((sum, page) => sum + page.layout.rows.length, 0);
+  if (sourcePages.length && pageRowCount === state.rows.length) {
+    const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", compress: false });
+    let offset = 0;
+    for (let index = 0; index < sourcePages.length; index += 1) {
+      const page = sourcePages[index];
+      const count = page.layout.rows.length;
+      const slice = state.rows.slice(offset, offset + count);
+      offset += count;
+      const label = "Page " + (index + 1) + " of " + sourcePages.length;
+      onProgress?.(label, index / sourcePages.length);
+      await pause(40);
+      const canvas = stampOriginal(page, slice);
+      if (index > 0) pdf.addPage();
+      await addCanvasPages(pdf, canvas);
+      releaseCanvas(canvas);
+    }
+    onProgress?.("Saving the file…", 1);
+    await pause(40);
+    return { blob: pdf.output("blob"), fileName };
+  }
+  onProgress?.("Drawing the invoice…", null);
+  await pause(40);
+  const canvas = await html2canvas(sheet, {
+    scale: state.rows.length > 80 ? 1.15 : 2,
+    backgroundColor: "#ffffff",
+    onclone(doc) {
+      const clone = doc.getElementById("sheet");
+      clone.classList.add("pdf-mode");
+      clone.querySelectorAll(".no-print").forEach((el) => el.remove());
+      clone.querySelectorAll("input").forEach((input) => {
+        const span = doc.createElement("span");
+        const numeric = input.classList.contains("amount") || input.classList.contains("fuel");
+        span.className = numeric ? "frozen num" : "frozen";
+        span.textContent = numeric ? formatAmount(input.value) : input.value;
+        input.replaceWith(span);
+      });
+    },
+  });
+  const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", compress: false });
+  onProgress?.("Saving the file…", 0.9);
+  await addCanvasPages(pdf, canvas);
+  releaseCanvas(canvas);
+  return { blob: pdf.output("blob"), fileName };
+}
+
+function triggerPdfDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function downloadPdf() {
   const button = document.getElementById("download");
   const previous = button.textContent;
@@ -455,56 +518,11 @@ async function downloadPdf() {
   button.textContent = "Preparing PDF...";
   showBusy("Creating the PDF", "Starting…", 0);
   try {
-    if (typeof html2canvas !== "function" || !window.jspdf) {
-      throw new Error("PDF library failed to load");
-    }
-    const sheet = document.getElementById("sheet");
-    const pageRowCount = sourcePages.reduce((sum, page) => sum + page.layout.rows.length, 0);
-    if (sourcePages.length && pageRowCount === state.rows.length) {
-      const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", compress: false });
-      let offset = 0;
-      for (let index = 0; index < sourcePages.length; index += 1) {
-        const page = sourcePages[index];
-        const count = page.layout.rows.length;
-        const slice = state.rows.slice(offset, offset + count);
-        offset += count;
-        const label = "Page " + (index + 1) + " of " + sourcePages.length;
-        button.textContent = label;
-        showBusy("Creating the PDF", label, index / sourcePages.length);
-        await pause(40);
-        const canvas = stampOriginal(page, slice);
-        if (index > 0) pdf.addPage();
-        await addCanvasPages(pdf, canvas);
-        releaseCanvas(canvas);
-      }
-      showBusy("Creating the PDF", "Saving the file…", 1);
-      await pause(40);
-      pdf.save(invoiceFileName(document.getElementById("billNo").value));
-      return;
-    }
-    showBusy("Creating the PDF", "Drawing the invoice…", null);
-    await pause(40);
-    const canvas = await html2canvas(sheet, {
-      scale: state.rows.length > 80 ? 1.15 : 2,
-      backgroundColor: "#ffffff",
-      onclone(doc) {
-        const clone = doc.getElementById("sheet");
-        clone.classList.add("pdf-mode");
-        clone.querySelectorAll(".no-print").forEach((el) => el.remove());
-        clone.querySelectorAll("input").forEach((input) => {
-          const span = doc.createElement("span");
-          const numeric = input.classList.contains("amount") || input.classList.contains("fuel");
-          span.className = numeric ? "frozen num" : "frozen";
-          span.textContent = numeric ? formatAmount(input.value) : input.value;
-          input.replaceWith(span);
-        });
-      },
+    const built = await buildEditedPdf((detail, progress) => {
+      button.textContent = detail;
+      showBusy("Creating the PDF", detail, progress);
     });
-    const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", compress: false });
-    showBusy("Creating the PDF", "Saving the file…", 0.9);
-    await addCanvasPages(pdf, canvas);
-    releaseCanvas(canvas);
-    pdf.save(invoiceFileName(document.getElementById("billNo").value));
+    triggerPdfDownload(built.blob, built.fileName);
   } catch (error) {
     console.error(error);
     window.alert("Could not create the PDF. Keep this page open and try Download PDF again.");
@@ -1232,6 +1250,26 @@ async function replyWithBill(requestId, source) {
   if (sourcePdfFile) pdfBuffer = await sourcePdfFile.arrayBuffer();
   const letterhead = document.getElementById("letterhead");
   const headerDataUrl = letterhead && String(letterhead.src || "").startsWith("data:") ? letterhead.src : "";
+  showBusy("Saving the bill", "Creating the edited PDF…", 0.2);
+  let editedPdfBuffer = null;
+  let editedPdfName = "";
+  try {
+    const built = await buildEditedPdf((detail, progress) => {
+      showBusy("Saving the bill", detail || "Creating the edited PDF…", progress == null ? 0.5 : 0.2 + progress * 0.7);
+    });
+    editedPdfBuffer = await built.blob.arrayBuffer();
+    editedPdfName = built.fileName;
+  } catch (error) {
+    console.error(error);
+    hideBusy();
+    source.postMessage({
+      type: "anjani-save",
+      requestId,
+      error: "Could not create the edited PDF. Try Download PDF first, then Save again.",
+    }, location.origin);
+    return;
+  }
+  hideBusy();
   source.postMessage({
     type: "anjani-save",
     requestId,
@@ -1239,6 +1277,8 @@ async function replyWithBill(requestId, source) {
     headerDataUrl,
     pdfName: sourcePdfFile ? sourcePdfFile.name : "",
     pdfBuffer,
+    editedPdfName,
+    editedPdfBuffer,
   }, location.origin);
 }
 

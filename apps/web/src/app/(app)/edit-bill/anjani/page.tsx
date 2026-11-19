@@ -21,6 +21,8 @@ type AnjaniListRow = {
   billDate: string | null;
   customerName: string | null;
   bill: string | null;
+  editedPdfUrl?: string | null;
+  editedPdfFileName?: string | null;
   createdAt: string;
 };
 
@@ -85,6 +87,26 @@ export default function AnjaniBillListPage() {
               text
               onClick={() => router.push(`/edit-bill/anjani/${row.id}`)}
             />
+            {row.editedPdfUrl ? (
+              <Button
+                label="PDF"
+                icon="pi pi-download"
+                size="small"
+                text
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = row.editedPdfUrl!;
+                  link.download =
+                    row.editedPdfFileName ||
+                    `${row.billNo || 'invoice'}.pdf`;
+                  link.target = '_blank';
+                  link.rel = 'noopener';
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                }}
+              />
+            ) : null}
             <Button
               label="Delete"
               icon="pi pi-trash"
@@ -95,7 +117,7 @@ export default function AnjaniBillListPage() {
               onClick={() =>
                 confirmDialog({
                   header: 'Delete bill',
-                  message: `Delete bill ${row.billNo || row.id}?`,
+                  message: `Delete bill ${row.billNo || row.id}? Files move to archive for 30 days.`,
                   acceptClassName: 'p-button-danger',
                   acceptLabel: 'Delete',
                   rejectLabel: 'Cancel',

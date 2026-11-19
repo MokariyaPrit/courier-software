@@ -118,6 +118,15 @@ export class AnjaniBill {
   @Column({ type: 'int', nullable: true })
   sourcePdfBytes: number | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  editedPdfKey: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  editedPdfUrl: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  editedPdfFileName: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   layoutJson: Record<string, unknown> | null;
 

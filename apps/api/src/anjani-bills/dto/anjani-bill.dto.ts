@@ -158,4 +158,8 @@ export class UpsertAnjaniBillDto {
   @IsInt()
   @Min(0)
   sourcePdfBytes?: number | null;
+
+  @IsOptional()
+  @IsString()
+  editedPdfFileName?: string | null;
 }

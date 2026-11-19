@@ -57,6 +57,9 @@ export type AnjaniBillRecord = Omit<
   headerImageKey?: string | null;
   sourcePdfBytes?: number | null;
   sourcePdfFileName?: string | null;
+  editedPdfUrl?: string | null;
+  editedPdfKey?: string | null;
+  editedPdfFileName?: string | null;
   layoutJson?: {
     pages: unknown[];
   } | null;

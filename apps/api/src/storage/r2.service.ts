@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
@@ -116,6 +117,38 @@ export class R2StorageService {
     }
 
     return `/uploads/${normalized}`;
+  }
+
+  /** Copy into another key, then remove the original. Returns the new key. */
+  async moveObject(fromKey: string, toKey: string): Promise<string | null> {
+    const from = (fromKey || '').replace(/^\/+/, '');
+    const to = (toKey || '').replace(/^\/+/, '');
+    if (!from || !to) return null;
+    if (from === to) return to;
+
+    try {
+      if (this.client) {
+        await this.client.send(
+          new CopyObjectCommand({
+            Bucket: this.bucket,
+            Key: to,
+            CopySource: encodeURI(`${this.bucket}/${from}`),
+          }),
+        );
+        await this.deleteObject(from);
+        return to;
+      }
+
+      const src = path.join(UPLOADS_ROOT, from);
+      if (!fs.existsSync(src)) return null;
+      const dest = path.join(UPLOADS_ROOT, to);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.renameSync(src, dest);
+      return to;
+    } catch (err) {
+      this.logger.warn(`Move failed ${from} -> ${to}: ${String(err)}`);
+      return null;
+    }
   }
 
   async deleteObject(key: string | null | undefined): Promise<void> {
